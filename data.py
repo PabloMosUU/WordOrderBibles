@@ -32,6 +32,12 @@ class SplitData:
 
 class TokenizedBible:
     def __init__(self, language: str, filename: str, verse_tokens: dict):
+        """
+        Create a tokenized bible that is ready for data splitting and model training
+        :param language: the ISO code for the language
+        :param filename: the filename of the original (non-tokenized) data
+        :param verse_tokens: a dictionary mapping verse numbers or any other unique ID to tokens
+        """
         self.language = language
         self.filename = filename
         self.verse_tokens = verse_tokens
