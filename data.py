@@ -3,6 +3,8 @@ import re
 from collections.abc import MutableMapping
 from typing import Iterator
 
+from sklearn.model_selection import train_test_split
+
 
 class IndelibleDict(MutableMapping):
     def __init__(self):
@@ -27,7 +29,10 @@ class IndelibleDict(MutableMapping):
 
 
 class SplitData:
-    pass
+    def __init__(self, train_data, hold_out_data, test_data):
+        self.train_data = train_data
+        self.hold_out_data = hold_out_data
+        self.test_data = test_data
 
 
 class TokenizedBible:
@@ -49,12 +54,28 @@ class TokenizedBible:
             for verse_number, verse_tokens in self.verse_tokens.items():
                 f.write(f'{verse_number}\t{" ".join(verse_tokens)}\n')
 
-    def read(self, filename: str):
-        raise NotImplementedError()
+    @staticmethod
+    def read(filename: str, corpus: str):
+        with open(filename, 'r') as f:
+            return parse_file(f.read(), corpus)
 
-    def split(self) -> SplitData:
-        # Todo: challenge 2
-        raise NotImplementedError()
+    def split(self, hold_out_fraction: float, test_fraction: float) -> SplitData:
+        """
+        Split the data into a training set, a hold-out set, and test set
+        :param hold_out_fraction: the fraction of all data that should go into hold-out
+        :param test_fraction: the fraction of all data that should go into test
+        :return: an object containing the split data
+        """
+        train_and_hold_out_data, test_data = train_test_split(
+            list(self.verse_tokens.values()),
+            test_size = test_fraction
+        )
+        hold_out_fraction_of_dev = hold_out_fraction / (1 - test_fraction)
+        train_data, hold_out_data = train_test_split(
+            train_and_hold_out_data,
+            test_size = hold_out_fraction_of_dev
+        )
+        return SplitData(train_data, hold_out_data, test_data)
 
 
 class Bible:
