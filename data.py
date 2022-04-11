@@ -34,6 +34,29 @@ class SplitData:
         self.hold_out_data = hold_out_data
         self.test_data = test_data
 
+    @staticmethod
+    def join_lines(lines: list) -> str:
+        return ' <END> '.join(lines)
+
+    def get(self, partition: str) -> str:
+        if partition == 'train':
+            return SplitData.join_lines(self.train_data)
+        elif partition == 'holdout':
+            return SplitData.join_lines(self.hold_out_data)
+        elif partition == 'test':
+            return SplitData.join_lines(self.test_data)
+        else:
+            raise ValueError(f'Unknown partition {partition}')
+
+    def save(self, filename: str) -> None:
+        for partition in ('train', 'holdout', 'test'):
+            with open(SplitData.append_partition(filename, partition), 'w') as f:
+                f.write(self.get(partition))
+
+    @staticmethod
+    def append_partition(filename: str, partition: str) -> str:
+        last_dot_ix = [i for i in range(len(filename) - 1, -1, -1) if filename[i] == '.'][0]
+        return filename[:last_dot_ix] + partition + filename[last_dot_ix:]
 
 class TokenizedBible:
     def __init__(self, language: str, filename: str, verse_tokens: dict):
@@ -55,14 +78,19 @@ class TokenizedBible:
                 f.write(f'{verse_number}\t{" ".join(verse_tokens)}\n')
 
     @staticmethod
-    def read(filename: str, corpus: str):
+    def read(filename: str):
         with open(filename, 'r') as f:
-            return parse_file(f.read(), corpus)
+            lines = f.readlines()
+        language = lines[0].split('\t')[1].strip()
+        original_filename = lines[1].split('\t')[1].strip()
+        verse_tokens = {el.split('\t')[0]: el.split('\t')[1].strip() \
+                        for el in lines[2:]}
+        return TokenizedBible(language, original_filename, verse_tokens)
 
     def split(self, hold_out_fraction: float, test_fraction: float) -> SplitData:
         """
-        Split the data into a training set, a hold-out set, and test set
-        :param hold_out_fraction: the fraction of all data that should go into hold-out
+        Split the data into a training set, a holdout set, and test set
+        :param hold_out_fraction: the fraction of all data that should go into holdout
         :param test_fraction: the fraction of all data that should go into test
         :return: an object containing the split data
         """
@@ -182,11 +210,19 @@ def process_bible(filename: str, corpus: str) -> TokenizedBible:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print(f'USAGE: {sys.argv[0]} <corpus> <bible_filename> <output_filename>')
+    if len(sys.argv) != 5:
+        print(f'USAGE: {sys.argv[0]} <preprocess/split> <corpus> <bible_filename> <output_filename>')
         exit(-1)
-    bible_corpus = sys.argv[1]
-    bible_filename = sys.argv[2]
-    output_filename = sys.argv[3]
-    pre_processed_bible = process_bible(bible_filename, bible_corpus)
-    pre_processed_bible.save(output_filename)
+    action = sys.argv[1].lower().strip()
+    bible_corpus = sys.argv[2]
+    bible_filename = sys.argv[3]
+    output_filename = sys.argv[4]
+    if action == 'preprocess':
+        pre_processed_bible = process_bible(bible_filename, bible_corpus)
+        pre_processed_bible.save(output_filename)
+    elif action == 'split':
+        pre_processed_bible = TokenizedBible.read(bible_filename)
+        split_bible = pre_processed_bible.split(0.15, 0.1)
+        split_bible.save(output_filename)
+    else:
+        raise ValueError(f'Unknown operation {action}')
