@@ -1,3 +1,4 @@
+import random
 import sys
 import re
 from collections.abc import MutableMapping
@@ -5,6 +6,9 @@ from typing import Iterator
 
 from sklearn.model_selection import train_test_split
 
+END_OF_VERSE_TOKEN = '<END>'
+PAD_TOKEN = '<PAD>'
+UNKNOWN_TOKEN = '<UNK>'
 
 class IndelibleDict(MutableMapping):
     def __init__(self):
@@ -33,30 +37,43 @@ class SplitData:
         self.train_data = train_data
         self.hold_out_data = hold_out_data
         self.test_data = test_data
+        self.train_word_to_ix = self._word_to_ix()
 
-    @staticmethod
-    def join_lines(lines: list) -> str:
-        return ' <END> '.join(lines)
-
-    def get(self, partition: str) -> str:
+    def get(self, partition: str) -> list:
         if partition == 'train':
-            return SplitData.join_lines(self.train_data)
+            return self.train_data
         elif partition == 'holdout':
-            return SplitData.join_lines(self.hold_out_data)
+            return self.hold_out_data
         elif partition == 'test':
-            return SplitData.join_lines(self.test_data)
+            return self.test_data
         else:
             raise ValueError(f'Unknown partition {partition}')
 
-    def save(self, filename: str) -> None:
-        for partition in ('train', 'holdout', 'test'):
-            with open(SplitData.append_partition(filename, partition), 'w') as f:
-                f.write(self.get(partition))
+    def shuffle_chop(self, partition: str, sequence_length: int) -> list:
+        """
+        Shuffles the verses and chunks the outcome in sequences of fixed length
+        :param partition: the partition (train/holdout/test) you want to work on
+        :param sequence_length: the length of the chopped sequences
+        :return: a list of sequences, each of which is a list of tokens
+        """
+        verses = self.get(partition)
+        random.shuffle(verses)
+        verses = [el + [END_OF_VERSE_TOKEN] for el in verses]
+        flattened = [el for lis in verses for el in lis]
+        flattened += ((sequence_length - (len(flattened) % sequence_length)) * [PAD_TOKEN])
+        return [flattened[i:i+sequence_length] for i in range(0, len(flattened), sequence_length)]
 
-    @staticmethod
-    def append_partition(filename: str, partition: str) -> str:
-        last_dot_ix = [i for i in range(len(filename) - 1, -1, -1) if filename[i] == '.'][0]
-        return filename[:last_dot_ix] + partition + filename[last_dot_ix:]
+    def _word_to_ix(self):
+        word_to_ix = {}
+        # For each words-list (sentence) and tags-list in each tuple of training_data
+        for sent in self.train_data:
+            for word in sent:
+                if word not in word_to_ix:  # word has not been assigned an index yet
+                    word_to_ix[word] = len(word_to_ix)  # Assign each word with a unique index
+        for special_token in (END_OF_VERSE_TOKEN, PAD_TOKEN, UNKNOWN_TOKEN):
+            if special_token not in word_to_ix:
+                word_to_ix[special_token] = len(word_to_ix)
+        return word_to_ix
 
 class TokenizedBible:
     def __init__(self, language: str, filename: str, verse_tokens: dict):
@@ -210,19 +227,11 @@ def process_bible(filename: str, corpus: str) -> TokenizedBible:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print(f'USAGE: {sys.argv[0]} <preprocess/split> <corpus> <bible_filename> <output_filename>')
+    if len(sys.argv) != 4:
+        print(f'USAGE: {sys.argv[0]} <corpus> <bible_filename> <output_filename>')
         exit(-1)
-    action = sys.argv[1].lower().strip()
-    bible_corpus = sys.argv[2]
-    bible_filename = sys.argv[3]
-    output_filename = sys.argv[4]
-    if action == 'preprocess':
-        pre_processed_bible = process_bible(bible_filename, bible_corpus)
-        pre_processed_bible.save(output_filename)
-    elif action == 'split':
-        pre_processed_bible = TokenizedBible.read(bible_filename)
-        split_bible = pre_processed_bible.split(0.15, 0.1)
-        split_bible.save(output_filename)
-    else:
-        raise ValueError(f'Unknown operation {action}')
+    bible_corpus = sys.argv[1]
+    bible_filename = sys.argv[2]
+    output_filename = sys.argv[3]
+    pre_processed_bible = process_bible(bible_filename, bible_corpus)
+    pre_processed_bible.save(output_filename)
