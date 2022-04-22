@@ -38,6 +38,7 @@ class SplitData:
         self.hold_out_data = hold_out_data
         self.test_data = test_data
         self.train_word_to_ix = self._word_to_ix()
+        self.train_ix_to_word = {v:k for k,v in self.train_word_to_ix.items()}
 
     def get(self, partition: str) -> list:
         if partition == 'train':

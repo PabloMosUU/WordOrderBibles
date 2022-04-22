@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-N_EPOCHS = 300
+N_EPOCHS = 1
 SEQUENCE_LENGTH = 20 # T from Hahn et al. TODO: make it variable
 EMBEDDING_DIM = 300 # TODO: what is a good value?
 HIDDEN_DIM = 6 # TODO: what is a good value?
@@ -31,8 +31,13 @@ class TrainedModel(nn.Module):
         pred_scores = F.log_softmax(pred_space, dim=1)
         return pred_scores
 
+    def pred(self, sentence: torch.Tensor) -> torch.Tensor:
+        with torch.no_grad():
+            next_word_scores = self(sentence)
+        return next_word_scores
+
 def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
-    index_sequence = [to_ix[w] for w in seq]
+    index_sequence = [to_ix[w] if w in to_ix else to_ix[data.UNKNOWN_TOKEN] for w in seq]
     return torch.tensor(index_sequence, dtype=torch.long)
 
 def next_word_target(seq: list) -> list:
@@ -52,7 +57,11 @@ def train_model(split_data: SplitData) -> TrainedModel:
     loss_function = nn.NLLLoss() # TODO: replace by Eq. 68 in Hahn et al?
     optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE) # TODO: replace SGD (pg. 83)
     for epoch in range(N_EPOCHS):
-        for sentence in training_data:
+        print(f'Epoch {epoch} / {N_EPOCHS}')
+        for i, sentence in enumerate(training_data):
+            if i % (int(len(training_data) / 5)) == 0:
+                print(f'Sentence {i} / {len(training_data)}')
+                break
             # Clear accumulated gradients before each instance
             model.zero_grad()
 
@@ -69,6 +78,20 @@ def train_model(split_data: SplitData) -> TrainedModel:
             optimizer.step()
     return model
 
+def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dict) -> list:
+    """
+    Make predictions from a trained model on a list of sequences
+    :param model: a trained LSTM
+    :param sequences: a list of sequences, each of which is a list of tokens
+    :param word_to_ix: a dictionary from words to indices
+    :param ix_to_word: a dictionary from indices to words allowed in the output
+    :return: a list of predictions, each of which is a list of tokens
+    """
+    sentences_in = [prepare_sequence(seq, word_to_ix) for seq in sequences]
+    sentences_out = [model.pred(sentence) for sentence in sentences_in]
+    maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
+    return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]
+
 if __name__ == '__main__':
     bible_corpus = 'PBC'
     bible_filename = '/home/pablo/Documents/paralleltext/bibles/corpus/eng-x-bible-world.txt'
@@ -84,19 +107,6 @@ if __name__ == '__main__':
 
     # Make predictions on the holdout set
     data_holdout = split_bible.shuffle_chop('holdout', SEQUENCE_LENGTH)
-    pred_holdout = next_word_predictor.pred(data_holdout)
+    pred_holdout = pred(next_word_predictor, data_holdout, split_bible.train_word_to_ix, split_bible.train_ix_to_word)
 
     print(pred_holdout)
-
-    # See what the scores are after training
-    with torch.no_grad():
-        inputs = prepare_sequence(training_data[0][0], word_to_ix)
-        tag_scores = model(inputs)
-
-        # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j
-        # for word i. The predicted tag is the maximum scoring tag.
-        # Here, we can see the predicted sequence below is 0 1 2 0 1
-        # since 0 is index of the maximum value of row 1,
-        # 1 is the index of maximum value of row 2, etc.
-        # Which is DET NOUN VERB DET NOUN, the correct sequence!
-        print(tag_scores)
