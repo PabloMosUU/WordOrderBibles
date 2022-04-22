@@ -1,3 +1,5 @@
+import sys
+
 import torch
 
 import data
@@ -40,7 +42,7 @@ def next_word_target(seq: list) -> list:
     :param seq: a sequence of tokens
     :return: the same sequence shifted by one slot and with a pad token at the end
     """
-    return seq[1:] + data.PAD_TOKEN
+    return seq[1:] + [data.PAD_TOKEN]
 
 def train_model(split_data: SplitData) -> TrainedModel:
     # TODO: shuffling should be done every epoch
@@ -68,15 +70,23 @@ def train_model(split_data: SplitData) -> TrainedModel:
     return model
 
 if __name__ == '__main__':
+    bible_corpus = 'PBC'
+    bible_filename = '/home/pablo/Documents/paralleltext/bibles/corpus/eng-x-bible-world.txt'
 
-    # Now I have a framework for training an LSTM on one of my bibles
-    # I'd like to read one of these bibles
+    # Read a bible and pre-process it
+    pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
 
-    tokenized_bible = None # read from somewhere
-    split_bible = tokenized_bible.split(hold_out_fraction, test_fraction)
-    hold_out_fraction = 0.15
-    test_fraction = 0.1
-    trained_model = train_model(split_bible)
+    # Split it
+    split_bible = pre_processed_bible.split(0.15, 0.1)
+
+    # Train the model
+    next_word_predictor = train_model(split_bible)
+
+    # Make predictions on the holdout set
+    data_holdout = split_bible.shuffle_chop('holdout', SEQUENCE_LENGTH)
+    pred_holdout = next_word_predictor.pred(data_holdout)
+
+    print(pred_holdout)
 
     # See what the scores are after training
     with torch.no_grad():
