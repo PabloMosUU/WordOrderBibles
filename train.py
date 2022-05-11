@@ -47,11 +47,10 @@ def next_word_target(seq: list) -> list:
     At the end of each chunk, we predict the padding token.
     TODO: if we decide to work with verses, we could have the target of the last word be <END>
     TODO: another alternative is to split the input sentence with N tokens. Input: a[:N-1]. Output: a[1:]
-    TODO: a third alternative is to have another special token <CHUNKEND>
     :param seq: a sequence of tokens
     :return: the same sequence shifted by one slot and with a pad token at the end
     """
-    return seq[1:] + [data.PAD_TOKEN]
+    return seq[1:] + [data.CHUNK_END_TOKEN]
 
 def train_model(split_data: SplitData) -> TrainedModel:
     word_to_ix = split_data.train_word_to_ix
@@ -64,7 +63,6 @@ def train_model(split_data: SplitData) -> TrainedModel:
         for i, sentence in enumerate(training_data):
             if i % (int(len(training_data) / 5)) == 0:
                 print(f'Sentence {i} / {len(training_data)}')
-                break
             # Clear accumulated gradients before each instance
             model.zero_grad()
 
@@ -112,4 +110,8 @@ if __name__ == '__main__':
     data_holdout = split_bible.shuffle_chop('holdout', SEQUENCE_LENGTH)
     pred_holdout = pred(next_word_predictor, data_holdout, split_bible.train_word_to_ix, split_bible.train_ix_to_word)
 
-    print(pred_holdout)
+    print('Some predictions:')
+    for ix in range(5):
+        print('\tReal:', ' '.join(data_holdout[ix]))
+        print('\tPred:', ' '.join(pred_holdout[ix]))
+        print('----------------------------------')

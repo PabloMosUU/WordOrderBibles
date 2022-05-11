@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split
 END_OF_VERSE_TOKEN = '<END>'
 PAD_TOKEN = '<PAD>'
 UNKNOWN_TOKEN = '<UNK>'
+CHUNK_END_TOKEN = '<CHUNKEND>'
 
 class IndelibleDict(MutableMapping):
     def __init__(self):
