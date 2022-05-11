@@ -6,10 +6,10 @@ from typing import Iterator
 
 from sklearn.model_selection import train_test_split
 
-END_OF_VERSE_TOKEN = '<END>'
+END_OF_VERSE_TOKEN = '<SEP>'
 PAD_TOKEN = '<PAD>'
 UNKNOWN_TOKEN = '<UNK>'
-CHUNK_END_TOKEN = '<CHUNKEND>'
+CHUNK_END_TOKEN = '<END>'
 
 class IndelibleDict(MutableMapping):
     def __init__(self):
@@ -64,7 +64,10 @@ class SplitData:
         verses = [el + [END_OF_VERSE_TOKEN] for el in verses]
         flattened = [el for lis in verses for el in lis]
         flattened += ((sequence_length - (len(flattened) % sequence_length)) * [PAD_TOKEN])
-        return [flattened[i:i+sequence_length] for i in range(0, len(flattened), sequence_length)]
+        chunks = [flattened[i:i+sequence_length] for i in range(0, len(flattened), sequence_length)]
+        # TODO: the following line is not necessary in other setups
+        chunks = [chunk for chunk in chunks if PAD_TOKEN not in chunk]
+        return chunks
 
     def _word_to_ix(self):
         word_to_ix = {}
@@ -73,7 +76,7 @@ class SplitData:
             for word in sent:
                 if word not in word_to_ix:  # word has not been assigned an index yet
                     word_to_ix[word] = len(word_to_ix)  # Assign each word with a unique index
-        for special_token in (END_OF_VERSE_TOKEN, PAD_TOKEN, UNKNOWN_TOKEN):
+        for special_token in (END_OF_VERSE_TOKEN, PAD_TOKEN, UNKNOWN_TOKEN, CHUNK_END_TOKEN):
             if special_token not in word_to_ix:
                 word_to_ix[special_token] = len(word_to_ix)
         return word_to_ix
