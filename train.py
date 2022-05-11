@@ -24,6 +24,7 @@ class TrainedModel(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers)
         self.hidden2pred = nn.Linear(hidden_dim, vocab_size)
 
+    # TODO: propagate hidden state between sentences? See: https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html
     def forward(self, sentence):
         embeds = self.word_embeddings(sentence)
         lstm_out, _ = self.lstm(embeds.view(len(sentence), 1, -1))
@@ -44,19 +45,21 @@ def next_word_target(seq: list) -> list:
     """
     For next-word prediction, assume that the target for each word is the next word.
     At the end of each chunk, we predict the padding token.
+    TODO: if we decide to work with verses, we could have the target of the last word be <END>
+    TODO: another alternative is to split the input sentence with N tokens. Input: a[:N-1]. Output: a[1:]
+    TODO: a third alternative is to have another special token <CHUNKEND>
     :param seq: a sequence of tokens
     :return: the same sequence shifted by one slot and with a pad token at the end
     """
     return seq[1:] + [data.PAD_TOKEN]
 
 def train_model(split_data: SplitData) -> TrainedModel:
-    # TODO: shuffling should be done every epoch
-    training_data = split_data.shuffle_chop('train', SEQUENCE_LENGTH)
     word_to_ix = split_data.train_word_to_ix
     model = TrainedModel(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), N_LAYERS)
     loss_function = nn.NLLLoss() # TODO: replace by Eq. 68 in Hahn et al?
     optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE) # TODO: replace SGD (pg. 83)
     for epoch in range(N_EPOCHS):
+        training_data = split_data.shuffle_chop('train', SEQUENCE_LENGTH)
         print(f'Epoch {epoch} / {N_EPOCHS}')
         for i, sentence in enumerate(training_data):
             if i % (int(len(training_data) / 5)) == 0:
