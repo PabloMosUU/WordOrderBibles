@@ -53,6 +53,7 @@ class SplitData:
     def shuffle_chop(self, partition: str, sequence_length: int) -> list:
         """
         Shuffles the verses and chunks the outcome in sequences of fixed length
+        TODO: should we chop into equal-length chunks? Or split bible into verses?
         :param partition: the partition (train/holdout/test) you want to work on
         :param sequence_length: the length of the chopped sequences
         :return: a list of sequences, each of which is a list of tokens
