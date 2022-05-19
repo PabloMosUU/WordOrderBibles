@@ -7,6 +7,7 @@ from train import EMBEDDING_DIM, HIDDEN_DIM, prepare_sequence
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
+import numpy as np
 
 class LSTMTagger(nn.Module):
 
@@ -30,6 +31,15 @@ class LSTMTagger(nn.Module):
         tag_scores = functional.log_softmax(tag_space, dim=1)
         return tag_scores
 
+def invert_dict(key_val: dict) -> dict:
+    if len(set(key_val.values())) != len(key_val):
+        raise ValueError('Dictionary contains repeated values and cannot be inverted')
+    return {v:k for k,v in key_val.items()}
+
+def get_tags(scores: torch.Tensor, ix_tag: dict) -> np.ndarray:
+    tag_ixs = scores.max(dim=1).indices.numpy()
+    return np.vectorize(lambda ix: ix_tag[ix])(tag_ixs)
+
 if __name__ == '__main__':
     training_data = [
         # Tags are: DET - determiner; NN - noun; V - verb
@@ -43,8 +53,9 @@ if __name__ == '__main__':
         for word in sent:
             if word not in word_to_ix:  # word has not been assigned an index yet
                 word_to_ix[word] = len(word_to_ix)  # Assign each word with a unique index
-    print(word_to_ix)
+    print(f'Word indices: {word_to_ix}')
     tag_to_ix = {"DET": 0, "NN": 1, "V": 2}  # Assign each tag with a unique index
+    ix_to_tag = invert_dict(tag_to_ix)
 
     model = LSTMTagger(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
     loss_function = nn.NLLLoss()
@@ -56,7 +67,7 @@ if __name__ == '__main__':
     with torch.no_grad():
         inputs = prepare_sequence(training_data[0][0], word_to_ix)
         untrained_tag_scores = model(inputs)
-        print(untrained_tag_scores)
+        print(f'Predictions before training: {get_tags(untrained_tag_scores, ix_to_tag)}')
 
     for epoch in range(300):  # again, normally you would NOT do 300 epochs, it is toy data
         for training_sentence, tags in training_data:
@@ -89,4 +100,4 @@ if __name__ == '__main__':
         # since 0 is index of the maximum value of row 1,
         # 1 is the index of maximum value of row 2, etc.
         # Which is DET NOUN VERB DET NOUN, the correct sequence!
-        print(trained_tag_scores)
+        print(f'Predictions after training: {get_tags(trained_tag_scores, ix_to_tag)}')
