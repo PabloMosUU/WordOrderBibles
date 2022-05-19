@@ -42,9 +42,10 @@ def get_next_words(scores: torch.Tensor, ix_next_word: dict) -> np.ndarray:
 
 if __name__ == '__main__':
     training_data = [
-        "The dog ate the apple".split(),
-        "Everybody read that book".split()
+        "The dog ate the apple",
+        "Everybody read that book"
     ]
+    training_data = [sent.split() for sent in training_data]
     word_to_ix = {}
     # For each words-list (sentence) in the training_data
     for sent in training_data:
