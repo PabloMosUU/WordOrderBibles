@@ -10,6 +10,7 @@ import torch.nn.functional as functional
 import numpy as np
 
 N_EPOCHS = 300 # normally you would NOT do 300 epochs, it is toy data
+LEARNING_RATE = 0.1
 
 class LSTMLanguageModel(nn.Module):
 
@@ -58,7 +59,7 @@ def get_word_index(sequences: list) -> dict:
     word_ix[data.CHUNK_END_TOKEN] = len(word_ix)
     return word_ix
 
-def train_sample_(model: nn.Module, sample: list, word_ix: dict) -> None:
+def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> None:
     # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
     model.zero_grad()
 
@@ -74,10 +75,30 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict) -> None:
     loss.backward()
     optimizer.step()
 
+def train_(model: nn.Module, corpus: list, word_ix: dict, n_epochs: int, loss_function, optimizer) -> None:
+    for epoch in range(n_epochs):
+        for training_sentence in corpus:
+            train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
+
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
     seq = prepare_sequence(sample, word_ix)
     trained_next_word_scores = model(seq)
     return get_next_words(trained_next_word_scores, ix_word)
+
+def pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> list:
+    with torch.no_grad():
+        return [pred_sample(model, seq, word_ix, ix_word) for seq in corpus]
+
+def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> None:
+    predictions = pred(model, corpus, word_ix, ix_word)
+    for prediction in predictions:
+        print(prediction)
+
+def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
+    model = LSTMLanguageModel(embedding_dim, hidden_dim, words_dim)
+    loss_function = nn.NLLLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    return model, loss_function, optimizer
 
 if __name__ == '__main__':
     training_data = [
@@ -86,29 +107,14 @@ if __name__ == '__main__':
     ]
     training_data = [sent.split() for sent in training_data]
     word_to_ix = get_word_index(training_data)
-    print(f'Word indices: {word_to_ix}')
     ix_to_word = invert_dict(word_to_ix)
 
-    lm = LSTMLanguageModel(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix))
-    loss_function = nn.NLLLoss()
-    optimizer = torch.optim.SGD(lm.parameters(), lr=0.1)
+    lm, nll_loss, sgd = initialize_model(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), lr=LEARNING_RATE)
 
-    # See what the scores are before training
-    # Note that element i,j of the output is the score for next-word j for word i.
-    # Here we don't need to train, so the code is wrapped in torch.no_grad()
-    with torch.no_grad():
-        inputs = prepare_sequence(training_data[0], word_to_ix)
-        untrained_next_word_scores = lm(inputs)
-        print(f'Predictions before training: {get_next_words(untrained_next_word_scores, ix_to_word)}')
+    print('Before training:')
+    print_pred(lm, training_data, word_to_ix, ix_to_word)
 
-    for epoch in range(N_EPOCHS):
-        for training_sentence in training_data:
-            train_sample_(lm, training_sentence, word_to_ix)
+    train_(lm, training_data, word_to_ix, N_EPOCHS, nll_loss, sgd)
 
-    # See what the scores are after training
-    training_pred = []
-    with torch.no_grad():
-        for training_sentence in training_data:
-            trained_pred = pred_sample(lm, training_sentence, word_to_ix, ix_to_word)
-            training_pred.append(trained_pred)
-    print(f'Predictions after training: {training_pred}')
+    print('After training:')
+    print_pred(lm, training_data, word_to_ix, ix_to_word)
