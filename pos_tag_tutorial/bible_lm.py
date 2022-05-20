@@ -9,8 +9,8 @@ import torch
 import torch.nn.functional as functional
 import numpy as np
 
-N_EPOCHS = 300 # normally you would NOT do 300 epochs, it is toy data
-LEARNING_RATE = 0.1
+N_EPOCHS = 1 # normally you would NOT do 300 epochs, it is toy data
+LEARNING_RATE = 0.001
 
 class LSTMLanguageModel(nn.Module):
 
@@ -77,7 +77,9 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
 
 def train_(model: nn.Module, corpus: list, word_ix: dict, n_epochs: int, loss_function, optimizer) -> None:
     for epoch in range(n_epochs):
-        for training_sentence in corpus:
+        for i, training_sentence in enumerate(corpus):
+            if i % (int(len(corpus)/10)) == 0:
+                print('Processed', i)
             train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
@@ -96,23 +98,26 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
 
 def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
     model = LSTMLanguageModel(embedding_dim, hidden_dim, words_dim)
-    loss_function = nn.NLLLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    loss_function = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     return model, loss_function, optimizer
 
 if __name__ == '__main__':
-    training_data = [
-        "that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee after the baptism which john preached",
-        "many women were there watching from afar who had followed jesus from galilee serving him"
-    ]
-    training_data = [sent.split() for sent in training_data]
+    bible_corpus = 'PBC'
+    bible_filename = '/home/pablo/Documents/paralleltext/bibles/corpus/eng-x-bible-world.txt'
+
+    # Read a bible and pre-process it
+    pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
+
+    # Split it
+    split_bible = pre_processed_bible.split(0.15, 0.1)
+
+    training_data = split_bible.train_data
+
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
 
     lm, nll_loss, sgd = initialize_model(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), lr=LEARNING_RATE)
-
-    print('Before training:')
-    print_pred(lm, training_data, word_to_ix, ix_to_word)
 
     train_(lm, training_data, word_to_ix, N_EPOCHS, nll_loss, sgd)
 
