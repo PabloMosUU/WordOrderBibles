@@ -92,7 +92,7 @@ def pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> list:
 def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> None:
     predictions = pred(model, corpus, word_ix, ix_word)
     for prediction in predictions:
-        print(prediction)
+        print(' '.join(prediction))
 
 def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
     model = LSTMLanguageModel(embedding_dim, hidden_dim, words_dim)
@@ -102,8 +102,8 @@ def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
 
 if __name__ == '__main__':
     training_data = [
-        "The dog ate the apple",
-        "Everybody read that book"
+        "that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee after the baptism which john preached",
+        "many women were there watching from afar who had followed jesus from galilee serving him"
     ]
     training_data = [sent.split() for sent in training_data]
     word_to_ix = get_word_index(training_data)
@@ -120,4 +120,4 @@ if __name__ == '__main__':
     print_pred(lm, training_data, word_to_ix, ix_to_word)
     print('Expected results:')
     for sentence in training_data:
-        print(sentence[1:] + [data.CHUNK_END_TOKEN])
+        print(' '.join(sentence[1:] + [data.CHUNK_END_TOKEN]))
