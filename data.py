@@ -149,6 +149,8 @@ class PbcBible(Bible):
     def tokenize(self, remove_punctuation: bool, lowercase: bool) -> TokenizedBible:
         verse_tokens = {}
         for verse, text in self.content.items():
+            if text.strip() == '':
+                continue
             verse_tokens[verse] = tokenize(text, remove_punctuation, lowercase)
         return TokenizedBible(self.language, self.filename, verse_tokens)
 
