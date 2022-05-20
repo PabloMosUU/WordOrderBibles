@@ -10,7 +10,7 @@ import torch.nn.functional as functional
 import numpy as np
 
 N_EPOCHS = 300 # normally you would NOT do 300 epochs, it is toy data
-LEARNING_RATE = 0.1
+LEARNING_RATE = 0.03
 
 class LSTMLanguageModel(nn.Module):
 
@@ -96,15 +96,19 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
 
 def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
     model = LSTMLanguageModel(embedding_dim, hidden_dim, words_dim)
-    loss_function = nn.NLLLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    loss_function = nn.CrossEntropyLoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     return model, loss_function, optimizer
 
 if __name__ == '__main__':
     training_data = [
-        "The dog ate the apple",
-        "Everybody read that book"
+        'that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee after the baptism which john preached',
+        'many women were there watching from afar who had followed jesus from galilee serving him'
     ]
+    """training_data = [
+        'The dog ate the apple',
+        'Everybody read that book'
+    ]"""
     training_data = [sent.split() for sent in training_data]
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
