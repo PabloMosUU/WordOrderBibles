@@ -27,10 +27,10 @@ class LSTMLanguageModel(nn.Module):
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
 
-    def forward(self, sentence):
-        embeds = self.word_embeddings(sentence)
-        lstm_out, _ = self.lstm(embeds.view(len(sentence), 1, -1))
-        next_word_space = self.hidden2word(lstm_out.view(len(sentence), -1))
+    def forward(self, sequence):
+        embeds = self.word_embeddings(sequence)
+        lstm_out, _ = self.lstm(embeds.view(len(sequence), 1, -1))
+        next_word_space = self.hidden2word(lstm_out.view(len(sequence), -1))
         next_word_scores = functional.log_softmax(next_word_space, dim=1)
         return next_word_scores
 
@@ -118,3 +118,6 @@ if __name__ == '__main__':
 
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)
+    print('Expected results:')
+    for sentence in training_data:
+        print(sentence[1:] + [data.CHUNK_END_TOKEN])

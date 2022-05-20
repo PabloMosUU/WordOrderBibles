@@ -101,3 +101,4 @@ if __name__ == '__main__':
         # 1 is the index of maximum value of row 2, etc.
         # Which is DET NOUN VERB DET NOUN, the correct sequence!
         print(f'Predictions after training: {get_tags(trained_tag_scores, ix_to_tag)}')
+        print('Expected result: DET NOUN VERB DET NOUN')
