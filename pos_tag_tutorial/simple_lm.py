@@ -75,9 +75,19 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
     loss.backward()
     optimizer.step()
 
-def train_(model: nn.Module, corpus: list, word_ix: dict, n_epochs: int, loss_function, optimizer) -> None:
+def train_(model: nn.Module,
+           corpus: list,
+           word_ix: dict,
+           n_epochs: int,
+           loss_function,
+           optimizer,
+           verbose=False) -> None:
     for epoch in range(n_epochs):
-        for training_sentence in corpus:
+        if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
+            print(f'INFO: processing epoch {epoch}')
+        for i, training_sentence in enumerate(corpus):
+            if verbose and i % int(len(corpus)/10) == 0:
+                print(f'\tINFO: processing sentence {i}')
             train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
