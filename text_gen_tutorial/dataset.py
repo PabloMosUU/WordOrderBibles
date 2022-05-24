@@ -2,10 +2,20 @@ import torch
 import pandas as pd
 from collections import Counter
 
+class TrainArgs:
+    def __init__(self, max_epochs, batch_size, sequence_length):
+        self.max_epochs = max_epochs
+        self.batch_size = batch_size
+        self.sequence_length = sequence_length
+
+    def __repr__(self):
+        return f'Max epochs: {self.max_epochs}, Batch size: {self.batch_size}, Sequence length: {self.sequence_length}'
+
+# noinspection PyUnresolvedReferences
 class Dataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        args,
+        args: TrainArgs,
     ):
         self.args = args
         self.words = self.load_words()

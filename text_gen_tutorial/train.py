@@ -4,9 +4,10 @@ import numpy as np
 from torch import nn, optim
 from torch.utils.data import DataLoader
 from model import Model
-from dataset import Dataset
+from dataset import Dataset, TrainArgs
 
-def train(dataset, model, args):
+
+def train(dataset, model, args: TrainArgs):
     model.train()
 
     dataloader = DataLoader(dataset, batch_size=args.batch_size)
@@ -51,13 +52,15 @@ def predict(dataset, model, text, next_words=100):
 if __name__ == '__main__':
     # This code was obtained from https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html
     parser = argparse.ArgumentParser()
-    parser.add_argument('--max-epochs', type=int, default=10)
+    parser.add_argument('--max-epochs', type=int, default=1)
     parser.add_argument('--batch-size', type=int, default=256)
     parser.add_argument('--sequence-length', type=int, default=4)
     user_args = parser.parse_args()
 
-    joke_dataset = Dataset(user_args)
+    train_args = TrainArgs(user_args.max_epochs, user_args.batch_size, user_args.sequence_length)
+
+    joke_dataset = Dataset(train_args)
     joke_model = Model(joke_dataset)
 
-    train(joke_dataset, joke_model, user_args)
+    train(joke_dataset, joke_model, train_args)
     print(predict(joke_dataset, joke_model, text='Knock knock. Whos there?'))
