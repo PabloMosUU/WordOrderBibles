@@ -16,8 +16,6 @@ class LSTMLanguageModel(nn.Module):
 
     def __init__(self, embedding_dim, hidden_dim, vocab_size):
         super(LSTMLanguageModel, self).__init__()
-        self.hidden_dim = hidden_dim
-
         self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
@@ -91,9 +89,13 @@ def train_(model: nn.Module,
             train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
-    seq = prepare_sequence(sample, word_ix)
-    trained_next_word_scores = model(seq)
-    return get_next_words(trained_next_word_scores, ix_word)
+    words = sample.copy()
+    for i in range(1, len(sample)):
+        seq = prepare_sequence(words, word_ix)
+        trained_next_word_scores = model(seq)
+        word_i = get_next_words(trained_next_word_scores, ix_word)[i-1]
+        words[i] = word_i
+    return np.array(words)
 
 def pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> list:
     with torch.no_grad():
@@ -125,13 +127,9 @@ if __name__ == '__main__':
 
     lm, nll_loss, sgd = initialize_model(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), lr=LEARNING_RATE)
 
-    print('Before training:')
-    print_pred(lm, training_data, word_to_ix, ix_to_word)
-
     train_(lm, training_data, word_to_ix, N_EPOCHS, nll_loss, sgd)
 
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)
     print('Expected results:')
-    for sentence in training_data:
-        print(' '.join(sentence[1:] + [data.CHUNK_END_TOKEN]))
+    print('\n'.join([' '.join(sentence) for sentence in training_data]))
