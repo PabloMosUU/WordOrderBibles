@@ -3,8 +3,7 @@ This was copied from reproduce_tutorial.py
 The code is adapted to do language modeling instead of part-of-speech tagging
 """
 import data
-from pos_tag_tutorial.simple_lm import get_word_index, invert_dict, initialize_model, LEARNING_RATE, train_, N_EPOCHS, \
-    print_pred
+from pos_tag_tutorial.simple_lm import get_word_index, invert_dict, initialize_model, LEARNING_RATE, train_, print_pred
 from train import EMBEDDING_DIM, HIDDEN_DIM
 
 if __name__ == '__main__':
@@ -27,7 +26,6 @@ if __name__ == '__main__':
     train_(lm, training_data, word_to_ix, n_epochs=300, loss_function=nll_loss, optimizer=sgd, verbose=True)
 
     print('After training:')
-    print_pred(lm, training_data, word_to_ix, ix_to_word)
+    print_pred(lm, training_data[:3], word_to_ix, ix_to_word)
     print('Expected results:')
-    for sentence in training_data[:3]:
-        print(' '.join(sentence[1:] + [data.CHUNK_END_TOKEN]))
+    print('\n'.join([' '.join(sentence) for sentence in training_data[:3]]))
