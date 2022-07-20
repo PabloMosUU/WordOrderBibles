@@ -3,7 +3,7 @@ This was copied from reproduce_tutorial.py
 The code is adapted to do language modeling instead of part-of-speech tagging
 """
 import data
-from pos_tag_tutorial.simple_lm import get_word_index, invert_dict, initialize_model, LEARNING_RATE, train_, print_pred
+from tutorials.pos_tag_tutorial.simple_lm import get_word_index, invert_dict, initialize_model, LEARNING_RATE, train_, print_pred
 from train import EMBEDDING_DIM, HIDDEN_DIM
 
 if __name__ == '__main__':
