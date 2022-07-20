@@ -1,9 +1,7 @@
-import sys
-
 import torch
 
 import data
-from data import TokenizedBible, SplitData
+from data import SplitData
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
