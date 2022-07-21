@@ -6,7 +6,8 @@ import configparser
 
 import data
 from train import to_train_config
-from tutorials.pos_tag_tutorial.simple_lm import get_word_index, invert_dict, initialize_model, train_, print_pred
+from tutorials.pos_tag_tutorial.simple_lm import get_word_index, invert_dict, initialize_model, train_, print_pred, \
+    plot_losses
 
 if __name__ == '__main__':
     bible_corpus = 'PBC'
@@ -30,9 +31,19 @@ if __name__ == '__main__':
 
     lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), lr=cfg.learning_rate)
 
-    train_(lm, training_data, word_to_ix, n_epochs=cfg.n_epochs, loss_function=nll_loss, optimizer=sgd, verbose=True)
+    losses = train_(
+        lm,
+        training_data,
+        word_to_ix,
+        n_epochs=cfg.n_epochs,
+        loss_function=nll_loss,
+        optimizer=sgd,
+        verbose=True
+    )
 
     print('After training:')
     print_pred(lm, training_data[:3], word_to_ix, ix_to_word)
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data[:3]]))
+
+    plot_losses(losses)

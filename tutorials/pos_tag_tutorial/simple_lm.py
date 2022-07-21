@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch
 import torch.nn.functional as functional
 import numpy as np
+import matplotlib.pyplot as plt
 
 class LSTMLanguageModel(nn.Module):
 
@@ -56,7 +57,7 @@ def get_word_index(sequences: list) -> dict:
     word_ix[data.CHUNK_END_TOKEN] = len(word_ix)
     return word_ix
 
-def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> None:
+def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> float:
     # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
     model.zero_grad()
 
@@ -72,20 +73,25 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
     loss.backward()
     optimizer.step()
 
+    return loss.item()
+
 def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
            n_epochs: int,
            loss_function,
            optimizer,
-           verbose=False) -> None:
+           verbose=False) -> list:
+    epoch_loss = []
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
             print(f'INFO: processing epoch {epoch}')
         for i, training_sentence in enumerate(corpus):
             if verbose and i % int(len(corpus)/10) == 0:
                 print(f'\tINFO: processing sentence {i}')
-            train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
+            loss = train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
+        epoch_loss.append(loss)
+    return epoch_loss
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
     words = sample.copy()
@@ -110,6 +116,10 @@ def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
     loss_function = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     return model, loss_function, optimizer
+
+def plot_losses(loss_by_epoch: list) -> None:
+    plt.plot(range(len(loss_by_epoch)), loss_by_epoch)
+    plt.show()
 
 if __name__ == '__main__':
     training_data = [
@@ -143,9 +153,11 @@ if __name__ == '__main__':
         lr=cfg.learning_rate
     )
 
-    train_(lm, training_data, word_to_ix, cfg.n_epochs, nll_loss, lm_optimizer)
+    losses = train_(lm, training_data, word_to_ix, cfg.n_epochs, nll_loss, lm_optimizer)
 
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data]))
+
+    plot_losses(losses)
