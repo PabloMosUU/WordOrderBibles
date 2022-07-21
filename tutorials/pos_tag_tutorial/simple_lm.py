@@ -81,18 +81,27 @@ def train_(model: nn.Module,
            n_epochs: int,
            loss_function,
            optimizer,
-           verbose=False) -> list:
-    epoch_loss = []
-    loss = None
+           verbose=False,
+           validate=True
+           ) -> list:
+    epoch_train_loss, epoch_val_loss = [], []
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
             print(f'INFO: processing epoch {epoch}')
+        epoch_loss = 0
         for i, training_sentence in enumerate(corpus):
             if verbose and i % int(len(corpus)/10) == 0:
                 print(f'\tINFO: processing sentence {i}')
-            loss = train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
-        epoch_loss.append(loss)
-    return epoch_loss
+            epoch_loss += train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
+
+        '''if validate:
+            epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))'''
+
+        epoch_train_loss.append(epoch_loss / len(corpus))
+    return epoch_train_loss
+
+#def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
+
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
     words = sample.copy()
