@@ -20,6 +20,7 @@ if __name__ == '__main__':
     split_bible = pre_processed_bible.split(0.15, 0.1)
 
     training_data = split_bible.train_data[:10]
+    validation_data = split_bible.train_data[10:20]
 
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
@@ -31,14 +32,16 @@ if __name__ == '__main__':
 
     lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), lr=cfg.learning_rate)
 
-    losses = train_(
+    train_losses, validation_losses = train_(
         lm,
         training_data,
         word_to_ix,
         n_epochs=cfg.n_epochs,
         loss_function=nll_loss,
         optimizer=sgd,
-        verbose=True
+        verbose=True,
+        validate=True,
+        validation_set=validation_data
     )
 
     print('After training:')
@@ -46,4 +49,7 @@ if __name__ == '__main__':
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data[:3]]))
 
-    plot_losses(losses)
+    if validation_losses:
+        plot_losses([train_losses, validation_losses])
+    else:
+        plot_losses(train_losses)

@@ -5,7 +5,7 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-from train import prepare_sequence, TrainConfig
+from train import prepare_sequence, TrainConfig, to_train_config
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
@@ -75,6 +75,19 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
 
     return loss.item()
 
+def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function: nn.Module) -> float:
+    # Get our inputs ready for the network, that is, turn them into tensors of word indices.
+    sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
+    targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
+
+    # Run our forward pass.
+    partial_pred_scores = model(sentence_in)
+
+    # Compute the loss
+    loss = loss_function(partial_pred_scores, targets)
+
+    return loss.item()
+
 def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
@@ -82,8 +95,11 @@ def train_(model: nn.Module,
            loss_function,
            optimizer,
            verbose=False,
-           validate=True
-           ) -> list:
+           validate=False,
+           validation_set=None
+           ) -> tuple:
+    if validation_set is None:
+        validation_set = []
     epoch_train_loss, epoch_val_loss = [], []
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
@@ -94,14 +110,18 @@ def train_(model: nn.Module,
                 print(f'\tINFO: processing sentence {i}')
             epoch_loss += train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
 
-        '''if validate:
-            epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))'''
+        if validate:
+            epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
 
         epoch_train_loss.append(epoch_loss / len(corpus))
-    return epoch_train_loss
+    return epoch_train_loss, epoch_val_loss
 
-#def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
-
+def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
+    loss = 0
+    with torch.no_grad():
+        for validation_sentence in validation_set:
+            loss += validate_sample_(model, validation_sentence, word_ix, loss_function)
+    return loss / len(validation_set)
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
     words = sample.copy()
@@ -128,32 +148,37 @@ def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
     return model, loss_function, optimizer
 
 def plot_losses(loss_by_epoch: list) -> None:
-    plt.plot(range(len(loss_by_epoch)), loss_by_epoch)
+    assert len(set([len(dataset_losses) for dataset_losses in loss_by_epoch])) == 1
+    for dataset_losses in loss_by_epoch:
+        plt.plot(range(len(dataset_losses)), dataset_losses)
     plt.show()
+
+def get_perplexity(loss: float) -> float:
+    """
+    Computes the perplexity given the loss. It is equivalent to torch.exp(loss_tensor).item()
+    :param loss: the loss computed from a language model
+    :return: the perplexity of the language model
+    """
+    return np.exp(loss)
 
 if __name__ == '__main__':
     training_data = [
         'that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee after the baptism which john preached',
         'many women were there watching from afar who had followed jesus from galilee serving him'
     ]
-    """training_data = [
-        'The dog ate the apple',
-        'Everybody read that book'
-    ]"""
+    validation_data = [
+        'the dog ate the apple',
+        'everybody read that book'
+    ]
     training_data = [sent.split() for sent in training_data]
+    validation_data = [sent.split() for sent in validation_data]
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
 
     # Read configuration
     cfg = configparser.ConfigParser()
     cfg.read('../../configs/pos_tagger.cfg')
-    cfg = TrainConfig(
-        int(cfg['DEFAULT']['EMBEDDING_DIM']),
-        int(cfg['DEFAULT']['HIDDEN_DIM']),
-        n_layers=1,
-        learning_rate=float(cfg['DEFAULT']['LEARNING_RATE']),
-        n_epochs=int(cfg['DEFAULT']['N_EPOCHS'])
-    )
+    cfg = to_train_config(cfg, 'simple.lm')
 
     # TODO: allow choosing the number of layers
     lm, nll_loss, lm_optimizer = initialize_model(
@@ -163,11 +188,23 @@ if __name__ == '__main__':
         lr=cfg.learning_rate
     )
 
-    losses = train_(lm, training_data, word_to_ix, cfg.n_epochs, nll_loss, lm_optimizer)
+    train_losses, validation_losses = train_(
+        lm,
+        training_data,
+        word_to_ix,
+        cfg.n_epochs,
+        nll_loss,
+        lm_optimizer,
+        validate=True,
+        validation_set=validation_data
+    )
 
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data]))
 
-    plot_losses(losses)
+    if validation_losses:
+        plot_losses([train_losses, validation_losses])
+    else:
+        plot_losses([train_losses])
