@@ -48,7 +48,7 @@ def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
 
 def next_word_target(seq: list) -> list:
     """
-    For next-word prediction, assume that the target for each word is the next word.
+    For next-word prediction / language modeling, assume that the target for each word is the next word.
     At the end of each chunk, we predict the padding token.
     TODO: if we decide to work with verses, we could have the target of the last word be <END>
     TODO: another alternative is to split the input sentence with N tokens. Input: a[:N-1]. Output: a[1:]
@@ -99,8 +99,8 @@ def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dic
     maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
     return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]
 
-def to_train_config(cfg: configparser.ConfigParser) -> TrainConfig:
-    params = cfg['DEFAULT']
+def to_train_config(cfg: configparser.ConfigParser, version: str) -> TrainConfig:
+    params = cfg[version]
     return TrainConfig(
         int(params['embedding_dim']),
         int(params['hidden_dim']),
@@ -123,7 +123,7 @@ if __name__ == '__main__':
     # Read the configurations
     config = configparser.ConfigParser()
     config.read(config_file)
-    train_cfg = to_train_config(config)
+    train_cfg = to_train_config(config, 'hahn.chopping')
     sequence_length = int(config['DEFAULT']['sequence_length']) # T from Hahn et al. TODO: make it variable
 
     # Train the model

@@ -2,15 +2,14 @@
 This was copied from reproduce_tutorial.py
 The code is adapted to do language modeling instead of part-of-speech tagging
 """
+import configparser
+
 import data
-from train import EMBEDDING_DIM, HIDDEN_DIM, prepare_sequence, next_word_target
+from train import prepare_sequence, next_word_target, TrainConfig
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
 import numpy as np
-
-N_EPOCHS = 300 # normally you would NOT do 300 epochs, it is toy data
-LEARNING_RATE = 0.03
 
 class LSTMLanguageModel(nn.Module):
 
@@ -62,8 +61,8 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
     model.zero_grad()
 
     # Step 2. Get our inputs ready for the network, that is, turn them into tensors of word indices.
-    sentence_in = prepare_sequence(sample, word_ix)
-    targets = prepare_sequence(next_word_target(sample), word_ix)
+    sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
+    targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
 
     # Step 3. Run our forward pass.
     partial_pred_scores = model(sentence_in)
@@ -125,9 +124,21 @@ if __name__ == '__main__':
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
 
-    lm, nll_loss, sgd = initialize_model(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), lr=LEARNING_RATE)
+    # Read configuration
+    cfg = configparser.ConfigParser()
+    cfg.read('../../configs/pos_tagger.cfg')
+    cfg = TrainConfig(
+        int(cfg['DEFAULT']['EMBEDDING_DIM']),
+        int(cfg['DEFAULT']['HIDDEN_DIM']),
+        n_layers=1,
+        learning_rate=float(cfg['DEFAULT']['LEARNING_RATE']),
+        n_epochs=int(cfg['DEFAULT']['N_EPOCHS'])
+    )
 
-    train_(lm, training_data, word_to_ix, N_EPOCHS, nll_loss, sgd)
+    # TODO: allow choosing the number of layers
+    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), lr=cfg.learning_rate)
+
+    train_(lm, training_data, word_to_ix, cfg.n_epochs, nll_loss, sgd)
 
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)

@@ -6,7 +6,8 @@ from typing import Iterator
 
 from sklearn.model_selection import train_test_split
 
-END_OF_VERSE_TOKEN = '<SEP>'
+START_OF_VERSE_TOKEN = '<SOS>'
+END_OF_VERSE_TOKEN = '<EOS>'
 PAD_TOKEN = '<PAD>'
 UNKNOWN_TOKEN = '<UNK>'
 CHUNK_END_TOKEN = '<END>'
@@ -76,7 +77,7 @@ class SplitData:
             for word in sent:
                 if word not in word_to_ix:  # word has not been assigned an index yet
                     word_to_ix[word] = len(word_to_ix)  # Assign each word with a unique index
-        for special_token in (END_OF_VERSE_TOKEN, PAD_TOKEN, UNKNOWN_TOKEN, CHUNK_END_TOKEN):
+        for special_token in (START_OF_VERSE_TOKEN, END_OF_VERSE_TOKEN, PAD_TOKEN, UNKNOWN_TOKEN, CHUNK_END_TOKEN):
             if special_token not in word_to_ix:
                 word_to_ix[special_token] = len(word_to_ix)
         return word_to_ix
