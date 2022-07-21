@@ -5,7 +5,7 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-from train import prepare_sequence, next_word_target, TrainConfig
+from train import prepare_sequence, TrainConfig
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
@@ -136,9 +136,14 @@ if __name__ == '__main__':
     )
 
     # TODO: allow choosing the number of layers
-    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), lr=cfg.learning_rate)
+    lm, nll_loss, lm_optimizer = initialize_model(
+        cfg.embedding_dim,
+        cfg.hidden_dim,
+        len(word_to_ix),
+        lr=cfg.learning_rate
+    )
 
-    train_(lm, training_data, word_to_ix, cfg.n_epochs, nll_loss, sgd)
+    train_(lm, training_data, word_to_ix, cfg.n_epochs, nll_loss, lm_optimizer)
 
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)
