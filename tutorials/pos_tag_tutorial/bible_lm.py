@@ -26,7 +26,7 @@ if __name__ == '__main__':
     # Read the training configuration
     cfg = configparser.ConfigParser()
     cfg.read('../../configs/pos_tagger.cfg')
-    cfg = to_train_config(cfg, 'DEFAULT')
+    cfg = to_train_config(cfg, 'bible.lm')
 
     lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), lr=cfg.learning_rate)
 
