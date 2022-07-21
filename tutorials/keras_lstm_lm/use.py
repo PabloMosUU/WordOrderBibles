@@ -2,7 +2,7 @@ from random import randint
 from pickle import load
 from keras.models import load_model
 from keras_preprocessing.sequence import pad_sequences
-
+import numpy as np
 
 # load doc into memory
 def load_doc(filename):
@@ -26,7 +26,8 @@ def generate_seq(model, tokenizer, seq_length, seed_text, n_words):
         # truncate sequences to a fixed length
         encoded = pad_sequences([encoded], maxlen=seq_length, truncating='pre')
         # predict probabilities for each word
-        yhat = model.predict_classes(encoded, verbose=0)
+        #yhat = model.predict_classes(encoded, verbose=0)
+        yhat = np.argmax(model.predict(encoded), axis=1)
         # map predicted word index to word
         out_word = ''
         for word, index in tokenizer.word_index.items():
