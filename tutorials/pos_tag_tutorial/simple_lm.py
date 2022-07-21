@@ -83,6 +83,7 @@ def train_(model: nn.Module,
            optimizer,
            verbose=False) -> list:
     epoch_loss = []
+    loss = None
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
             print(f'INFO: processing epoch {epoch}')
