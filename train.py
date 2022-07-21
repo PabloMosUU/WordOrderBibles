@@ -6,20 +6,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-N_EPOCHS = 1
-SEQUENCE_LENGTH = 20 # T from Hahn et al. TODO: make it variable
-EMBEDDING_DIM = 300 # TODO: what is a good value?
-HIDDEN_DIM = 6 # TODO: what is a good value?
-N_LAYERS = 1 # Following the tutorial linked below
-LEARNING_RATE = 0.1 # TODO: make variable? Determine by validation?
+import configparser
+import sys
 
 # Following https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
 class TrainedModel(nn.Module):
     def __init__(self, embedding_dim: int, hidden_dim: int, vocab_size: int, n_layers: int):
         super(TrainedModel, self).__init__()
         self.hidden_dim = hidden_dim
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers)
+        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim) # TODO: what is a good value for embedding_dim?
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers) # TODO: what is a good value for hidden_dim?
+        # n_layers = 1 Following the tutorial linked above; others used 2
         self.hidden2pred = nn.Linear(hidden_dim, vocab_size)
 
     # TODO: propagate hidden state between sentences? See: https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html
@@ -34,6 +31,16 @@ class TrainedModel(nn.Module):
         with torch.no_grad():
             next_word_scores = self(sentence)
         return next_word_scores
+
+
+class TrainConfig:
+    def __init__(self, embedding_dim: int, hidden_dim: int, n_layers: int, learning_rate: float, n_epochs: int):
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.learning_rate = learning_rate
+        self.n_epochs = n_epochs
+
 
 def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
     index_sequence = [to_ix[w] if w in to_ix else to_ix[data.UNKNOWN_TOKEN] for w in seq]
@@ -50,14 +57,15 @@ def next_word_target(seq: list) -> list:
     """
     return seq[1:] + [data.CHUNK_END_TOKEN]
 
-def train_model(split_data: SplitData) -> TrainedModel:
+def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> TrainedModel:
     word_to_ix = split_data.train_word_to_ix
-    model = TrainedModel(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), N_LAYERS)
+    model = TrainedModel(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), cfg.n_layers)
     loss_function = nn.NLLLoss() # TODO: replace by Eq. 68 in Hahn et al?
-    optimizer = optim.SGD(model.parameters(), lr=LEARNING_RATE) # TODO: replace SGD (pg. 83)
-    for epoch in range(N_EPOCHS):
-        training_data = split_data.shuffle_chop('train', SEQUENCE_LENGTH)
-        print(f'Epoch {epoch} / {N_EPOCHS}')
+    optimizer = optim.SGD(model.parameters(), lr=cfg.learning_rate) # TODO: replace SGD (pg. 83)
+    # TODO: make learning_rate variable? Determine by validation?
+    for epoch in range(cfg.n_epochs):
+        training_data = split_data.shuffle_chop('train', len_seq)
+        print(f'Epoch {epoch} / {cfg.n_epochs}')
         for i, sentence in enumerate(training_data):
             if i % (int(len(training_data) / 5)) == 0:
                 print(f'Sentence {i} / {len(training_data)}')
@@ -91,9 +99,20 @@ def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dic
     maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
     return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]
 
+def to_train_config(cfg: configparser.ConfigParser) -> TrainConfig:
+    params = cfg['DEFAULT']
+    return TrainConfig(
+        int(params['embedding_dim']),
+        int(params['hidden_dim']),
+        int(params['n_layers']),
+        float(params['learning_rate']),
+        int(params['n_epochs'])
+    )
+
 if __name__ == '__main__':
     bible_corpus = 'PBC'
     bible_filename = '/home/pablo/Documents/paralleltext/bibles/corpus/eng-x-bible-world.txt'
+    config_file = 'configs/pos_tagger.cfg'
 
     # Read a bible and pre-process it
     pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
@@ -101,11 +120,17 @@ if __name__ == '__main__':
     # Split it
     split_bible = pre_processed_bible.split(0.15, 0.1)
 
+    # Read the configurations
+    config = configparser.ConfigParser()
+    config.read(config_file)
+    train_cfg = to_train_config(config)
+    sequence_length = int(config['DEFAULT']['sequence_length']) # T from Hahn et al. TODO: make it variable
+
     # Train the model
-    next_word_predictor = train_model(split_bible)
+    next_word_predictor = train_model(split_bible, train_cfg, sequence_length)
 
     # Make predictions on the holdout set
-    data_holdout = split_bible.shuffle_chop('holdout', SEQUENCE_LENGTH)
+    data_holdout = split_bible.shuffle_chop('holdout', sequence_length)
     pred_holdout = pred(next_word_predictor, data_holdout, split_bible.train_word_to_ix, split_bible.train_ix_to_word)
 
     print('Some predictions:')
