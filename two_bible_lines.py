@@ -1,6 +1,6 @@
 import configparser
 
-from simple_train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, print_pred, \
+from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, print_pred, \
     to_train_config
 
 if __name__ == '__main__':

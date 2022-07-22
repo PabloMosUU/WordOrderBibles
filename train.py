@@ -1,88 +1,215 @@
-import torch
+"""
+This was copied from reproduce_tutorial.py
+The code is adapted to do language modeling instead of part-of-speech tagging
+"""
+import configparser
 
 import data
-from data import SplitData
 import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+import torch
+import torch.nn.functional as functional
+import numpy as np
+import matplotlib.pyplot as plt
 
-# Following https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
-from simple_train import prepare_sequence, TrainConfig
 
+class LSTMLanguageModel(nn.Module):
 
-class TrainedModel(nn.Module):
-    def __init__(self, embedding_dim: int, hidden_dim: int, vocab_size: int, n_layers: int):
-        super(TrainedModel, self).__init__()
-        self.hidden_dim = hidden_dim
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim) # TODO: what is a good value for embedding_dim?
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers) # TODO: what is a good value for hidden_dim?
-        # n_layers = 1 Following the tutorial linked above; others used 2
-        self.hidden2pred = nn.Linear(hidden_dim, vocab_size)
+    def __init__(self, embedding_dim, hidden_dim, vocab_size):
+        super(LSTMLanguageModel, self).__init__()
+        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
 
-    # TODO: propagate hidden state between sentences? See: https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html
-    def forward(self, sentence):
-        embeds = self.word_embeddings(sentence)
-        lstm_out, _ = self.lstm(embeds.view(len(sentence), 1, -1))
-        pred_space = self.hidden2pred(lstm_out.view(len(sentence), -1))
-        pred_scores = F.log_softmax(pred_space, dim=1)
-        return pred_scores
+        # The LSTM takes word embeddings as inputs, and outputs hidden states
+        # with dimensionality hidden_dim.
+        # TODO: allow choosing the number of layers
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim)
 
-    def pred(self, sentence: torch.Tensor) -> torch.Tensor:
-        with torch.no_grad():
-            next_word_scores = self(sentence)
+        # The linear layer that maps from hidden state space to next-word space
+        self.hidden2word = nn.Linear(hidden_dim, vocab_size)
+
+    def forward(self, sequence):
+        embeds = self.word_embeddings(sequence)
+        lstm_out, _ = self.lstm(embeds.view(len(sequence), 1, -1))
+        next_word_space = self.hidden2word(lstm_out.view(len(sequence), -1))
+        next_word_scores = functional.log_softmax(next_word_space, dim=1)
         return next_word_scores
 
+    def save(self, filename: str) -> None:
+        torch.save(self, filename)
 
-def next_word_target(seq: list) -> list:
+    @staticmethod
+    def load(filename: str) -> nn.Module:
+        return torch.load(filename)
+
+class TrainConfig:
+    def __init__(self, embedding_dim: int, hidden_dim: int, n_layers: int, learning_rate: float, n_epochs: int):
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.learning_rate = learning_rate
+        self.n_epochs = n_epochs
+
+
+def invert_dict(key_val: dict) -> dict:
+    if len(set(key_val.values())) != len(key_val):
+        raise ValueError('Dictionary contains repeated values and cannot be inverted')
+    return {v:k for k,v in key_val.items()}
+
+def get_next_words(scores: torch.Tensor, ix_next_word: dict) -> np.ndarray:
+    pred_ixs = scores.max(dim=1).indices.numpy()
+    return np.vectorize(lambda ix: ix_next_word[ix])(pred_ixs)
+
+def get_word_index(sequences: list) -> dict:
     """
-    For next-word prediction / language modeling, assume that the target for each word is the next word.
-    At the end of each chunk, we predict the padding token.
-    TODO: if we decide to work with verses, we could have the target of the last word be <END>
-    TODO: another alternative is to split the input sentence with N tokens. Input: a[:N-1]. Output: a[1:]
-    :param seq: a sequence of tokens
-    :return: the same sequence shifted by one slot and with a pad token at the end
+    Generate a look up word->index dictionary from a corpus
+    :param sequences: a list of lists of tokens
+    :return: a map from word to index
     """
-    return seq[1:] + [data.CHUNK_END_TOKEN]
+    word_ix = {}
+    # For each words-list (sentence) in the training_data
+    for sent in sequences:
+        for word in sent:
+            if word not in word_ix:  # word has not been assigned an index yet
+                word_ix[word] = len(word_ix)  # Assign each word with a unique index
+    word_ix[data.UNKNOWN_TOKEN] = len(word_ix)
+    word_ix[data.CHUNK_END_TOKEN] = len(word_ix)
+    return word_ix
 
-def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> TrainedModel:
-    word_to_ix = split_data.train_word_to_ix
-    model = TrainedModel(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), cfg.n_layers)
-    loss_function = nn.NLLLoss() # TODO: replace by Eq. 68 in Hahn et al?
-    optimizer = optim.SGD(model.parameters(), lr=cfg.learning_rate) # TODO: replace SGD (pg. 83)
-    # TODO: make learning_rate variable? Determine by validation?
-    for epoch in range(cfg.n_epochs):
-        training_data = split_data.shuffle_chop('train', len_seq)
-        print(f'Epoch {epoch} / {cfg.n_epochs}')
-        for i, sentence in enumerate(training_data):
-            if i % (int(len(training_data) / 5)) == 0:
-                print(f'Sentence {i} / {len(training_data)}')
-            # Clear accumulated gradients before each instance
-            model.zero_grad()
+def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> float:
+    # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
+    model.zero_grad()
 
-            # Turn our inputs into tensors of word indices
-            sentence_in = prepare_sequence(sentence, word_to_ix)
-            targets = prepare_sequence(next_word_target(sentence), word_to_ix)
+    # Step 2. Get our inputs ready for the network, that is, turn them into tensors of word indices.
+    sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
+    targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
 
-            # Run our forward pass.
-            next_word_scores = model(sentence_in)
+    # Step 3. Run our forward pass.
+    partial_pred_scores = model(sentence_in)
 
-            # Compute loss and gradients, update parameters by calling optimizer.step()
-            loss = loss_function(next_word_scores, targets)
-            loss.backward()
-            optimizer.step()
-    return model
+    # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
+    loss = loss_function(partial_pred_scores, targets)
+    loss.backward()
+    optimizer.step()
 
-def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dict) -> list:
+    return loss.item()
+
+def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function: nn.Module) -> float:
+    # Get our inputs ready for the network, that is, turn them into tensors of word indices.
+    sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
+    targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
+
+    # Run our forward pass.
+    partial_pred_scores = model(sentence_in)
+
+    # Compute the loss
+    loss = loss_function(partial_pred_scores, targets)
+
+    return loss.item()
+
+def train_(model: nn.Module,
+           corpus: list,
+           word_ix: dict,
+           n_epochs: int,
+           loss_function,
+           optimizer,
+           verbose=False,
+           validate=False,
+           validation_set=None
+           ) -> tuple:
+    if validation_set is None:
+        validation_set = []
+    epoch_train_loss, epoch_val_loss = [], []
+    for epoch in range(n_epochs):
+        if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
+            print(f'INFO: processing epoch {epoch}')
+        epoch_loss = 0
+        for i, training_sentence in enumerate(corpus):
+            if verbose and i % int(len(corpus)/10) == 0:
+                print(f'\tINFO: processing sentence {i}')
+            epoch_loss += train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
+
+        if validate:
+            epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
+
+        epoch_train_loss.append(epoch_loss / len(corpus))
+    return epoch_train_loss, epoch_val_loss
+
+def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
+    loss = 0
+    with torch.no_grad():
+        for validation_sentence in validation_set:
+            loss += validate_sample_(model, validation_sentence, word_ix, loss_function)
+    return loss / len(validation_set)
+
+def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
+    words = sample.copy()
+    for i in range(1, len(sample)):
+        seq = prepare_sequence(words, word_ix)
+        trained_next_word_scores = model(seq)
+        word_i = get_next_words(trained_next_word_scores, ix_word)[i-1]
+        words[i] = word_i
+    return np.array(words)
+
+def pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> list:
+    with torch.no_grad():
+        return [pred_sample(model, seq, word_ix, ix_word) for seq in corpus]
+
+def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> None:
+    predictions = pred(model, corpus, word_ix, ix_word)
+    for prediction in predictions:
+        print(' '.join(prediction))
+
+def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
+    model = LSTMLanguageModel(embedding_dim, hidden_dim, words_dim)
+    loss_function = nn.CrossEntropyLoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    return model, loss_function, optimizer
+
+def plot_losses(loss_by_epoch: list) -> None:
+    assert len(set([len(dataset_losses) for dataset_losses in loss_by_epoch])) == 1
+    for dataset_losses in loss_by_epoch:
+        plt.plot(range(len(dataset_losses)), dataset_losses)
+    plt.show()
+
+def save_losses(dataset_epoch_losses: dict, filename: str) -> None:
     """
-    Make predictions from a trained model on a list of sequences
-    :param model: a trained LSTM
-    :param sequences: a list of sequences, each of which is a list of tokens
-    :param word_to_ix: a dictionary from words to indices
-    :param ix_to_word: a dictionary from indices to words allowed in the output
-    :return: a list of predictions, each of which is a list of tokens
+    Save the loss versus epoch for each dataset
+    :param dataset_epoch_losses: a map from dataset name (train, val) to a list of losses per epoch
+    :param filename: the name of the file where the losses should be saved
+    :return: nothing. The losses are saved to a file
     """
-    sentences_in = [prepare_sequence(seq, word_to_ix) for seq in sequences]
-    sentences_out = [model.pred(sentence) for sentence in sentences_in]
-    maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
-    return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]
+    with open(filename, 'w') as f:
+        for k, v in dataset_epoch_losses.items():
+            f.write(k + '\n')
+            f.write(', '.join([str(el) for el in v]) + '\n')
 
+def load_losses(filename: str) -> dict:
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+    dataset_losses = {}
+    for i in range(int(len(lines) / 2)):
+        dataset_losses[lines[2*i].strip()] = [float(el.strip()) for el in lines[2*i+1].split(',')]
+    return dataset_losses
+
+def get_perplexity(loss: float) -> float:
+    """
+    Computes the perplexity given the loss. It is equivalent to torch.exp(loss_tensor).item()
+    :param loss: the loss computed from a language model
+    :return: the perplexity of the language model
+    """
+    return np.exp(loss)
+
+
+def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
+    index_sequence = [to_ix[w] if w in to_ix else to_ix[data.UNKNOWN_TOKEN] for w in seq]
+    return torch.tensor(index_sequence, dtype=torch.long)
+
+
+def to_train_config(cfg: configparser.ConfigParser, version: str) -> TrainConfig:
+    params = cfg[version]
+    return TrainConfig(
+        int(params['embedding_dim']),
+        int(params['hidden_dim']),
+        int(params['n_layers']),
+        float(params['learning_rate']),
+        int(params['n_epochs'])
+    )

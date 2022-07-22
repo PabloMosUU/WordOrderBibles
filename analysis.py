@@ -1,4 +1,4 @@
-from train import TrainedModel
+from train_hahn import TrainedModel
 
 
 def unigram_entropy(model: TrainedModel) -> float:

@@ -5,7 +5,7 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-from simple_train import get_word_index, invert_dict, initialize_model, train_, print_pred, \
+from train import get_word_index, invert_dict, initialize_model, train_, print_pred, \
     plot_losses, to_train_config
 
 if __name__ == '__main__':

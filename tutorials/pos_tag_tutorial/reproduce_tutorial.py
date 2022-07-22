@@ -3,7 +3,7 @@ The idea in this program is to reproduce the tutorial provided here:
 https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
 while using my tools as much as possible
 """
-from simple_train import prepare_sequence
+from train import prepare_sequence
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
