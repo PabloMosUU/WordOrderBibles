@@ -5,7 +5,7 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-from train import prepare_sequence, TrainConfig, to_train_config
+from train import prepare_sequence, to_train_config
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
@@ -31,6 +31,13 @@ class LSTMLanguageModel(nn.Module):
         next_word_space = self.hidden2word(lstm_out.view(len(sequence), -1))
         next_word_scores = functional.log_softmax(next_word_space, dim=1)
         return next_word_scores
+
+    def save(self, filename: str) -> None:
+        torch.save(self, filename)
+
+    @staticmethod
+    def load(filename: str) -> nn.Module:
+        return torch.load(filename)
 
 def invert_dict(key_val: dict) -> dict:
     if len(set(key_val.values())) != len(key_val):
@@ -153,6 +160,26 @@ def plot_losses(loss_by_epoch: list) -> None:
         plt.plot(range(len(dataset_losses)), dataset_losses)
     plt.show()
 
+def save_losses(dataset_epoch_losses: dict, filename: str) -> None:
+    """
+    Save the loss versus epoch for each dataset
+    :param dataset_epoch_losses: a map from dataset name (train, val) to a list of losses per epoch
+    :param filename: the name of the file where the losses should be saved
+    :return: nothing. The losses are saved to a file
+    """
+    with open(filename, 'w') as f:
+        for k, v in dataset_epoch_losses.items():
+            f.write(k + '\n')
+            f.write(', '.join([str(el) for el in v]) + '\n')
+
+def load_losses(filename: str) -> dict:
+    with open(filename, 'r') as f:
+        lines = f.readlines()
+    dataset_losses = {}
+    for i in range(int(len(lines) / 2)):
+        dataset_losses[lines[2*i].strip()] = [float(el.strip()) for el in lines[2*i+1].split(',')]
+    return dataset_losses
+
 def get_perplexity(loss: float) -> float:
     """
     Computes the perplexity given the loss. It is equivalent to torch.exp(loss_tensor).item()
@@ -199,12 +226,19 @@ if __name__ == '__main__':
         validation_set=validation_data
     )
 
+    lm.save('simple_lm.pth')
+
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data]))
 
+    simple_losses = {k:v for k, v in {'train': train_losses, 'validation': validation_losses}.items() if v}
+    save_losses(simple_losses, 'loss_vs_epoch.txt')
+
     if validation_losses:
         plot_losses([train_losses, validation_losses])
     else:
         plot_losses([train_losses])
+
+    print('end')
