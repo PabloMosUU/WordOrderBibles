@@ -6,7 +6,7 @@ import configparser
 
 import data
 from train import to_train_config
-from tutorials.pos_tag_tutorial.simple_lm import get_word_index, invert_dict, initialize_model, train_, print_pred, \
+from simple_train import get_word_index, invert_dict, initialize_model, train_, print_pred, \
     plot_losses
 
 if __name__ == '__main__':
@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     # Read the training configuration
     cfg = configparser.ConfigParser()
-    cfg.read('../../configs/pos_tagger.cfg')
+    cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
     lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), lr=cfg.learning_rate)
