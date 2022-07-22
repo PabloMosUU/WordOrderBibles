@@ -25,7 +25,7 @@ if __name__ == '__main__':
     lm, nll_loss, lm_optimizer = initialize_model(
         cfg.embedding_dim,
         cfg.hidden_dim,
-        len(word_to_ix),
+        word_to_ix,
         lr=cfg.learning_rate
     )
 

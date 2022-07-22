@@ -11,11 +11,12 @@ import torch.nn.functional as functional
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 class LSTMLanguageModel(nn.Module):
 
-    def __init__(self, embedding_dim, hidden_dim, vocab_size):
+    def __init__(self, embedding_dim, hidden_dim, word_index: dict):
         super(LSTMLanguageModel, self).__init__()
+        self.word_index = word_index
+        vocab_size = len(self.word_index)
         self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
@@ -70,8 +71,15 @@ def get_word_index(sequences: list) -> dict:
         for word in sent:
             if word not in word_ix:  # word has not been assigned an index yet
                 word_ix[word] = len(word_ix)  # Assign each word with a unique index
-    word_ix[data.UNKNOWN_TOKEN] = len(word_ix)
-    word_ix[data.CHUNK_END_TOKEN] = len(word_ix)
+    special_tokens = (
+        data.UNKNOWN_TOKEN,
+        data.CHUNK_END_TOKEN,
+        data.START_OF_VERSE_TOKEN,
+        data.END_OF_VERSE_TOKEN,
+        data.PAD_TOKEN
+    )
+    for special_token in special_tokens:
+        word_ix[special_token] = len(word_ix)
     return word_ix
 
 def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> float:
@@ -158,8 +166,8 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
     for prediction in predictions:
         print(' '.join(prediction))
 
-def initialize_model(embedding_dim, hidden_dim, words_dim, lr):
-    model = LSTMLanguageModel(embedding_dim, hidden_dim, words_dim)
+def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr):
+    model = LSTMLanguageModel(embedding_dim, hidden_dim, word_index)
     loss_function = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     return model, loss_function, optimizer

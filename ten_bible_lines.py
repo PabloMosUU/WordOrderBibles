@@ -29,7 +29,7 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
-    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), lr=cfg.learning_rate)
+    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
 
     train_losses, validation_losses = train_(
         lm,
