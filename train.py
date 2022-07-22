@@ -10,6 +10,7 @@ import torch
 import torch.nn.functional as functional
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 class LSTMLanguageModel(nn.Module):
 
@@ -173,9 +174,9 @@ def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr):
     return model, loss_function, optimizer
 
 def plot_losses(loss_by_epoch: list) -> None:
-    assert len(set([len(dataset_losses) for dataset_losses in loss_by_epoch])) == 1
-    for dataset_losses in loss_by_epoch:
-        plt.plot(range(len(dataset_losses)), dataset_losses)
+    assert len(set([len(losses) for losses in loss_by_epoch])) == 1
+    for losses in loss_by_epoch:
+        plt.plot(range(len(losses)), losses)
     plt.show()
 
 def save_losses(dataset_epoch_losses: dict, filename: str) -> None:
@@ -193,10 +194,10 @@ def save_losses(dataset_epoch_losses: dict, filename: str) -> None:
 def load_losses(filename: str) -> dict:
     with open(filename, 'r') as f:
         lines = f.readlines()
-    dataset_losses = {}
+    dataset_epoch_losses = {}
     for i in range(int(len(lines) / 2)):
-        dataset_losses[lines[2*i].strip()] = [float(el.strip()) for el in lines[2*i+1].split(',')]
-    return dataset_losses
+        dataset_epoch_losses[lines[2*i].strip()] = [float(el.strip()) for el in lines[2*i+1].split(',')]
+    return dataset_epoch_losses
 
 def get_perplexity(loss: float) -> float:
     """
@@ -212,8 +213,8 @@ def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
     return torch.tensor(index_sequence, dtype=torch.long)
 
 
-def to_train_config(cfg: configparser.ConfigParser, version: str) -> TrainConfig:
-    params = cfg[version]
+def to_train_config(config: configparser.ConfigParser, version: str) -> TrainConfig:
+    params = config[version]
     return TrainConfig(
         int(params['embedding_dim']),
         int(params['hidden_dim']),
@@ -221,3 +222,49 @@ def to_train_config(cfg: configparser.ConfigParser, version: str) -> TrainConfig
         float(params['learning_rate']),
         int(params['n_epochs'])
     )
+
+if __name__ == '__main__':
+    if len(sys.argv) != 5:
+        print('USAGE:', sys.argv[0], '<bible_filename> <cfg_name> <model_output_filename> <losses_filename>')
+        exit(-1)
+    bible_filename = sys.argv[1]
+    cfg_name = sys.argv[2]
+    model_output_filename = sys.argv[3]
+    losses_filename = sys.argv[4]
+
+    bible_corpus = 'PBC'
+
+    # Read a bible and pre-process it
+    pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
+
+    # Split it
+    split_bible = pre_processed_bible.split(0.15, 0.1)
+
+    training_data = split_bible.train_data
+    validation_data = split_bible.hold_out_data
+
+    word_to_ix = get_word_index(training_data)
+    ix_to_word = invert_dict(word_to_ix)
+
+    # Read the training configuration
+    cfg = configparser.ConfigParser()
+    cfg.read('configs/pos_tagger.cfg')
+    cfg = to_train_config(cfg, cfg_name)
+
+    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
+
+    train_losses, validation_losses = train_(
+        lm,
+        training_data,
+        word_to_ix,
+        n_epochs=cfg.n_epochs,
+        loss_function=nll_loss,
+        optimizer=sgd,
+        verbose=True,
+        validate=True,
+        validation_set=validation_data
+    )
+
+    lm.save(model_output_filename)
+    dataset_losses = {k:v for k, v in {'train': train_losses, 'validation': validation_losses}.items() if v}
+    save_losses(dataset_losses, losses_filename)
