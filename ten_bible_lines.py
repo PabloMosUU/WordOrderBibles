@@ -5,9 +5,8 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-from train import to_train_config
 from simple_train import get_word_index, invert_dict, initialize_model, train_, print_pred, \
-    plot_losses
+    plot_losses, to_train_config
 
 if __name__ == '__main__':
     bible_corpus = 'PBC'

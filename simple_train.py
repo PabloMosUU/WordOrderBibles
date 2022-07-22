@@ -5,12 +5,12 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-from train import prepare_sequence, to_train_config
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
 import numpy as np
 import matplotlib.pyplot as plt
+
 
 class LSTMLanguageModel(nn.Module):
 
@@ -20,6 +20,7 @@ class LSTMLanguageModel(nn.Module):
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
+        # TODO: allow choosing the number of layers
         self.lstm = nn.LSTM(embedding_dim, hidden_dim)
 
         # The linear layer that maps from hidden state space to next-word space
@@ -38,6 +39,15 @@ class LSTMLanguageModel(nn.Module):
     @staticmethod
     def load(filename: str) -> nn.Module:
         return torch.load(filename)
+
+class TrainConfig:
+    def __init__(self, embedding_dim: int, hidden_dim: int, n_layers: int, learning_rate: float, n_epochs: int):
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.learning_rate = learning_rate
+        self.n_epochs = n_epochs
+
 
 def invert_dict(key_val: dict) -> dict:
     if len(set(key_val.values())) != len(key_val):
@@ -187,3 +197,19 @@ def get_perplexity(loss: float) -> float:
     :return: the perplexity of the language model
     """
     return np.exp(loss)
+
+
+def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
+    index_sequence = [to_ix[w] if w in to_ix else to_ix[data.UNKNOWN_TOKEN] for w in seq]
+    return torch.tensor(index_sequence, dtype=torch.long)
+
+
+def to_train_config(cfg: configparser.ConfigParser, version: str) -> TrainConfig:
+    params = cfg[version]
+    return TrainConfig(
+        int(params['embedding_dim']),
+        int(params['hidden_dim']),
+        int(params['n_layers']),
+        float(params['learning_rate']),
+        int(params['n_epochs'])
+    )

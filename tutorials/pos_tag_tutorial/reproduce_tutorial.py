@@ -3,7 +3,7 @@ The idea in this program is to reproduce the tutorial provided here:
 https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
 while using my tools as much as possible
 """
-from train import EMBEDDING_DIM, HIDDEN_DIM, prepare_sequence
+from simple_train import prepare_sequence
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     tag_to_ix = {"DET": 0, "NN": 1, "V": 2}  # Assign each tag with a unique index
     ix_to_tag = invert_dict(tag_to_ix)
 
-    model = LSTMTagger(EMBEDDING_DIM, HIDDEN_DIM, len(word_to_ix), len(tag_to_ix))
+    model = LSTMTagger(6, 6, len(word_to_ix), len(tag_to_ix))
     loss_function = nn.NLLLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
 

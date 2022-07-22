@@ -6,10 +6,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-import configparser
-import sys
-
 # Following https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
+from simple_train import prepare_sequence, TrainConfig
+
+
 class TrainedModel(nn.Module):
     def __init__(self, embedding_dim: int, hidden_dim: int, vocab_size: int, n_layers: int):
         super(TrainedModel, self).__init__()
@@ -32,19 +32,6 @@ class TrainedModel(nn.Module):
             next_word_scores = self(sentence)
         return next_word_scores
 
-
-class TrainConfig:
-    def __init__(self, embedding_dim: int, hidden_dim: int, n_layers: int, learning_rate: float, n_epochs: int):
-        self.embedding_dim = embedding_dim
-        self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
-        self.learning_rate = learning_rate
-        self.n_epochs = n_epochs
-
-
-def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
-    index_sequence = [to_ix[w] if w in to_ix else to_ix[data.UNKNOWN_TOKEN] for w in seq]
-    return torch.tensor(index_sequence, dtype=torch.long)
 
 def next_word_target(seq: list) -> list:
     """
@@ -99,42 +86,3 @@ def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dic
     maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
     return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]
 
-def to_train_config(cfg: configparser.ConfigParser, version: str) -> TrainConfig:
-    params = cfg[version]
-    return TrainConfig(
-        int(params['embedding_dim']),
-        int(params['hidden_dim']),
-        int(params['n_layers']),
-        float(params['learning_rate']),
-        int(params['n_epochs'])
-    )
-
-if __name__ == '__main__':
-    bible_corpus = 'PBC'
-    bible_filename = '/home/pablo/Documents/paralleltext/bibles/corpus/eng-x-bible-world.txt'
-    config_file = 'configs/pos_tagger.cfg'
-
-    # Read a bible and pre-process it
-    pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
-
-    # Split it
-    split_bible = pre_processed_bible.split(0.15, 0.1)
-
-    # Read the configurations
-    config = configparser.ConfigParser()
-    config.read(config_file)
-    train_cfg = to_train_config(config, 'hahn.chopping')
-    sequence_length = int(config['DEFAULT']['sequence_length']) # T from Hahn et al. TODO: make it variable
-
-    # Train the model
-    next_word_predictor = train_model(split_bible, train_cfg, sequence_length)
-
-    # Make predictions on the holdout set
-    data_holdout = split_bible.shuffle_chop('holdout', sequence_length)
-    pred_holdout = pred(next_word_predictor, data_holdout, split_bible.train_word_to_ix, split_bible.train_ix_to_word)
-
-    print('Some predictions:')
-    for ix in range(5):
-        print('\tReal:', ' '.join(data_holdout[ix]))
-        print('\tPred:', ' '.join(pred_holdout[ix]))
-        print('----------------------------------')
