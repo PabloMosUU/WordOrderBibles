@@ -28,6 +28,11 @@ class LSTMLanguageModel(nn.Module):
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
 
+        # Variables to store the number of training and validation data points and the number of epochs
+        self.train_size = None
+        self.validation_size = None
+        self.n_epochs = None
+
     def forward(self, sequence):
         embeds = self.word_embeddings(sequence)
         lstm_out, _ = self.lstm(embeds.view(len(sequence), 1, -1))
@@ -49,6 +54,10 @@ class TrainConfig:
         self.n_layers = n_layers
         self.learning_rate = learning_rate
         self.n_epochs = n_epochs
+
+    def __repr__(self):
+        return f'embedding_dim: {self.embedding_dim}, hidden_dim: {self.hidden_dim}, n_layers: {self.n_layers},' \
+               f'learning_rate: {self.learning_rate}, n_epochs: {self.n_epochs}'
 
 
 def invert_dict(key_val: dict) -> dict:
@@ -144,6 +153,11 @@ def train_(model: nn.Module,
             epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
 
         epoch_train_loss.append(epoch_loss / len(corpus))
+
+    # Set the size of the training set in the model and the number of epochs
+    model.train_size = len(corpus)
+    model.n_epochs = n_epochs
+
     return epoch_train_loss, epoch_val_loss
 
 def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
@@ -151,6 +165,10 @@ def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_functi
     with torch.no_grad():
         for validation_sentence in validation_set:
             loss += validate_sample_(model, validation_sentence, word_ix, loss_function)
+
+    # Set the size of the validation set in the model
+    model.validation_size = len(validation_set)
+
     return loss / len(validation_set)
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
