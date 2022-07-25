@@ -75,6 +75,7 @@ class TrainConfig:
                 'optimizer': self.optimizer}
 
     def save(self, filename):
+        # TODO: save using ConfigParser
         with open(filename, 'w') as f:
             for k, v in self.to_dict().items():
                 f.write(f'{k}:\t{v}\n')
