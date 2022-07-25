@@ -85,6 +85,7 @@ def get_word_index(sequences: list) -> dict:
 
 def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> float:
     # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
+    model.train()
     model.zero_grad()
 
     # Step 2. Get our inputs ready for the network, that is, turn them into tensors of word indices.
@@ -102,6 +103,9 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
     return loss.item()
 
 def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function: nn.Module) -> float:
+    # Put the model in evaluation mode
+    model.eval()
+
     # Get our inputs ready for the network, that is, turn them into tensors of word indices.
     sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
     targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
@@ -150,6 +154,9 @@ def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_functi
     return loss / len(validation_set)
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
+    # Put the model in evaluation mode
+    model.eval()
+
     words = sample.copy()
     for i in range(1, len(sample)):
         seq = prepare_sequence(words, word_ix)
