@@ -67,9 +67,17 @@ class TrainConfig:
         self.optimizer = optimizer
 
     def __repr__(self):
-        return f'embedding_dim: {self.embedding_dim}, hidden_dim: {self.hidden_dim}, n_layers: {self.n_layers},' \
-               f'learning_rate: {self.learning_rate}, n_epochs: {self.n_epochs}, ' \
-               f'clip_gradients: {self.clip_gradients}, optimizer: {self.optimizer}'
+        return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
+
+    def to_dict(self):
+        return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
+                'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
+                'optimizer': self.optimizer}
+
+    def save(self, filename):
+        with open(filename, 'w') as f:
+            for k, v in self.to_dict().items():
+                f.write(f'{k}:\t{v}\n')
 
 
 def invert_dict(key_val: dict) -> dict:
@@ -230,10 +238,13 @@ def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr, optimizer_
         raise ValueError(f'Unknown optimizer type {optimizer_name}')
     return model, loss_function, optimizer
 
-def plot_losses(loss_by_epoch: list) -> None:
-    assert len(set([len(losses) for losses in loss_by_epoch])) == 1
-    for losses in loss_by_epoch:
-        plt.plot(range(len(losses)), losses)
+def plot_losses(dataset_epoch_losses: dict) -> None:
+    assert len(set([len(losses) for losses in dataset_epoch_losses.values()])) == 1
+    for dataset, losses in dataset_epoch_losses.items():
+        plt.plot(range(len(losses)), losses, label=dataset)
+    plt.xlabel('Epoch')
+    plt.ylabel('Avg verse loss')
+    plt.legend()
     plt.show()
 
 def save_losses(dataset_epoch_losses: dict, filename: str) -> None:
@@ -283,14 +294,20 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
     )
 
 if __name__ == '__main__':
-    if len(sys.argv) != 6:
-        print('USAGE:', sys.argv[0], '<bible_filename> <cfg_file> <cfg_name> <model_output_filename> <losses_filename>')
+    if len(sys.argv) != 7:
+        print(
+            'USAGE:',
+            sys.argv[0],
+            '<bible_filename> <cfg_file> <cfg_name> <model_name> <output_dir> <is_debug>'
+        )
         exit(-1)
     bible_filename = sys.argv[1]
     cfg_file = sys.argv[2]
     cfg_name = sys.argv[3]
-    model_output_filename = sys.argv[4]
-    losses_filename = sys.argv[5]
+    model_name = sys.argv[4]
+    output_dir = sys.argv[5]
+    # In debug mode, only 50 verses are used for training
+    is_debug = sys.argv[6] == 'True'
 
     bible_corpus = 'PBC'
 
@@ -302,6 +319,9 @@ if __name__ == '__main__':
 
     training_data = split_bible.train_data
     validation_data = split_bible.hold_out_data
+    if is_debug:
+        training_data = training_data[:50]
+        validation_data = validation_data[:10]
 
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
@@ -310,6 +330,7 @@ if __name__ == '__main__':
     cfg = configparser.ConfigParser()
     cfg.read('/home/pablo/Documents/WordOrderBibles/configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, cfg_name)
+    cfg.save(f'output/{model_name}.cfg')
 
     lm, nll_loss, sgd = initialize_model(
         cfg.embedding_dim,
@@ -332,6 +353,6 @@ if __name__ == '__main__':
         clip_gradients=cfg.clip_gradients
     )
 
-    lm.save(model_output_filename)
+    lm.save(f'{output_dir}/{model_name}.pth')
     dataset_losses = {k:v for k, v in {'train': train_losses, 'validation': validation_losses}.items() if v}
-    save_losses(dataset_losses, losses_filename)
+    save_losses(dataset_losses, f'{output_dir}/{model_name}_losses.txt')
