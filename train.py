@@ -48,16 +48,28 @@ class LSTMLanguageModel(nn.Module):
         return torch.load(filename)
 
 class TrainConfig:
-    def __init__(self, embedding_dim: int, hidden_dim: int, n_layers: int, learning_rate: float, n_epochs: int):
+    def __init__(
+            self,
+            embedding_dim: int,
+            hidden_dim: int,
+            n_layers: int,
+            learning_rate: float,
+            n_epochs: int,
+            clip_gradients: bool,
+            optimizer: str
+    ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         self.learning_rate = learning_rate
         self.n_epochs = n_epochs
+        self.clip_gradients = clip_gradients
+        self.optimizer = optimizer
 
     def __repr__(self):
         return f'embedding_dim: {self.embedding_dim}, hidden_dim: {self.hidden_dim}, n_layers: {self.n_layers},' \
-               f'learning_rate: {self.learning_rate}, n_epochs: {self.n_epochs}'
+               f'learning_rate: {self.learning_rate}, n_epochs: {self.n_epochs}, ' \
+               f'clip_gradients: {self.clip_gradients}, optimizer: {self.optimizer}'
 
 
 def invert_dict(key_val: dict) -> dict:
@@ -92,7 +104,14 @@ def get_word_index(sequences: list) -> dict:
         word_ix[special_token] = len(word_ix)
     return word_ix
 
-def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> float:
+def train_sample_(
+        model: nn.Module,
+        sample: list,
+        word_ix: dict,
+        loss_function,
+        optimizer,
+        clip_gradients: bool
+) -> float:
     # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
     model.train()
     model.zero_grad()
@@ -104,9 +123,15 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
     # Step 3. Run our forward pass.
     partial_pred_scores = model(sentence_in)
 
-    # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
+    # Step 4. Compute the loss, gradients
     loss = loss_function(partial_pred_scores, targets)
     loss.backward()
+
+    # Clip gradients to avoid explosions
+    if clip_gradients:
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
+
+    # update the parameters
     optimizer.step()
 
     return loss.item()
@@ -135,7 +160,8 @@ def train_(model: nn.Module,
            optimizer,
            verbose=False,
            validate=False,
-           validation_set=None
+           validation_set=None,
+           clip_gradients=False
            ) -> tuple:
     if validation_set is None:
         validation_set = []
@@ -143,16 +169,17 @@ def train_(model: nn.Module,
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
             print(f'INFO: processing epoch {epoch}')
-        epoch_loss = 0
+        sentence_losses = []
         for i, training_sentence in enumerate(corpus):
-            if verbose and i % int(len(corpus)/10) == 0:
-                print(f'\tINFO: processing sentence {i}')
-            epoch_loss += train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
+            sentence_losses.append(
+                train_sample_(model, training_sentence, word_ix, loss_function, optimizer, clip_gradients)
+            )
 
         if validate:
             epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
 
-        epoch_train_loss.append(epoch_loss / len(corpus))
+        avg_sentence_loss = sum(sentence_losses) / len(corpus)
+        epoch_train_loss.append(avg_sentence_loss)
 
     # Set the size of the training set in the model and the number of epochs
     model.train_size = len(corpus)
@@ -192,10 +219,15 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
     for prediction in predictions:
         print(' '.join(prediction))
 
-def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr):
+def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr, optimizer_name: str) -> tuple:
     model = LSTMLanguageModel(embedding_dim, hidden_dim, word_index)
     loss_function = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    if optimizer_name == 'AdamW':
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    elif optimizer_name == 'SGD':
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    else:
+        raise ValueError(f'Unknown optimizer type {optimizer_name}')
     return model, loss_function, optimizer
 
 def plot_losses(loss_by_epoch: list) -> None:
@@ -245,17 +277,20 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         int(params['hidden_dim']),
         int(params['n_layers']),
         float(params['learning_rate']),
-        int(params['n_epochs'])
+        int(params['n_epochs']),
+        params['clip_gradients'] == 'True',
+        params['optimizer']
     )
 
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print('USAGE:', sys.argv[0], '<bible_filename> <cfg_name> <model_output_filename> <losses_filename>')
+    if len(sys.argv) != 6:
+        print('USAGE:', sys.argv[0], '<bible_filename> <cfg_file> <cfg_name> <model_output_filename> <losses_filename>')
         exit(-1)
     bible_filename = sys.argv[1]
-    cfg_name = sys.argv[2]
-    model_output_filename = sys.argv[3]
-    losses_filename = sys.argv[4]
+    cfg_file = sys.argv[2]
+    cfg_name = sys.argv[3]
+    model_output_filename = sys.argv[4]
+    losses_filename = sys.argv[5]
 
     bible_corpus = 'PBC'
 
@@ -273,10 +308,16 @@ if __name__ == '__main__':
 
     # Read the training configuration
     cfg = configparser.ConfigParser()
-    cfg.read('configs/pos_tagger.cfg')
+    cfg.read('/home/pablo/Documents/WordOrderBibles/configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, cfg_name)
 
-    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
+    lm, nll_loss, sgd = initialize_model(
+        cfg.embedding_dim,
+        cfg.hidden_dim,
+        word_to_ix,
+        lr=cfg.learning_rate,
+        optimizer_name=cfg.optimizer
+    )
 
     train_losses, validation_losses = train_(
         lm,
@@ -287,7 +328,8 @@ if __name__ == '__main__':
         optimizer=sgd,
         verbose=True,
         validate=True,
-        validation_set=validation_data
+        validation_set=validation_data,
+        clip_gradients=cfg.clip_gradients
     )
 
     lm.save(model_output_filename)

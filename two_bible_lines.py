@@ -26,7 +26,8 @@ if __name__ == '__main__':
         cfg.embedding_dim,
         cfg.hidden_dim,
         word_to_ix,
-        lr=cfg.learning_rate
+        lr=cfg.learning_rate,
+        optimizer_name=cfg.optimizer
     )
 
     train_losses, validation_losses = train_(
@@ -37,7 +38,8 @@ if __name__ == '__main__':
         nll_loss,
         lm_optimizer,
         validate=True,
-        validation_set=validation_data
+        validation_set=validation_data,
+        clip_gradients=cfg.clip_gradients
     )
 
     lm.save('output/simple_lm.pth')

@@ -30,7 +30,13 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
-    lm, nll_loss, ten_line_opt = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
+    lm, nll_loss, ten_line_opt = initialize_model(
+        cfg.embedding_dim,
+        cfg.hidden_dim,
+        word_to_ix,
+        lr=cfg.learning_rate,
+        optimizer_name=cfg.optimizer
+    )
 
     train_losses, validation_losses = train_(
         lm,
@@ -41,7 +47,8 @@ if __name__ == '__main__':
         optimizer=ten_line_opt,
         verbose=True,
         validate=True,
-        validation_set=validation_data
+        validation_set=validation_data,
+        clip_gradients=cfg.clip_gradients
     )
 
     lm.save('output/ten_bible_lines.pth')
