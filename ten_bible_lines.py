@@ -6,8 +6,7 @@ import configparser
 
 import data
 import train
-from train import get_word_index, invert_dict, initialize_model, train_, print_pred, \
-    plot_losses, to_train_config
+from train import get_word_index, invert_dict, initialize_model, train_, to_train_config
 
 if __name__ == '__main__':
     bible_corpus = 'PBC'
@@ -27,7 +26,7 @@ if __name__ == '__main__':
 
     # Read the training configuration
     cfg = configparser.ConfigParser()
-    cfg.read('configs/pos_tagger.cfg')
+    cfg.read('/home/pablo/ownCloud/WordOrderBibles/Github/configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
     lm, nll_loss, ten_line_opt = initialize_model(
@@ -51,5 +50,8 @@ if __name__ == '__main__':
         clip_gradients=cfg.clip_gradients
     )
 
-    lm.save('output/ten_bible_lines.pth')
-    train.save_losses({'train': train_losses, 'validation': validation_losses}, 'output/ten_bible_lines_losses.txt')
+    model_name = 'ten_bible_lines'
+    lm.save(f'/home/pablo/ownCloud/WordOrderBibles/Github/output/{model_name}.pth')
+    train.save_losses({'train': train_losses, 'validation': validation_losses},
+                      f'/home/pablo/ownCloud/WordOrderBibles/Github/output/{model_name}_losses.txt')
+    cfg.save(f'/home/pablo/ownCloud/WordOrderBibles/Github/output/{model_name}.cfg')
