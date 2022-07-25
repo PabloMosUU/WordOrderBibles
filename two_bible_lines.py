@@ -53,6 +53,6 @@ if __name__ == '__main__':
     save_losses(simple_losses, 'output/loss_vs_epoch.txt')
 
     if validation_losses:
-        plot_losses([train_losses, validation_losses])
+        plot_losses({'train': train_losses, 'validation': validation_losses})
     else:
-        plot_losses([train_losses])
+        plot_losses({'train': train_losses})
