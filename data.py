@@ -120,7 +120,7 @@ class TokenizedBible:
         """
         train_and_hold_out_data, test_data = train_test_split(
             list(self.verse_tokens.values()),
-            test_size = test_fraction
+            test_size = test_fraction if test_fraction > 0 else None
         )
         hold_out_fraction_of_dev = hold_out_fraction / (1 - test_fraction)
         train_data, hold_out_data = train_test_split(
