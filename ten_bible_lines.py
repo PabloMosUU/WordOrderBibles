@@ -5,6 +5,7 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
+import train
 from train import get_word_index, invert_dict, initialize_model, train_, print_pred, \
     plot_losses, to_train_config
 
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     split_bible = pre_processed_bible.split(0.15, 0.1)
 
     training_data = split_bible.train_data[:10]
-    validation_data = split_bible.train_data[10:20]
+    validation_data = split_bible.hold_out_data[:10]
 
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
@@ -29,7 +30,7 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
-    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
+    lm, nll_loss, ten_line_opt = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
 
     train_losses, validation_losses = train_(
         lm,
@@ -37,18 +38,11 @@ if __name__ == '__main__':
         word_to_ix,
         n_epochs=cfg.n_epochs,
         loss_function=nll_loss,
-        optimizer=sgd,
+        optimizer=ten_line_opt,
         verbose=True,
         validate=True,
         validation_set=validation_data
     )
 
-    print('After training:')
-    print_pred(lm, training_data[:3], word_to_ix, ix_to_word)
-    print('Expected results:')
-    print('\n'.join([' '.join(sentence) for sentence in training_data[:3]]))
-
-    if validation_losses:
-        plot_losses([train_losses, validation_losses])
-    else:
-        plot_losses(train_losses)
+    lm.save('output/ten_bible_lines.pth')
+    train.save_losses({'train': train_losses, 'validation': validation_losses}, 'output/ten_bible_lines_losses.txt')
