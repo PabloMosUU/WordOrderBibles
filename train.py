@@ -55,7 +55,8 @@ class TrainConfig:
             learning_rate: float,
             n_epochs: int,
             clip_gradients: bool,
-            optimizer: str
+            optimizer: str,
+            batch_size: int
     ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -64,6 +65,7 @@ class TrainConfig:
         self.n_epochs = n_epochs
         self.clip_gradients = clip_gradients
         self.optimizer = optimizer
+        self.batch_size = batch_size
 
     def __repr__(self):
         return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
@@ -71,7 +73,7 @@ class TrainConfig:
     def to_dict(self):
         return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
-                'optimizer': self.optimizer}
+                'optimizer': self.optimizer, 'batch_size': self.batch_size}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -163,24 +165,24 @@ def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_functio
 def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
-           n_epochs: int,
            loss_function,
            optimizer,
-           verbose=False,
-           validate=False,
-           validation_set=None,
-           clip_gradients=False
+           verbose: bool,
+           validate: bool,
+           validation_set: list,
+           config: TrainConfig
            ) -> tuple:
     if validation_set is None:
         validation_set = []
     epoch_train_loss, epoch_val_loss = [], []
+    n_epochs = config.n_epochs
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
             print(f'INFO: processing epoch {epoch}')
         sentence_losses = []
         for i, training_sentence in enumerate(corpus):
             sentence_losses.append(
-                train_sample_(model, training_sentence, word_ix, loss_function, optimizer, clip_gradients)
+                train_sample_(model, training_sentence, word_ix, loss_function, optimizer, config.clip_gradients)
             )
 
         if validate:
@@ -227,9 +229,11 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
     for prediction in predictions:
         print(' '.join(prediction))
 
-def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr, optimizer_name: str, n_layers: int) -> tuple:
-    model = LSTMLanguageModel(embedding_dim, hidden_dim, word_index, n_layers)
+def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
+    model = LSTMLanguageModel(config.embedding_dim, config.hidden_dim, word_index, config.n_layers)
     loss_function = nn.CrossEntropyLoss()
+    lr = config.learning_rate
+    optimizer_name = config.optimizer
     if optimizer_name == 'AdamW':
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
     elif optimizer_name == 'SGD':
@@ -290,7 +294,8 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         float(params['learning_rate']),
         int(params['n_epochs']),
         params['clip_gradients'] == 'True',
-        params['optimizer']
+        params['optimizer'],
+        int(params['batch_size'])
     )
 
 if __name__ == '__main__':
@@ -332,26 +337,18 @@ if __name__ == '__main__':
     cfg = to_train_config(cfg, cfg_name)
     cfg.save(f'{output_dir}/{model_name}.cfg')
 
-    lm, nll_loss, sgd = initialize_model(
-        cfg.embedding_dim,
-        cfg.hidden_dim,
-        word_to_ix,
-        lr=cfg.learning_rate,
-        optimizer_name=cfg.optimizer,
-        n_layers=cfg.n_layers
-    )
+    lm, nll_loss, sgd = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train_(
         lm,
         training_data,
         word_to_ix,
-        n_epochs=cfg.n_epochs,
         loss_function=nll_loss,
         optimizer=sgd,
         verbose=True,
         validate=True,
         validation_set=validation_data,
-        clip_gradients=cfg.clip_gradients
+        config=cfg
     )
 
     lm.save(f'{output_dir}/{model_name}.pth')
