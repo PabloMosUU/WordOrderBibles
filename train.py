@@ -74,10 +74,10 @@ class TrainConfig:
                 'optimizer': self.optimizer}
 
     def save(self, filename):
-        # TODO: save using ConfigParser
+        config = configparser.ConfigParser()
+        config['DEFAULT'] = {k: str(v) for k, v in self.to_dict().items()}
         with open(filename, 'w') as f:
-            for k, v in self.to_dict().items():
-                f.write(f'{k}:\t{v}\n')
+            config.write(f)
 
 
 def invert_dict(key_val: dict) -> dict:
