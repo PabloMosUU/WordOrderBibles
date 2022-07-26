@@ -114,11 +114,28 @@ def get_word_index(sequences: list) -> dict:
         word_ix[special_token] = len(word_ix)
     return word_ix
 
+def select_batch(dataset: torch.Tensor, batch_ix: int, input: bool) -> torch.Tensor:
+    """
+    Select the indexed batch from the dataset
+    :param dataset: a full dataset
+    :param batch_ix: the batch index we want to select
+    :param input: whether we want to process these sequences as inputs (as opposed to targets)
+    :return: the tensor with the adjusted sequences
+    """
+    raise NotImplementedError()
+
+def get_n_datapoints(dataset: torch.Tensor) -> int:
+    """
+    Get the number of datapoints in a dataset
+    :param dataset: a dataset of sequences
+    :return: the number of datapoints in the dataset
+    """
+    raise NotImplementedError()
+
 def train_batch(
         model: nn.Module,
         dataset: torch.Tensor,
         batch_ix: int,
-        word_ix: dict,
         loss_function: nn.Module,
         optimizer: nn.Module,
         clip_gradients: bool
@@ -126,7 +143,7 @@ def train_batch(
     """
     Train a model on a single batch
     :param model: the model to be trained
-    :param dataset: the dataset
+    :param dataset: the dataset in tensor format with tokens converted to indices
     :param batch_ix: the index of the batch we want to use for training
     :param word_ix: a map from words to indices
     :param loss_function: the loss function we want to minimize
@@ -134,7 +151,29 @@ def train_batch(
     :param clip_gradients: whether we want to clip the gradients
     :return: the average sample loss for this batch
     """
-    raise NotImplementedError()
+    # Pytorch accumulates gradients. We need to clear them out before each training instance
+    model.train()
+    model.zero_grad()
+
+    # Select the right batch and remove the first or last token for inputs or outputs
+    X = select_batch(dataset, batch_ix, input=True)
+    Y = select_batch(dataset, batch_ix, input=False)
+
+    # Run our forward pass. The output is a tensor because we are using batching
+    partial_pred_scores = model(X)
+
+    # Compute the loss, gradients
+    loss = loss_function(partial_pred_scores, Y)
+    loss.backward()
+
+    # Clip gradients to avoid explosions
+    if clip_gradients:
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
+
+    # update the parameters
+    optimizer.step()
+
+    return loss.item() / get_n_datapoints(X)
 
 def train_sample_(
         model: nn.Module,
@@ -229,7 +268,7 @@ def train_(model: nn.Module,
         batch_losses = []
         for batch_ix in range(n_batches_train):
             batch_losses.append(
-                train_batch(model, X_train_batched, batch_ix, word_ix, loss_function, optimizer, config.clip_gradients)
+                train_batch(model, X_train_batched, batch_ix, loss_function, optimizer, config.clip_gradients)
             )
         if validate:
             epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
