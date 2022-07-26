@@ -10,7 +10,7 @@ from train import get_word_index, invert_dict, initialize_model, train_, to_trai
 
 if __name__ == '__main__':
     bible_corpus = 'PBC'
-    bible_filename = '/home/pablo/Documents/paralleltext/bibles/corpus/eng-x-bible-world.txt'
+    bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
 
     # Read a bible and pre-process it
     pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
