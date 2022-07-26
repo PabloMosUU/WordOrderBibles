@@ -27,7 +27,8 @@ if __name__ == '__main__':
         cfg.hidden_dim,
         word_to_ix,
         lr=cfg.learning_rate,
-        optimizer_name=cfg.optimizer
+        optimizer_name=cfg.optimizer,
+        n_layers=cfg.n_layers
     )
 
     train_losses, validation_losses = train_(

@@ -14,7 +14,7 @@ import sys
 
 class LSTMLanguageModel(nn.Module):
 
-    def __init__(self, embedding_dim, hidden_dim, word_index: dict):
+    def __init__(self, embedding_dim, hidden_dim, word_index: dict, n_layers: int):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
         vocab_size = len(self.word_index)
@@ -22,8 +22,7 @@ class LSTMLanguageModel(nn.Module):
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
-        # TODO: allow choosing the number of layers
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers)
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
@@ -228,8 +227,8 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
     for prediction in predictions:
         print(' '.join(prediction))
 
-def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr, optimizer_name: str) -> tuple:
-    model = LSTMLanguageModel(embedding_dim, hidden_dim, word_index)
+def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr, optimizer_name: str, n_layers: int) -> tuple:
+    model = LSTMLanguageModel(embedding_dim, hidden_dim, word_index, n_layers)
     loss_function = nn.CrossEntropyLoss()
     if optimizer_name == 'AdamW':
         optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
@@ -338,7 +337,8 @@ if __name__ == '__main__':
         cfg.hidden_dim,
         word_to_ix,
         lr=cfg.learning_rate,
-        optimizer_name=cfg.optimizer
+        optimizer_name=cfg.optimizer,
+        n_layers=cfg.n_layers
     )
 
     train_losses, validation_losses = train_(

@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     # Read the training configuration
     cfg = configparser.ConfigParser()
-    cfg.read('/home/pablo/ownCloud/WordOrderBibles/Github/configs/pos_tagger.cfg')
+    cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
     lm, nll_loss, ten_line_opt = initialize_model(
@@ -34,7 +34,8 @@ if __name__ == '__main__':
         cfg.hidden_dim,
         word_to_ix,
         lr=cfg.learning_rate,
-        optimizer_name=cfg.optimizer
+        optimizer_name=cfg.optimizer,
+        n_layers=cfg.n_layers
     )
 
     train_losses, validation_losses = train_(
@@ -51,7 +52,7 @@ if __name__ == '__main__':
     )
 
     model_name = 'ten_bible_lines'
-    lm.save(f'/home/pablo/ownCloud/WordOrderBibles/Github/output/{model_name}.pth')
+    lm.save(f'output/{model_name}.pth')
     train.save_losses({'train': train_losses, 'validation': validation_losses},
-                      f'/home/pablo/ownCloud/WordOrderBibles/Github/output/{model_name}_losses.txt')
-    cfg.save(f'/home/pablo/ownCloud/WordOrderBibles/Github/output/{model_name}.cfg')
+                      f'output/{model_name}_losses.txt')
+    cfg.save(f'output/{model_name}.cfg')
