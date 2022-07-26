@@ -329,9 +329,9 @@ if __name__ == '__main__':
 
     # Read the training configuration
     cfg = configparser.ConfigParser()
-    cfg.read('/home/pablo/Documents/WordOrderBibles/configs/pos_tagger.cfg')
+    cfg.read(cfg_file)
     cfg = to_train_config(cfg, cfg_name)
-    cfg.save(f'output/{model_name}.cfg')
+    cfg.save(f'{output_dir}/{model_name}.cfg')
 
     lm, nll_loss, sgd = initialize_model(
         cfg.embedding_dim,
