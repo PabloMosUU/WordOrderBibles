@@ -5,7 +5,8 @@ from train import get_word_index, invert_dict, initialize_model, save_losses, pl
 
 if __name__ == '__main__':
     training_data = [
-        'that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee after the baptism which john preached',
+        'that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee '
+        'after the baptism which john preached',
         'many women were there watching from afar who had followed jesus from galilee serving him'
     ]
     validation_data = [
