@@ -114,6 +114,28 @@ def get_word_index(sequences: list) -> dict:
         word_ix[special_token] = len(word_ix)
     return word_ix
 
+def train_batch(
+        model: nn.Module,
+        dataset: torch.Tensor,
+        batch_ix: int,
+        word_ix: dict,
+        loss_function: nn.Module,
+        optimizer: nn.Module,
+        clip_gradients: bool
+) -> float:
+    """
+    Train a model on a single batch
+    :param model: the model to be trained
+    :param dataset: the dataset
+    :param batch_ix: the index of the batch we want to use for training
+    :param word_ix: a map from words to indices
+    :param loss_function: the loss function we want to minimize
+    :param optimizer: the optimizer used for training
+    :param clip_gradients: whether we want to clip the gradients
+    :return: the average sample loss for this batch
+    """
+    raise NotImplementedError()
+
 def train_sample_(
         model: nn.Module,
         sample: list,
@@ -162,6 +184,29 @@ def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_functio
 
     return loss.item()
 
+def batch(dataset: list, batch_size: int) -> torch.Tensor:
+    """
+    Breaks up a dataset into batches and puts them in tensor format for PyTorch to train
+    :param dataset: a list of sequences, each of which is a list of tokens
+    :param batch_size: the desired batch size
+    :return: a tensor containing the entire dataset separated into batches, with appropriate padding
+    """
+    # Add start- and end-of-sentence tokens? [Maybe better to do it one level above]
+    # Break up into batches
+    # Pad inside each batch using a padding token
+    # Create a PyTorch tensor out of this dataset
+    # TODO: this function might belong to the data module
+    raise NotImplementedError()
+
+def get_n_batches(dataset: torch.Tensor) -> int:
+    """
+    From the relevant dimension, extract the number of batches
+    :param dataset: a dataset as returned by the batch method, in tensor format
+    :return: the number of batches
+    """
+    # TODO: this function might belong to the data module
+    raise NotImplementedError()
+
 def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
@@ -172,23 +217,25 @@ def train_(model: nn.Module,
            validation_set: list,
            config: TrainConfig
            ) -> tuple:
-    if validation_set is None:
-        validation_set = []
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
+
+    X_train_batched = batch(corpus, config.batch_size)
+    n_batches_train = get_n_batches(X_train_batched)
+
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
             print(f'INFO: processing epoch {epoch}')
-        sentence_losses = []
-        for i, training_sentence in enumerate(corpus):
-            sentence_losses.append(
-                train_sample_(model, training_sentence, word_ix, loss_function, optimizer, config.clip_gradients)
+        batch_losses = []
+        for batch_ix in range(n_batches_train):
+            batch_losses.append(
+                train_batch(model, X_train_batched, batch_ix, word_ix, loss_function, optimizer, config.clip_gradients)
             )
-
         if validate:
             epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
 
-        avg_sentence_loss = sum(sentence_losses) / len(corpus)
+        # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
+        avg_sentence_loss = sum(batch_losses) / n_batches_train
         epoch_train_loss.append(avg_sentence_loss)
 
     # Set the size of the training set in the model and the number of epochs
