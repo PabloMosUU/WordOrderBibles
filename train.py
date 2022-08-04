@@ -14,7 +14,7 @@ import sys
 
 class LSTMLanguageModel(nn.Module):
 
-    def __init__(self, embedding_dim, hidden_dim, word_index: dict):
+    def __init__(self, embedding_dim, hidden_dim, word_index: dict, n_layers: int):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
         vocab_size = len(self.word_index)
@@ -22,11 +22,15 @@ class LSTMLanguageModel(nn.Module):
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
-        # TODO: allow choosing the number of layers
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True)
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
+
+        # Variables to store the number of training and validation data points and the number of epochs
+        self.train_size = None
+        self.validation_size = None
+        self.n_epochs = None
 
     def forward(self, sequence):
         embeds = self.word_embeddings(sequence)
@@ -43,12 +47,39 @@ class LSTMLanguageModel(nn.Module):
         return torch.load(filename)
 
 class TrainConfig:
-    def __init__(self, embedding_dim: int, hidden_dim: int, n_layers: int, learning_rate: float, n_epochs: int):
+    def __init__(
+            self,
+            embedding_dim: int,
+            hidden_dim: int,
+            n_layers: int,
+            learning_rate: float,
+            n_epochs: int,
+            clip_gradients: bool,
+            optimizer: str,
+            batch_size: int
+    ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
         self.learning_rate = learning_rate
         self.n_epochs = n_epochs
+        self.clip_gradients = clip_gradients
+        self.optimizer = optimizer
+        self.batch_size = batch_size
+
+    def __repr__(self):
+        return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
+
+    def to_dict(self):
+        return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
+                'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
+                'optimizer': self.optimizer, 'batch_size': self.batch_size}
+
+    def save(self, filename):
+        config = configparser.ConfigParser()
+        config['DEFAULT'] = {k: str(v) for k, v in self.to_dict().items()}
+        with open(filename, 'w') as f:
+            config.write(f)
 
 
 def invert_dict(key_val: dict) -> dict:
@@ -83,8 +114,77 @@ def get_word_index(sequences: list) -> dict:
         word_ix[special_token] = len(word_ix)
     return word_ix
 
-def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, optimizer) -> float:
+def select_batch(dataset: torch.Tensor, batch_ix: int, input: bool) -> torch.Tensor:
+    """
+    Select the indexed batch from the dataset
+    :param dataset: a full dataset
+    :param batch_ix: the batch index we want to select
+    :param input: whether we want to process these sequences as inputs (as opposed to targets)
+    :return: the tensor with the adjusted sequences
+    """
+    raise NotImplementedError()
+
+def get_n_datapoints(dataset: torch.Tensor) -> int:
+    """
+    Get the number of datapoints in a dataset
+    :param dataset: a dataset of sequences
+    :return: the number of datapoints in the dataset
+    """
+    raise NotImplementedError()
+
+def train_batch(
+        model: nn.Module,
+        dataset: torch.Tensor,
+        batch_ix: int,
+        loss_function: nn.Module,
+        optimizer: nn.Module,
+        clip_gradients: bool
+) -> float:
+    """
+    Train a model on a single batch
+    :param model: the model to be trained
+    :param dataset: the dataset in tensor format with tokens converted to indices
+    :param batch_ix: the index of the batch we want to use for training
+    :param word_ix: a map from words to indices
+    :param loss_function: the loss function we want to minimize
+    :param optimizer: the optimizer used for training
+    :param clip_gradients: whether we want to clip the gradients
+    :return: the average sample loss for this batch
+    """
+    # Pytorch accumulates gradients. We need to clear them out before each training instance
+    model.train()
+    model.zero_grad()
+
+    # Select the right batch and remove the first or last token for inputs or outputs
+    X = select_batch(dataset, batch_ix, input=True)
+    Y = select_batch(dataset, batch_ix, input=False)
+
+    # Run our forward pass. The output is a tensor because we are using batching
+    partial_pred_scores = model(X)
+
+    # Compute the loss, gradients
+    loss = loss_function(partial_pred_scores, Y)
+    loss.backward()
+
+    # Clip gradients to avoid explosions
+    if clip_gradients:
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
+
+    # update the parameters
+    optimizer.step()
+
+    return loss.item() / get_n_datapoints(X)
+
+def train_sample_(
+        model: nn.Module,
+        sample: list,
+        word_ix: dict,
+        loss_function,
+        optimizer,
+        clip_gradients: bool
+) -> float:
     # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
+    model.train()
     model.zero_grad()
 
     # Step 2. Get our inputs ready for the network, that is, turn them into tensors of word indices.
@@ -94,14 +194,23 @@ def train_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function, 
     # Step 3. Run our forward pass.
     partial_pred_scores = model(sentence_in)
 
-    # Step 4. Compute the loss, gradients, and update the parameters by calling optimizer.step()
+    # Step 4. Compute the loss, gradients
     loss = loss_function(partial_pred_scores, targets)
     loss.backward()
+
+    # Clip gradients to avoid explosions
+    if clip_gradients:
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
+
+    # update the parameters
     optimizer.step()
 
     return loss.item()
 
 def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function: nn.Module) -> float:
+    # Put the model in evaluation mode
+    model.eval()
+
     # Get our inputs ready for the network, that is, turn them into tensors of word indices.
     sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
     targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
@@ -114,32 +223,64 @@ def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_functio
 
     return loss.item()
 
+def batch(dataset: list, batch_size: int) -> torch.Tensor:
+    """
+    Breaks up a dataset into batches and puts them in tensor format for PyTorch to train
+    :param dataset: a list of sequences, each of which is a list of tokens
+    :param batch_size: the desired batch size
+    :return: a tensor containing the entire dataset separated into batches, with appropriate padding
+    """
+    # Add start- and end-of-sentence tokens? [Maybe better to do it one level above]
+    # Break up into batches
+    # Pad inside each batch using a padding token
+    # Create a PyTorch tensor out of this dataset
+    # TODO: this function might belong to the data module
+    raise NotImplementedError()
+
+def get_n_batches(dataset: torch.Tensor) -> int:
+    """
+    From the relevant dimension, extract the number of batches
+    :param dataset: a dataset as returned by the batch method, in tensor format
+    :return: the number of batches
+    """
+    # TODO: this function might belong to the data module
+    raise NotImplementedError()
+
 def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
-           n_epochs: int,
            loss_function,
            optimizer,
-           verbose=False,
-           validate=False,
-           validation_set=None
+           verbose: bool,
+           validate: bool,
+           validation_set: list,
+           config: TrainConfig
            ) -> tuple:
-    if validation_set is None:
-        validation_set = []
     epoch_train_loss, epoch_val_loss = [], []
+    n_epochs = config.n_epochs
+
+    X_train_batched = batch(corpus, config.batch_size)
+    n_batches_train = get_n_batches(X_train_batched)
+
     for epoch in range(n_epochs):
         if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
             print(f'INFO: processing epoch {epoch}')
-        epoch_loss = 0
-        for i, training_sentence in enumerate(corpus):
-            if verbose and i % int(len(corpus)/10) == 0:
-                print(f'\tINFO: processing sentence {i}')
-            epoch_loss += train_sample_(model, training_sentence, word_ix, loss_function, optimizer)
-
+        batch_losses = []
+        for batch_ix in range(n_batches_train):
+            batch_losses.append(
+                train_batch(model, X_train_batched, batch_ix, loss_function, optimizer, config.clip_gradients)
+            )
         if validate:
             epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
 
-        epoch_train_loss.append(epoch_loss / len(corpus))
+        # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
+        avg_sentence_loss = sum(batch_losses) / n_batches_train
+        epoch_train_loss.append(avg_sentence_loss)
+
+    # Set the size of the training set in the model and the number of epochs
+    model.train_size = len(corpus)
+    model.n_epochs = n_epochs
+
     return epoch_train_loss, epoch_val_loss
 
 def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
@@ -147,9 +288,16 @@ def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_functi
     with torch.no_grad():
         for validation_sentence in validation_set:
             loss += validate_sample_(model, validation_sentence, word_ix, loss_function)
+
+    # Set the size of the validation set in the model
+    model.validation_size = len(validation_set)
+
     return loss / len(validation_set)
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
+    # Put the model in evaluation mode
+    model.eval()
+
     words = sample.copy()
     for i in range(1, len(sample)):
         seq = prepare_sequence(words, word_ix)
@@ -167,16 +315,26 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
     for prediction in predictions:
         print(' '.join(prediction))
 
-def initialize_model(embedding_dim, hidden_dim, word_index: dict, lr):
-    model = LSTMLanguageModel(embedding_dim, hidden_dim, word_index)
+def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
+    model = LSTMLanguageModel(config.embedding_dim, config.hidden_dim, word_index, config.n_layers)
     loss_function = nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    lr = config.learning_rate
+    optimizer_name = config.optimizer
+    if optimizer_name == 'AdamW':
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+    elif optimizer_name == 'SGD':
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+    else:
+        raise ValueError(f'Unknown optimizer type {optimizer_name}')
     return model, loss_function, optimizer
 
-def plot_losses(loss_by_epoch: list) -> None:
-    assert len(set([len(losses) for losses in loss_by_epoch])) == 1
-    for losses in loss_by_epoch:
-        plt.plot(range(len(losses)), losses)
+def plot_losses(dataset_epoch_losses: dict) -> None:
+    assert len(set([len(losses) for losses in dataset_epoch_losses.values()])) == 1
+    for dataset, losses in dataset_epoch_losses.items():
+        plt.plot(range(len(losses)), losses, label=dataset)
+    plt.xlabel('Epoch')
+    plt.ylabel('Avg verse loss')
+    plt.legend()
     plt.show()
 
 def save_losses(dataset_epoch_losses: dict, filename: str) -> None:
@@ -220,17 +378,27 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         int(params['hidden_dim']),
         int(params['n_layers']),
         float(params['learning_rate']),
-        int(params['n_epochs'])
+        int(params['n_epochs']),
+        params['clip_gradients'] == 'True',
+        params['optimizer'],
+        int(params['batch_size'])
     )
 
 if __name__ == '__main__':
-    if len(sys.argv) != 5:
-        print('USAGE:', sys.argv[0], '<bible_filename> <cfg_name> <model_output_filename> <losses_filename>')
+    if len(sys.argv) != 7:
+        print(
+            'USAGE:',
+            sys.argv[0],
+            '<bible_filename> <cfg_file> <cfg_name> <model_name> <output_dir> <is_debug>'
+        )
         exit(-1)
     bible_filename = sys.argv[1]
-    cfg_name = sys.argv[2]
-    model_output_filename = sys.argv[3]
-    losses_filename = sys.argv[4]
+    cfg_file = sys.argv[2]
+    cfg_name = sys.argv[3]
+    model_name = sys.argv[4]
+    output_dir = sys.argv[5]
+    # In debug mode, only 50 verses are used for training
+    is_debug = sys.argv[6] == 'True'
 
     bible_corpus = 'PBC'
 
@@ -242,29 +410,33 @@ if __name__ == '__main__':
 
     training_data = split_bible.train_data
     validation_data = split_bible.hold_out_data
+    if is_debug:
+        training_data = training_data[:50]
+        validation_data = validation_data[:10]
 
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
 
     # Read the training configuration
     cfg = configparser.ConfigParser()
-    cfg.read('configs/pos_tagger.cfg')
+    cfg.read(cfg_file)
     cfg = to_train_config(cfg, cfg_name)
+    cfg.save(f'{output_dir}/{model_name}.cfg')
 
-    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
+    lm, nll_loss, sgd = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train_(
         lm,
         training_data,
         word_to_ix,
-        n_epochs=cfg.n_epochs,
         loss_function=nll_loss,
         optimizer=sgd,
         verbose=True,
         validate=True,
-        validation_set=validation_data
+        validation_set=validation_data,
+        config=cfg
     )
 
-    lm.save(model_output_filename)
+    lm.save(f'{output_dir}/{model_name}.pth')
     dataset_losses = {k:v for k, v in {'train': train_losses, 'validation': validation_losses}.items() if v}
-    save_losses(dataset_losses, losses_filename)
+    save_losses(dataset_losses, f'{output_dir}/{model_name}_losses.txt')

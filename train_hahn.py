@@ -14,8 +14,8 @@ class TrainedModel(nn.Module):
     def __init__(self, embedding_dim: int, hidden_dim: int, vocab_size: int, n_layers: int):
         super(TrainedModel, self).__init__()
         self.hidden_dim = hidden_dim
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim) # TODO: what is a good value for embedding_dim?
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers) # TODO: what is a good value for hidden_dim?
+        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, n_layers)
         # n_layers = 1 Following the tutorial linked above; others used 2
         self.hidden2pred = nn.Linear(hidden_dim, vocab_size)
 
@@ -37,8 +37,6 @@ def next_word_target(seq: list) -> list:
     """
     For next-word prediction / language modeling, assume that the target for each word is the next word.
     At the end of each chunk, we predict the padding token.
-    TODO: if we decide to work with verses, we could have the target of the last word be <END>
-    TODO: another alternative is to split the input sentence with N tokens. Input: a[:N-1]. Output: a[1:]
     :param seq: a sequence of tokens
     :return: the same sequence shifted by one slot and with a pad token at the end
     """
@@ -48,7 +46,7 @@ def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> Traine
     word_to_ix = split_data.train_word_to_ix
     model = TrainedModel(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), cfg.n_layers)
     loss_function = nn.NLLLoss() # TODO: replace by Eq. 68 in Hahn et al?
-    optimizer = optim.SGD(model.parameters(), lr=cfg.learning_rate) # TODO: replace SGD (pg. 83)
+    optimizer = optim.SGD(model.parameters(), lr=cfg.learning_rate)
     # TODO: make learning_rate variable? Determine by validation?
     for epoch in range(cfg.n_epochs):
         training_data = split_data.shuffle_chop('train', len_seq)

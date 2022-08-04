@@ -5,12 +5,12 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-from train import get_word_index, invert_dict, initialize_model, train_, print_pred, \
-    plot_losses, to_train_config
+import train
+from train import get_word_index, invert_dict, initialize_model, train_, to_train_config
 
 if __name__ == '__main__':
     bible_corpus = 'PBC'
-    bible_filename = '/home/pablo/Documents/paralleltext/bibles/corpus/eng-x-bible-world.txt'
+    bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
 
     # Read a bible and pre-process it
     pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
@@ -19,7 +19,7 @@ if __name__ == '__main__':
     split_bible = pre_processed_bible.split(0.15, 0.1)
 
     training_data = split_bible.train_data[:10]
-    validation_data = split_bible.train_data[10:20]
+    validation_data = split_bible.hold_out_data[:10]
 
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
@@ -29,26 +29,22 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
-    lm, nll_loss, sgd = initialize_model(cfg.embedding_dim, cfg.hidden_dim, word_to_ix, lr=cfg.learning_rate)
+    lm, nll_loss, ten_line_opt = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train_(
         lm,
         training_data,
         word_to_ix,
-        n_epochs=cfg.n_epochs,
         loss_function=nll_loss,
-        optimizer=sgd,
+        optimizer=ten_line_opt,
         verbose=True,
         validate=True,
-        validation_set=validation_data
+        validation_set=validation_data,
+        config=cfg
     )
 
-    print('After training:')
-    print_pred(lm, training_data[:3], word_to_ix, ix_to_word)
-    print('Expected results:')
-    print('\n'.join([' '.join(sentence) for sentence in training_data[:3]]))
-
-    if validation_losses:
-        plot_losses([train_losses, validation_losses])
-    else:
-        plot_losses(train_losses)
+    model_name = 'ten_bible_lines'
+    lm.save(f'output/{model_name}.pth')
+    train.save_losses({'train': train_losses, 'validation': validation_losses},
+                      f'output/{model_name}_losses.txt')
+    cfg.save(f'output/{model_name}.cfg')

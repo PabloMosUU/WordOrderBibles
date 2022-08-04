@@ -5,7 +5,8 @@ from train import get_word_index, invert_dict, initialize_model, save_losses, pl
 
 if __name__ == '__main__':
     training_data = [
-        'that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee after the baptism which john preached',
+        'that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee '
+        'after the baptism which john preached',
         'many women were there watching from afar who had followed jesus from galilee serving him'
     ]
     validation_data = [
@@ -22,22 +23,18 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'simple.lm')
 
-    lm, nll_loss, lm_optimizer = initialize_model(
-        cfg.embedding_dim,
-        cfg.hidden_dim,
-        word_to_ix,
-        lr=cfg.learning_rate
-    )
+    lm, nll_loss, lm_optimizer = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train_(
         lm,
         training_data,
         word_to_ix,
-        cfg.n_epochs,
         nll_loss,
         lm_optimizer,
         validate=True,
-        validation_set=validation_data
+        validation_set=validation_data,
+        config=cfg,
+        verbose=True
     )
 
     lm.save('output/simple_lm.pth')
@@ -51,6 +48,6 @@ if __name__ == '__main__':
     save_losses(simple_losses, 'output/loss_vs_epoch.txt')
 
     if validation_losses:
-        plot_losses([train_losses, validation_losses])
+        plot_losses({'train': train_losses, 'validation': validation_losses})
     else:
-        plot_losses([train_losses])
+        plot_losses({'train': train_losses})

@@ -55,7 +55,6 @@ class SplitData:
     def shuffle_chop(self, partition: str, sequence_length: int) -> list:
         """
         Shuffles the verses and chunks the outcome in sequences of fixed length
-        TODO: should we chop into equal-length chunks? Or split bible into verses?
         :param partition: the partition (train/holdout/test) you want to work on
         :param sequence_length: the length of the chopped sequences
         :return: a list of sequences, each of which is a list of tokens
@@ -66,7 +65,6 @@ class SplitData:
         flattened = [el for lis in verses for el in lis]
         flattened += ((sequence_length - (len(flattened) % sequence_length)) * [PAD_TOKEN])
         chunks = [flattened[i:i+sequence_length] for i in range(0, len(flattened), sequence_length)]
-        # TODO: the following line is not necessary in other setups
         chunks = [chunk for chunk in chunks if PAD_TOKEN not in chunk]
         return chunks
 
@@ -120,7 +118,7 @@ class TokenizedBible:
         """
         train_and_hold_out_data, test_data = train_test_split(
             list(self.verse_tokens.values()),
-            test_size = test_fraction
+            test_size = test_fraction if test_fraction > 0 else None
         )
         hold_out_fraction_of_dev = hold_out_fraction / (1 - test_fraction)
         train_data, hold_out_data = train_test_split(
