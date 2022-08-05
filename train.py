@@ -137,7 +137,7 @@ def get_n_datapoints(dataset: torch.Tensor) -> int:
     :param dataset: a dataset of sequences
     :return: the number of datapoints in the dataset
     """
-    raise NotImplementedError()
+    return len(dataset)
 
 def train_batch(
         model: nn.Module,
@@ -170,7 +170,7 @@ def train_batch(
     # TODO: pack_padded and pad_packed?
 
     # Compute the loss, gradients
-    loss = loss_function(partial_pred_scores, Y) # TODO: avoid computing the loss on pad
+    loss = loss_function(partial_pred_scores.permute(0, 2, 1), Y) # TODO: avoid computing the loss on pad
     loss.backward()
 
     # Clip gradients to avoid explosions
@@ -180,7 +180,7 @@ def train_batch(
     # update the parameters
     optimizer.step()
 
-    return loss.item() / get_n_datapoints(X)
+    return loss.item()
 
 def train_sample_(
         model: nn.Module,
