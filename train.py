@@ -34,8 +34,8 @@ class LSTMLanguageModel(nn.Module):
 
     def forward(self, sequence):
         embeds = self.word_embeddings(sequence)
-        lstm_out, _ = self.lstm(embeds.view(len(sequence), 1, -1))
-        next_word_space = self.hidden2word(lstm_out.view(len(sequence), -1))
+        lstm_out, _ = self.lstm(embeds)
+        next_word_space = self.hidden2word(lstm_out)
         next_word_scores = functional.log_softmax(next_word_space, dim=1)
         return next_word_scores
 
@@ -114,15 +114,22 @@ def get_word_index(sequences: list) -> dict:
         word_ix[special_token] = len(word_ix)
     return word_ix
 
-def select_batch(dataset: torch.Tensor, batch_ix: int, input: bool) -> torch.Tensor:
+def select_batch(dataset: list, batch_ix: int, is_input: bool) -> torch.Tensor:
     """
-    Select the indexed batch from the dataset
+    Select the indexed batch from the dataset, which is assumed to be padded
     :param dataset: a full dataset
     :param batch_ix: the batch index we want to select
-    :param input: whether we want to process these sequences as inputs (as opposed to targets)
+    :param is_input: whether we want to process these sequences as inputs (as opposed to targets)
     :return: the tensor with the adjusted sequences
     """
-    raise NotImplementedError()
+    # Select the correct batch
+    selected_batch = dataset[batch_ix]
+
+    # Convert to inputs or targets
+    truncated = [seq[:len(seq)-1] if is_input else seq[1:] for seq in selected_batch]
+
+    # Convert to a PyTorch tensor
+    return torch.tensor(truncated)
 
 def get_n_datapoints(dataset: torch.Tensor) -> int:
     """
@@ -134,7 +141,7 @@ def get_n_datapoints(dataset: torch.Tensor) -> int:
 
 def train_batch(
         model: nn.Module,
-        dataset: torch.Tensor,
+        dataset: list,
         batch_ix: int,
         loss_function: nn.Module,
         optimizer: nn.Module,
@@ -145,7 +152,6 @@ def train_batch(
     :param model: the model to be trained
     :param dataset: the dataset in tensor format with tokens converted to indices
     :param batch_ix: the index of the batch we want to use for training
-    :param word_ix: a map from words to indices
     :param loss_function: the loss function we want to minimize
     :param optimizer: the optimizer used for training
     :param clip_gradients: whether we want to clip the gradients
@@ -156,14 +162,15 @@ def train_batch(
     model.zero_grad()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = select_batch(dataset, batch_ix, input=True)
-    Y = select_batch(dataset, batch_ix, input=False)
+    X = select_batch(dataset, batch_ix, is_input=True)
+    Y = select_batch(dataset, batch_ix, is_input=False)
 
     # Run our forward pass. The output is a tensor because we are using batching
     partial_pred_scores = model(X)
+    # TODO: pack_padded and pad_packed?
 
     # Compute the loss, gradients
-    loss = loss_function(partial_pred_scores, Y)
+    loss = loss_function(partial_pred_scores, Y) # TODO: avoid computing the loss on pad
     loss.backward()
 
     # Clip gradients to avoid explosions
@@ -223,28 +230,49 @@ def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_functio
 
     return loss.item()
 
-def batch(dataset: list, batch_size: int) -> torch.Tensor:
+def pad_batch(sequences: list) -> list:
+    """
+    Given a list of sequences, pad all but one to have the same length as the longest one
+    :param sequences: a list of sequences
+    :return: the same sequences with a padding symbol added accordingly
+    """
+    max_length = max([len(el) for el in sequences])
+    padded = [seq + [data.PAD_TOKEN] * (max_length - len(seq)) for seq in sequences]
+    return padded
+
+def batch(dataset: list, batch_size: int, word_index: dict) -> list:
     """
     Breaks up a dataset into batches and puts them in tensor format for PyTorch to train
     :param dataset: a list of sequences, each of which is a list of tokens
     :param batch_size: the desired batch size
+    :param word_index: a map from words to indices
     :return: a tensor containing the entire dataset separated into batches, with appropriate padding
     """
-    # Add start- and end-of-sentence tokens? [Maybe better to do it one level above]
     # Break up into batches
-    # Pad inside each batch using a padding token
-    # Create a PyTorch tensor out of this dataset
-    # TODO: this function might belong to the data module
-    raise NotImplementedError()
+    batches = [dataset[batch_size*i:batch_size*(i+1)] for i in range(int(np.ceil(len(dataset)/batch_size)))]
 
-def get_n_batches(dataset: torch.Tensor) -> int:
+    # Pad inside each batch using a padding token
+    padded_batches = [pad_batch(b) for b in batches]
+
+    # Add start- and end-of-sentence tokens?
+    enclosed = [[[data.START_OF_VERSE_TOKEN] + seq + [data.END_OF_VERSE_TOKEN] for seq in b] for b in padded_batches]
+
+    # Convert words to indices
+    as_indices = [[[word_index[w] for w in seq] for seq in b] for b in enclosed]
+
+    return as_indices
+    # TODO: this function might belong to the data module
+
+def get_n_batches(dataset: list) -> int:
     """
     From the relevant dimension, extract the number of batches
     :param dataset: a dataset as returned by the batch method, in tensor format
     :return: the number of batches
     """
     # TODO: this function might belong to the data module
-    raise NotImplementedError()
+    return len(dataset)
+
+#def batch_loss()
 
 def train_(model: nn.Module,
            corpus: list,
@@ -259,7 +287,7 @@ def train_(model: nn.Module,
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
-    X_train_batched = batch(corpus, config.batch_size)
+    X_train_batched = batch(corpus, config.batch_size, word_ix)
     n_batches_train = get_n_batches(X_train_batched)
 
     for epoch in range(n_epochs):
@@ -385,7 +413,7 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
     )
 
 if __name__ == '__main__':
-    if len(sys.argv) != 7:
+    """if len(sys.argv) != 7:
         print(
             'USAGE:',
             sys.argv[0],
@@ -398,7 +426,13 @@ if __name__ == '__main__':
     model_name = sys.argv[4]
     output_dir = sys.argv[5]
     # In debug mode, only 50 verses are used for training
-    is_debug = sys.argv[6] == 'True'
+    is_debug = sys.argv[6] == 'True'"""
+    bible_filename = "/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt"
+    cfg_file = "/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg"
+    cfg_name = "test.en"
+    model_name = "test_en_local"
+    output_dir = "/home/pablo/ownCloud/WordOrderBibles/GitHub/output/"
+    is_debug = True
 
     bible_corpus = 'PBC'
 
