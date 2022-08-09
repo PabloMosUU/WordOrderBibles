@@ -297,7 +297,7 @@ def train_(model: nn.Module,
             )
 
         if validate:
-            epoch_val_loss.append(validate_(model, validation_set, word_ix))
+            epoch_val_loss.append(validate_(model, validation_set, word_ix, config.batch_size))
 
         # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
         avg_sentence_loss = sum(batch_losses) / n_batches_train
@@ -309,9 +309,9 @@ def train_(model: nn.Module,
 
     return epoch_train_loss, epoch_val_loss
 
-def validate_(model: nn.Module, validation_set: list, word_ix: dict) -> float:
+def validate_(model: nn.Module, validation_set: list, word_ix: dict, batch_size: int) -> float:
 
-    X_val_batched, original_sequence_lengths = batch(validation_set, 1, word_ix)
+    X_val_batched, original_sequence_lengths = batch(validation_set, batch_size, word_ix)
     n_batches_val = get_n_batches(X_val_batched)
 
     loss = 0
