@@ -16,7 +16,7 @@ from data import prepare_sequence
 
 class LSTMLanguageModel(nn.Module):
 
-    def __init__(self, embedding_dim, hidden_dim, word_index: dict, n_layers: int):
+    def __init__(self, embedding_dim, hidden_dim, word_index: dict, n_layers: int, loss_function: nn.Module):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
         vocab_size = len(self.word_index)
@@ -25,6 +25,7 @@ class LSTMLanguageModel(nn.Module):
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True)
+        self.loss_function = loss_function
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
@@ -48,6 +49,9 @@ class LSTMLanguageModel(nn.Module):
         next_word_space = self.hidden2word(padded_lstm_outputs)
         next_word_scores = functional.log_softmax(next_word_space, dim=1)
         return next_word_scores
+
+    def loss(self, Y_true, Y_pred):
+        return self.loss_function(Y_pred, Y_true)
 
     def save(self, filename: str) -> None:
         torch.save(self, filename)
@@ -153,7 +157,6 @@ def train_batch(
         model: nn.Module,
         dataset: list,
         batch_ix: int,
-        loss_function: nn.Module,
         optimizer: nn.Module,
         clip_gradients: bool,
         original_sequence_lengths: list
@@ -163,7 +166,6 @@ def train_batch(
     :param model: the model to be trained
     :param dataset: the dataset in tensor format with tokens converted to indices
     :param batch_ix: the index of the batch we want to use for training
-    :param loss_function: the loss function we want to minimize
     :param optimizer: the optimizer used for training
     :param clip_gradients: whether we want to clip the gradients
     :param original_sequence_lengths: a list of lists of sequence lengths
@@ -182,7 +184,7 @@ def train_batch(
     partial_pred_scores = model(X, original_input_sequence_lengths)
 
     # Compute the loss, gradients
-    loss = loss_function(partial_pred_scores.permute(0, 2, 1), Y) # TODO: avoid computing the loss on pad
+    loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1)) # TODO: avoid computing the loss on pad
     loss.backward()
 
     # Clip gradients to avoid explosions
@@ -198,7 +200,6 @@ def validate_batch(
         model: nn.Module,
         dataset: list,
         batch_ix: int,
-        loss_function: nn.Module,
         original_sequence_lengths: list
 ) -> float:
     # Put the model in evaluation mode
@@ -213,7 +214,7 @@ def validate_batch(
     partial_pred_scores = model(X, original_input_sequence_lengths)
 
     # Compute the loss
-    loss = loss_function(partial_pred_scores.permute(0, 2, 1), Y) # TODO: avoid computing the loss on pad
+    loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1)) # TODO: avoid computing the loss on pad
 
     return loss.item()
 
@@ -269,7 +270,6 @@ def get_n_batches(dataset: list) -> int:
 def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
-           loss_function,
            optimizer,
            verbose: bool,
            validate: bool,
@@ -292,14 +292,13 @@ def train_(model: nn.Module,
                     model,
                     X_train_batched,
                     batch_ix,
-                    loss_function,
                     optimizer,
                     config.clip_gradients,
                     original_sequence_lengths
                 )
             )
         if validate:
-            epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
+            epoch_val_loss.append(validate_(model, validation_set, word_ix))
 
         # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
         avg_sentence_loss = sum(batch_losses) / n_batches_train
@@ -311,7 +310,7 @@ def train_(model: nn.Module,
 
     return epoch_train_loss, epoch_val_loss
 
-def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
+def validate_(model: nn.Module, validation_set: list, word_ix: dict) -> float:
 
     X_val_batched, original_sequence_lengths = batch(validation_set, 1, word_ix)
     n_batches_val = get_n_batches(X_val_batched)
@@ -319,7 +318,7 @@ def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_functi
     loss = 0
     with torch.no_grad():
         for batch_ix in range(n_batches_val):
-            loss += validate_batch(model, X_val_batched, batch_ix, loss_function, original_sequence_lengths)
+            loss += validate_batch(model, X_val_batched, batch_ix, original_sequence_lengths)
 
     # Set the size of the validation set in the model
     model.validation_size = len(validation_set)
@@ -352,8 +351,8 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
         print(' '.join(prediction))
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
-    model = LSTMLanguageModel(config.embedding_dim, config.hidden_dim, word_index, config.n_layers)
     loss_function = nn.CrossEntropyLoss()
+    model = LSTMLanguageModel(config.embedding_dim, config.hidden_dim, word_index, config.n_layers, loss_function)
     lr = config.learning_rate
     optimizer_name = config.optimizer
     if optimizer_name == 'AdamW':
@@ -466,7 +465,6 @@ if __name__ == '__main__':
         lm,
         training_data,
         word_to_ix,
-        loss_function=nll_loss,
         optimizer=sgd,
         verbose=True,
         validate=True,
