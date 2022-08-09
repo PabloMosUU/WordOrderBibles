@@ -1,7 +1,7 @@
 import configparser
 
-from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, print_pred, \
-    to_train_config
+from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config, \
+    print_pred
 
 if __name__ == '__main__':
     training_data = [
@@ -29,7 +29,6 @@ if __name__ == '__main__':
         lm,
         training_data,
         word_to_ix,
-        nll_loss,
         lm_optimizer,
         validate=True,
         validation_set=validation_data,

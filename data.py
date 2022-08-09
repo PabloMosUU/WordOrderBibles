@@ -242,3 +242,7 @@ if __name__ == '__main__':
     output_filename = sys.argv[3]
     pre_processed_bible = process_bible(bible_filename, bible_corpus)
     pre_processed_bible.save(output_filename)
+
+
+def prepare_sequence(seq: list, to_ix: dict) -> list:
+    return [to_ix[w] if w in to_ix else to_ix[UNKNOWN_TOKEN] for w in seq]

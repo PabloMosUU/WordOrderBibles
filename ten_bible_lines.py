@@ -35,7 +35,6 @@ if __name__ == '__main__':
         lm,
         training_data,
         word_to_ix,
-        loss_function=nll_loss,
         optimizer=ten_line_opt,
         verbose=True,
         validate=True,
