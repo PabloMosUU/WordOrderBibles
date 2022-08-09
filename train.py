@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from data import prepare_sequence
-
+import sys
 
 class LSTMLanguageModel(nn.Module):
 
@@ -418,7 +418,7 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
     )
 
 if __name__ == '__main__':
-    """if len(sys.argv) != 7:
+    if len(sys.argv) != 7:
         print(
             'USAGE:',
             sys.argv[0],
@@ -431,13 +431,7 @@ if __name__ == '__main__':
     model_name = sys.argv[4]
     output_dir = sys.argv[5]
     # In debug mode, only 50 verses are used for training
-    is_debug = sys.argv[6] == 'True'"""
-    bible_filename = "/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt"
-    cfg_file = "/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg"
-    cfg_name = "test.en"
-    model_name = "test_en_local"
-    output_dir = "/home/pablo/ownCloud/WordOrderBibles/GitHub/output/"
-    is_debug = True
+    is_debug = sys.argv[6] == 'True'
 
     bible_corpus = 'PBC'
 
