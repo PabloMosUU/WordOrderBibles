@@ -3,7 +3,7 @@ import torch
 import data
 from data import SplitData, prepare_sequence
 import torch.nn as nn
-import torch.nn.functional as F
+import torch.nn.functional as func
 import torch.optim as optim
 
 # Following https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
@@ -24,7 +24,7 @@ class TrainedModel(nn.Module):
         embeds = self.word_embeddings(sentence)
         lstm_out, _ = self.lstm(embeds.view(len(sentence), 1, -1))
         pred_space = self.hidden2pred(lstm_out.view(len(sentence), -1))
-        pred_scores = F.log_softmax(pred_space, dim=1)
+        pred_scores = func.log_softmax(pred_space, dim=1)
         return pred_scores
 
     def pred(self, sentence: torch.Tensor) -> torch.Tensor:
@@ -58,8 +58,8 @@ def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> Traine
             model.zero_grad()
 
             # Turn our inputs into tensors of word indices
-            sentence_in = prepare_sequence(sentence, word_to_ix)
-            targets = prepare_sequence(next_word_target(sentence), word_to_ix)
+            sentence_in = torch.tensor(prepare_sequence(sentence, word_to_ix), dtype=torch.long)
+            targets = torch.tensor(prepare_sequence(next_word_target(sentence), word_to_ix), dtype=torch.long)
 
             # Run our forward pass.
             next_word_scores = model(sentence_in)
@@ -79,7 +79,7 @@ def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dic
     :param ix_to_word: a dictionary from indices to words allowed in the output
     :return: a list of predictions, each of which is a list of tokens
     """
-    sentences_in = [prepare_sequence(seq, word_to_ix) for seq in sequences]
+    sentences_in = [torch.tensor(prepare_sequence(seq, word_to_ix), dtype=torch.long) for seq in sequences]
     sentences_out = [model.pred(sentence) for sentence in sentences_in]
     maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
     return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]

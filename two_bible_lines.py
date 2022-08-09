@@ -1,6 +1,7 @@
 import configparser
 
-from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config
+from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config, \
+    print_pred
 
 if __name__ == '__main__':
     training_data = [
@@ -38,7 +39,7 @@ if __name__ == '__main__':
     lm.save('output/simple_lm.pth')
 
     print('After training:')
-    #print_pred(lm, training_data, word_to_ix, ix_to_word)
+    print_pred(lm, training_data, word_to_ix, ix_to_word)
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data]))
 

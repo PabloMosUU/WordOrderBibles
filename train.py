@@ -335,8 +335,11 @@ def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) ->
 
     words = sample.copy()
     for i in range(1, len(sample)):
-        seq = prepare_sequence(words, word_ix)
-        trained_next_word_scores = model(seq)
+        # Batching is obligatory with my model
+        seq = torch.tensor([prepare_sequence(words, word_ix)], dtype=torch.long)
+        original_input_sequence_lengths = torch.tensor([len(seq[0])])
+        trained_next_word_scores = model(seq, original_input_sequence_lengths)[0]
+
         word_i = get_next_words(trained_next_word_scores, ix_word)[i-1]
         words[i] = word_i
     return np.array(words)
