@@ -265,8 +265,6 @@ def get_n_batches(dataset: list) -> int:
     # TODO: this function might belong to the data module
     return len(dataset)
 
-#def batch_loss()
-
 def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
@@ -276,6 +274,8 @@ def train_(model: nn.Module,
            validation_set: list,
            config: TrainConfig
            ) -> tuple:
+    if validation_set is None:
+        validation_set = []
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
@@ -297,11 +297,11 @@ def train_(model: nn.Module,
                     original_sequence_lengths
                 )
             )
+
         if validate:
             epoch_val_loss.append(validate_(model, validation_set, word_ix))
 
-        # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
-        avg_sentence_loss = sum(batch_losses) / n_batches_train
+        avg_sentence_loss = sum(sentence_losses) / len(corpus)
         epoch_train_loss.append(avg_sentence_loss)
 
     # Set the size of the training set in the model and the number of epochs
