@@ -32,10 +32,18 @@ class LSTMLanguageModel(nn.Module):
         self.validation_size = None
         self.n_epochs = None
 
-    def forward(self, sequence):
-        embeds = self.word_embeddings(sequence)
-        lstm_out, _ = self.lstm(embeds)
-        next_word_space = self.hidden2word(lstm_out)
+    def forward(self, sequences, original_sequence_lengths: torch.Tensor):
+        embeds = self.word_embeddings(sequences)
+
+        # pack_padded_sequence so that padded items in the sequence won't be shown to the LSTM
+        packed_embeddings = torch.nn.utils.rnn.pack_padded_sequence(embeds, original_sequence_lengths, batch_first=True)
+
+        lstm_out, _ = self.lstm(packed_embeddings)
+
+        # undo the packing operation
+        padded_lstm_outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
+
+        next_word_space = self.hidden2word(padded_lstm_outputs)
         next_word_scores = functional.log_softmax(next_word_space, dim=1)
         return next_word_scores
 
@@ -145,7 +153,8 @@ def train_batch(
         batch_ix: int,
         loss_function: nn.Module,
         optimizer: nn.Module,
-        clip_gradients: bool
+        clip_gradients: bool,
+        original_sequence_lengths: list
 ) -> float:
     """
     Train a model on a single batch
@@ -155,6 +164,7 @@ def train_batch(
     :param loss_function: the loss function we want to minimize
     :param optimizer: the optimizer used for training
     :param clip_gradients: whether we want to clip the gradients
+    :param original_sequence_lengths: a list of lists of sequence lengths
     :return: the average sample loss for this batch
     """
     # Pytorch accumulates gradients. We need to clear them out before each training instance
@@ -164,10 +174,10 @@ def train_batch(
     # Select the right batch and remove the first or last token for inputs or outputs
     X = select_batch(dataset, batch_ix, is_input=True)
     Y = select_batch(dataset, batch_ix, is_input=False)
+    original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
 
     # Run our forward pass. The output is a tensor because we are using batching
-    partial_pred_scores = model(X)
-    # TODO: pack_padded and pad_packed?
+    partial_pred_scores = model(X, original_input_sequence_lengths)
 
     # Compute the loss, gradients
     loss = loss_function(partial_pred_scores.permute(0, 2, 1), Y) # TODO: avoid computing the loss on pad
@@ -182,51 +192,26 @@ def train_batch(
 
     return loss.item()
 
-def train_sample_(
+def validate_batch(
         model: nn.Module,
-        sample: list,
-        word_ix: dict,
-        loss_function,
-        optimizer,
-        clip_gradients: bool
+        dataset: list,
+        batch_ix: int,
+        loss_function: nn.Module,
+        original_sequence_lengths: list
 ) -> float:
-    # Step 1. Remember that Pytorch accumulates gradients. We need to clear them out before each instance
-    model.train()
-    model.zero_grad()
-
-    # Step 2. Get our inputs ready for the network, that is, turn them into tensors of word indices.
-    sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
-    targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
-
-    # Step 3. Run our forward pass.
-    partial_pred_scores = model(sentence_in)
-
-    # Step 4. Compute the loss, gradients
-    loss = loss_function(partial_pred_scores, targets)
-    loss.backward()
-
-    # Clip gradients to avoid explosions
-    if clip_gradients:
-        nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
-
-    # update the parameters
-    optimizer.step()
-
-    return loss.item()
-
-def validate_sample_(model: nn.Module, sample: list, word_ix: dict, loss_function: nn.Module) -> float:
     # Put the model in evaluation mode
     model.eval()
 
-    # Get our inputs ready for the network, that is, turn them into tensors of word indices.
-    sentence_in = prepare_sequence([data.START_OF_VERSE_TOKEN] + sample, word_ix)
-    targets = prepare_sequence(sample + [data.END_OF_VERSE_TOKEN], word_ix)
+    # Select the right batch and remove the first or last token for inputs or outputs
+    X = select_batch(dataset, batch_ix, is_input=True)
+    Y = select_batch(dataset, batch_ix, is_input=False)
+    original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
 
-    # Run our forward pass.
-    partial_pred_scores = model(sentence_in)
+    # Run our forward pass
+    partial_pred_scores = model(X, original_input_sequence_lengths)
 
     # Compute the loss
-    loss = loss_function(partial_pred_scores, targets)
+    loss = loss_function(partial_pred_scores.permute(0, 2, 1), Y) # TODO: avoid computing the loss on pad
 
     return loss.item()
 
@@ -240,7 +225,7 @@ def pad_batch(sequences: list) -> list:
     padded = [seq + [data.PAD_TOKEN] * (max_length - len(seq)) for seq in sequences]
     return padded
 
-def batch(dataset: list, batch_size: int, word_index: dict) -> list:
+def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     """
     Breaks up a dataset into batches and puts them in tensor format for PyTorch to train
     :param dataset: a list of sequences, each of which is a list of tokens
@@ -251,16 +236,20 @@ def batch(dataset: list, batch_size: int, word_index: dict) -> list:
     # Break up into batches
     batches = [dataset[batch_size*i:batch_size*(i+1)] for i in range(int(np.ceil(len(dataset)/batch_size)))]
 
-    # Pad inside each batch using a padding token
-    padded_batches = [pad_batch(b) for b in batches]
+    # Sort sequences in each batch from longest to shortest
+    sorted_batches = [sorted(b, key=lambda seq: -len(seq)) for b in batches]
 
-    # Add start- and end-of-sentence tokens?
-    enclosed = [[[data.START_OF_VERSE_TOKEN] + seq + [data.END_OF_VERSE_TOKEN] for seq in b] for b in padded_batches]
+    # Add start- and end-of-sentence tokens
+    enclosed = [[[data.START_OF_VERSE_TOKEN] + seq + [data.END_OF_VERSE_TOKEN] for seq in b] for b in sorted_batches]
+    original_sequence_lengths = [[len(seq) for seq in b] for b in enclosed]
+
+    # Pad inside each batch using a padding token
+    padded_batches = [pad_batch(b) for b in enclosed]
 
     # Convert words to indices
-    as_indices = [[[word_index[w] for w in seq] for seq in b] for b in enclosed]
+    as_indices = [[[word_index[w] for w in seq] for seq in b] for b in padded_batches]
 
-    return as_indices
+    return as_indices, original_sequence_lengths
     # TODO: this function might belong to the data module
 
 def get_n_batches(dataset: list) -> int:
@@ -287,7 +276,7 @@ def train_(model: nn.Module,
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
-    X_train_batched = batch(corpus, config.batch_size, word_ix)
+    X_train_batched, original_sequence_lengths = batch(corpus, config.batch_size, word_ix)
     n_batches_train = get_n_batches(X_train_batched)
 
     for epoch in range(n_epochs):
@@ -296,7 +285,15 @@ def train_(model: nn.Module,
         batch_losses = []
         for batch_ix in range(n_batches_train):
             batch_losses.append(
-                train_batch(model, X_train_batched, batch_ix, loss_function, optimizer, config.clip_gradients)
+                train_batch(
+                    model,
+                    X_train_batched,
+                    batch_ix,
+                    loss_function,
+                    optimizer,
+                    config.clip_gradients,
+                    original_sequence_lengths
+                )
             )
         if validate:
             epoch_val_loss.append(validate_(model, validation_set, word_ix, loss_function))
@@ -312,15 +309,23 @@ def train_(model: nn.Module,
     return epoch_train_loss, epoch_val_loss
 
 def validate_(model: nn.Module, validation_set: list, word_ix: dict, loss_function: nn.Module) -> float:
+
+    X_val_batched, original_sequence_lengths = batch(validation_set, 1, word_ix)
+    n_batches_val = get_n_batches(X_val_batched)
+
     loss = 0
     with torch.no_grad():
-        for validation_sentence in validation_set:
-            loss += validate_sample_(model, validation_sentence, word_ix, loss_function)
+        for batch_ix in range(n_batches_val):
+            loss += validate_batch(model, X_val_batched, batch_ix, loss_function, original_sequence_lengths)
 
     # Set the size of the validation set in the model
     model.validation_size = len(validation_set)
 
-    return loss / len(validation_set)
+    # Compute the average loss per sequence
+    # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
+    avg_sentence_loss = loss / n_batches_val
+
+    return avg_sentence_loss
 
 def pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
     # Put the model in evaluation mode
