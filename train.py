@@ -184,7 +184,7 @@ def train_batch(
     partial_pred_scores = model(X, original_input_sequence_lengths)
 
     # Compute the loss, gradients
-    loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1)) # TODO: avoid computing the loss on pad
+    loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1))
     loss.backward()
 
     # Clip gradients to avoid explosions
@@ -214,7 +214,7 @@ def validate_batch(
     partial_pred_scores = model(X, original_input_sequence_lengths)
 
     # Compute the loss
-    loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1)) # TODO: avoid computing the loss on pad
+    loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1))
 
     return loss.item()
 
@@ -351,7 +351,7 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
         print(' '.join(prediction))
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
-    loss_function = nn.CrossEntropyLoss()
+    loss_function = nn.CrossEntropyLoss(ignore_index=word_index[data.PAD_TOKEN])
     model = LSTMLanguageModel(config.embedding_dim, config.hidden_dim, word_index, config.n_layers, loss_function)
     lr = config.learning_rate
     optimizer_name = config.optimizer
