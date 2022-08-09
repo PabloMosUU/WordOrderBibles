@@ -4,6 +4,7 @@ import re
 from collections.abc import MutableMapping
 from typing import Iterator
 
+import torch
 from sklearn.model_selection import train_test_split
 
 START_OF_VERSE_TOKEN = '<SOS>'
@@ -242,3 +243,8 @@ if __name__ == '__main__':
     output_filename = sys.argv[3]
     pre_processed_bible = process_bible(bible_filename, bible_corpus)
     pre_processed_bible.save(output_filename)
+
+
+def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
+    index_sequence = [to_ix[w] if w in to_ix else to_ix[data.UNKNOWN_TOKEN] for w in seq]
+    return torch.tensor(index_sequence, dtype=torch.long)

@@ -1,13 +1,13 @@
 import torch
 
 import data
-from data import SplitData
+from data import SplitData, prepare_sequence
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
 # Following https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
-from train import prepare_sequence, TrainConfig
+from train import TrainConfig
 
 
 class TrainedModel(nn.Module):

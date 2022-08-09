@@ -10,7 +10,9 @@ import torch
 import torch.nn.functional as functional
 import numpy as np
 import matplotlib.pyplot as plt
-import sys
+
+from data import prepare_sequence
+
 
 class LSTMLanguageModel(nn.Module):
 
@@ -247,7 +249,8 @@ def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     padded_batches = [pad_batch(b) for b in enclosed]
 
     # Convert words to indices
-    as_indices = [[[word_index[w] for w in seq] for seq in b] for b in padded_batches]
+    as_indices = [[[word_index[w] if w in word_index else word_index[data.UNKNOWN_TOKEN] for w in seq] for seq in b] \
+                  for b in padded_batches]
 
     return as_indices, original_sequence_lengths
     # TODO: this function might belong to the data module
@@ -397,11 +400,6 @@ def get_perplexity(loss: float) -> float:
     :return: the perplexity of the language model
     """
     return np.exp(loss)
-
-
-def prepare_sequence(seq: list, to_ix: dict) -> torch.Tensor:
-    index_sequence = [to_ix[w] if w in to_ix else to_ix[data.UNKNOWN_TOKEN] for w in seq]
-    return torch.tensor(index_sequence, dtype=torch.long)
 
 
 def to_train_config(config: configparser.ConfigParser, version: str) -> TrainConfig:
