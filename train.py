@@ -71,9 +71,10 @@ class LSTMLanguageModel(nn.Module):
 
     def log_gradients(self):
         if self.verbose:
-            print(f'LOG: embeddings {[p.grad for p in self.word_embeddings.parameters()]}')
-            print(f'LOG: lstm {[p.grad for p in self.lstm.parameters()]}')
-            print(f'LOG: hidden2word {[p.grad for p in self.hidden2word.parameters()]}')
+            for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
+                print(f'LOG: layer {k}')
+                for i, p in enumerate(v.parameters()):
+                    print(f'LOG: parameter {i} {[el for el in p.grad.detach().numpy()]}')
 
 class TrainConfig:
     def __init__(
