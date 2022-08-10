@@ -23,7 +23,7 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'simple.lm')
 
-    lm, nll_loss, lm_optimizer = initialize_model(word_to_ix, cfg)
+    lm, lm_optimizer = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train_(
         lm,

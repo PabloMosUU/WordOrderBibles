@@ -363,7 +363,7 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         optimizer = torch.optim.SGD(model.parameters(), lr=lr)
     else:
         raise ValueError(f'Unknown optimizer type {optimizer_name}')
-    return model, loss_function, optimizer
+    return model, optimizer
 
 def plot_losses(dataset_epoch_losses: dict) -> None:
     assert len(set([len(losses) for losses in dataset_epoch_losses.values()])) == 1
@@ -431,6 +431,14 @@ if __name__ == '__main__':
     output_dir = sys.argv[5]
     # In debug mode, only 50 verses are used for training
     is_debug = sys.argv[6] == 'True'
+    """
+    bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
+    cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg'
+    cfg_name = 'simpler.model.first'
+    model_name = 'simpler_model_first'
+    output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
+    is_debug = False
+    """
 
     bible_corpus = 'PBC'
 
@@ -455,7 +463,7 @@ if __name__ == '__main__':
     cfg = to_train_config(cfg, cfg_name)
     cfg.save(f'{output_dir}/{model_name}.cfg')
 
-    lm, nll_loss, sgd = initialize_model(word_to_ix, cfg)
+    lm, sgd = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train_(
         lm,
