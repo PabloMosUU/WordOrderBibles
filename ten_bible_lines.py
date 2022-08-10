@@ -29,14 +29,13 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
-    lm, nll_loss, ten_line_opt = initialize_model(word_to_ix, cfg)
+    lm, ten_line_opt = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train_(
         lm,
         training_data,
         word_to_ix,
         optimizer=ten_line_opt,
-        verbose=True,
         validate=True,
         validation_set=validation_data,
         config=cfg
