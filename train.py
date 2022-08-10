@@ -16,7 +16,15 @@ import sys
 
 class LSTMLanguageModel(nn.Module):
 
-    def __init__(self, embedding_dim, hidden_dim, word_index: dict, n_layers: int, loss_function: nn.Module):
+    def __init__(
+            self,
+            embedding_dim,
+            hidden_dim,
+            word_index: dict,
+            n_layers: int,
+            loss_function: nn.Module,
+            verbose: bool
+    ):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
         vocab_size = len(self.word_index)
@@ -34,6 +42,7 @@ class LSTMLanguageModel(nn.Module):
         self.train_size = None
         self.validation_size = None
         self.n_epochs = None
+        self.verbose = verbose
 
     def forward(self, sequences, original_sequence_lengths: torch.Tensor):
         embeds = self.word_embeddings(sequences)
@@ -60,6 +69,12 @@ class LSTMLanguageModel(nn.Module):
     def load(filename: str) -> nn.Module:
         return torch.load(filename)
 
+    def log_gradients(self):
+        if self.verbose:
+            print(f'LOG: embeddings {[p.grad for p in self.word_embeddings.parameters()]}')
+            print(f'LOG: lstm {[p.grad for p in self.lstm.parameters()]}')
+            print(f'LOG: hidden2word {[p.grad for p in self.hidden2word.parameters()]}')
+
 class TrainConfig:
     def __init__(
             self,
@@ -70,7 +85,8 @@ class TrainConfig:
             n_epochs: int,
             clip_gradients: bool,
             optimizer: str,
-            batch_size: int
+            batch_size: int,
+            verbose: bool
     ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -80,6 +96,7 @@ class TrainConfig:
         self.clip_gradients = clip_gradients
         self.optimizer = optimizer
         self.batch_size = batch_size
+        self.verbose = verbose
 
     def __repr__(self):
         return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
@@ -187,6 +204,9 @@ def train_batch(
     loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1))
     loss.backward()
 
+    # Log the gradients of the cost function for all model parameters
+    model.log_gradients()
+
     # Clip gradients to avoid explosions
     if clip_gradients:
         nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
@@ -269,7 +289,6 @@ def train_(model: nn.Module,
            corpus: list,
            word_ix: dict,
            optimizer,
-           verbose: bool,
            validate: bool,
            validation_set: list,
            config: TrainConfig
@@ -281,10 +300,12 @@ def train_(model: nn.Module,
     n_batches_train = get_n_batches(X_train_batched)
 
     for epoch in range(n_epochs):
-        if verbose and (int(n_epochs/10) == 0 or epoch % int(n_epochs/10) == 0):
-            print(f'INFO: processing epoch {epoch}')
+        if config.verbose:
+            print(f'LOG: epoch {epoch}')
         batch_losses = []
         for batch_ix in range(n_batches_train):
+            if config.verbose:
+                print(f'LOG: batch {batch_ix}')
             batch_losses.append(
                 train_batch(
                     model,
@@ -354,7 +375,14 @@ def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> 
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
     loss_function = nn.CrossEntropyLoss(ignore_index=word_index[data.PAD_TOKEN])
-    model = LSTMLanguageModel(config.embedding_dim, config.hidden_dim, word_index, config.n_layers, loss_function)
+    model = LSTMLanguageModel(
+        config.embedding_dim,
+        config.hidden_dim,
+        word_index,
+        config.n_layers,
+        loss_function,
+        config.verbose
+    )
     lr = config.learning_rate
     optimizer_name = config.optimizer
     if optimizer_name == 'AdamW':
@@ -413,7 +441,8 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         int(params['n_epochs']),
         params['clip_gradients'] == 'True',
         params['optimizer'],
-        int(params['batch_size'])
+        int(params['batch_size']),
+        params['verbose'] == 'True'
     )
 
 if __name__ == '__main__':
@@ -470,7 +499,6 @@ if __name__ == '__main__':
         training_data,
         word_to_ix,
         optimizer=sgd,
-        verbose=True,
         validate=True,
         validation_set=validation_data,
         config=cfg

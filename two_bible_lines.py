@@ -32,8 +32,7 @@ if __name__ == '__main__':
         lm_optimizer,
         validate=True,
         validation_set=validation_data,
-        config=cfg,
-        verbose=True
+        config=cfg
     )
 
     lm.save('output/simple_lm.pth')

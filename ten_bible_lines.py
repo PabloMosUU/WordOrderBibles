@@ -36,7 +36,6 @@ if __name__ == '__main__':
         training_data,
         word_to_ix,
         optimizer=ten_line_opt,
-        verbose=True,
         validate=True,
         validation_set=validation_data,
         config=cfg
