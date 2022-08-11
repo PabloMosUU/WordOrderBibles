@@ -115,7 +115,8 @@ class TrainConfig:
     def to_dict(self):
         return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
-                'optimizer': self.optimizer, 'batch_size': self.batch_size}
+                'optimizer': self.optimizer, 'batch_size': self.batch_size, 'verbose': self.verbose,
+                'gradient_logging': self.gradient_logging}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -220,7 +221,8 @@ def train_batch(
 
     # Clip gradients to avoid explosions
     if clip_gradients:
-        nn.utils.clip_grad_value_(model.parameters(), clip_value=0.5)
+        clip_value = 0.1
+        nn.utils.clip_grad_value_(model.parameters(), clip_value=clip_value)
 
     # update the parameters
     optimizer.step()
