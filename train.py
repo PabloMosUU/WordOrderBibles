@@ -43,6 +43,7 @@ class LSTMLanguageModel(nn.Module):
         self.validation_size = None
         self.n_epochs = None
         self.verbose = verbose
+        self.big_gradients = []
 
     def forward(self, sequences, original_sequence_lengths: torch.Tensor):
         embeds = self.word_embeddings(sequences)
@@ -69,12 +70,12 @@ class LSTMLanguageModel(nn.Module):
     def load(filename: str) -> nn.Module:
         return torch.load(filename)
 
-    def log_gradients(self):
+    def log_gradients(self, epoch: int, batch_ix: int):
         if self.verbose:
             for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
-                print(f'LOG: layer {k}')
                 for i, p in enumerate(v.parameters()):
-                    print(f'LOG: parameter {i} {[el for el in p.grad.detach().numpy()]}')
+                    if any(abs(p.grad.flatten()) > 0.5):
+                        self.big_gradients.append((epoch, batch_ix, k, i, np.array2string(p.grad.detach().numpy())))
 
 class TrainConfig:
     def __init__(
