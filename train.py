@@ -23,7 +23,7 @@ class LSTMLanguageModel(nn.Module):
             word_index: dict,
             n_layers: int,
             loss_function: nn.Module,
-            verbose: bool
+            log_gradients: bool
     ):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
@@ -42,7 +42,7 @@ class LSTMLanguageModel(nn.Module):
         self.train_size = None
         self.validation_size = None
         self.n_epochs = None
-        self.verbose = verbose
+        self.gradient_logging = log_gradients
         self.big_gradients = []
         self.epoch = -1
 
@@ -66,7 +66,7 @@ class LSTMLanguageModel(nn.Module):
 
     def save(self, filename: str) -> None:
         torch.save(self, filename)
-        if self.verbose:
+        if self.gradient_logging:
             with open(f'{filename}.log', 'w') as logfile:
                 logfile.write('\n'.join([', '.join([str(el) for el in t]) for t in self.big_gradients]))
 
@@ -75,7 +75,7 @@ class LSTMLanguageModel(nn.Module):
         return torch.load(filename)
 
     def log_gradients(self, batch_ix: int):
-        if self.verbose:
+        if self.gradient_logging:
             for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
                 for i, p in enumerate(v.parameters()):
                     gradients = abs(p.grad.flatten())
@@ -95,7 +95,8 @@ class TrainConfig:
             clip_gradients: bool,
             optimizer: str,
             batch_size: int,
-            verbose: bool
+            verbose: bool,
+            gradient_logging: bool
     ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -106,6 +107,7 @@ class TrainConfig:
         self.optimizer = optimizer
         self.batch_size = batch_size
         self.verbose = verbose
+        self.gradient_logging = gradient_logging
 
     def __repr__(self):
         return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
@@ -389,7 +391,7 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         word_index,
         config.n_layers,
         loss_function,
-        config.verbose
+        config.gradient_logging
     )
     lr = config.learning_rate
     optimizer_name = config.optimizer
@@ -450,7 +452,8 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         params['clip_gradients'] == 'True',
         params['optimizer'],
         int(params['batch_size']),
-        params['verbose'] == 'True'
+        params['verbose'] == 'True',
+        params['gradient_logging'] == 'True'
     )
 
 if __name__ == '__main__':
