@@ -44,6 +44,7 @@ class LSTMLanguageModel(nn.Module):
         self.n_epochs = None
         self.verbose = verbose
         self.big_gradients = []
+        self.epoch = -1
 
     def forward(self, sequences, original_sequence_lengths: torch.Tensor):
         embeds = self.word_embeddings(sequences)
@@ -65,17 +66,23 @@ class LSTMLanguageModel(nn.Module):
 
     def save(self, filename: str) -> None:
         torch.save(self, filename)
+        if self.verbose:
+            with open(f'{filename}.log', 'w') as logfile:
+                logfile.write('\n'.join([', '.join([str(el) for el in t]) for t in self.big_gradients]))
 
     @staticmethod
     def load(filename: str) -> nn.Module:
         return torch.load(filename)
 
-    def log_gradients(self, epoch: int, batch_ix: int):
+    def log_gradients(self, batch_ix: int):
         if self.verbose:
             for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
                 for i, p in enumerate(v.parameters()):
-                    if any(abs(p.grad.flatten()) > 0.5):
-                        self.big_gradients.append((epoch, batch_ix, k, i, np.array2string(p.grad.detach().numpy())))
+                    gradients = abs(p.grad.flatten())
+                    if any(gradients > 0.5):
+                        self.big_gradients.append(
+                            (self.epoch, batch_ix, k, i, np.array2string(gradients.detach().numpy()))
+                        )
 
 class TrainConfig:
     def __init__(
@@ -207,7 +214,7 @@ def train_batch(
     loss.backward()
 
     # Log the gradients of the cost function for all model parameters
-    model.log_gradients()
+    model.log_gradients(batch_ix)
 
     # Clip gradients to avoid explosions
     if clip_gradients:
@@ -302,12 +309,11 @@ def train_(model: nn.Module,
     n_batches_train = get_n_batches(X_train_batched)
 
     for epoch in range(n_epochs):
+        model.epoch = epoch
         if config.verbose:
             print(f'LOG: epoch {epoch}')
         batch_losses = []
         for batch_ix in range(n_batches_train):
-            if config.verbose:
-                print(f'LOG: batch {batch_ix}')
             batch_losses.append(
                 train_batch(
                     model,
