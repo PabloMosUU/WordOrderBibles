@@ -220,7 +220,7 @@ def train_batch(
 
     # Clip gradients to avoid explosions
     if clip_gradients:
-        nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0, norm_type=2)
+        nn.utils.clip_grad_value_(model.parameters(), clip_value=0.5)
 
     # update the parameters
     optimizer.step()
