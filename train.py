@@ -327,8 +327,11 @@ def train_(model: nn.Module,
                 )
             )
 
+        if config.verbose:
+            print(f'LOG: train_batch_losses {batch_losses}')
+
         if validate:
-            epoch_val_loss.append(validate_(model, validation_set, word_ix, config.batch_size))
+            epoch_val_loss.append(validate_(model, validation_set, word_ix, config.batch_size, config.verbose))
 
         # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
         avg_sentence_loss = sum(batch_losses) / n_batches_train
@@ -340,22 +343,25 @@ def train_(model: nn.Module,
 
     return epoch_train_loss, epoch_val_loss
 
-def validate_(model: nn.Module, validation_set: list, word_ix: dict, batch_size: int) -> float:
+def validate_(model: nn.Module, validation_set: list, word_ix: dict, batch_size: int, verbose: bool) -> float:
 
     X_val_batched, original_sequence_lengths = batch(validation_set, batch_size, word_ix)
     n_batches_val = get_n_batches(X_val_batched)
 
-    loss = 0
+    batch_losses = []
     with torch.no_grad():
         for batch_ix in range(n_batches_val):
-            loss += validate_batch(model, X_val_batched, batch_ix, original_sequence_lengths)
+            batch_losses.append(validate_batch(model, X_val_batched, batch_ix, original_sequence_lengths))
 
     # Set the size of the validation set in the model
     model.validation_size = len(validation_set)
 
     # Compute the average loss per sequence
     # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
-    avg_sentence_loss = loss / n_batches_val
+    avg_sentence_loss = sum(batch_losses) / n_batches_val
+
+    if verbose:
+        print(f'LOG: validation_batch_losses {batch_losses}')
 
     return avg_sentence_loss
 
@@ -477,7 +483,7 @@ if __name__ == '__main__':
     cfg_name = 'simpler.model.first'
     model_name = 'simpler_model_first'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
-    is_debug = False
+    is_debug = True
     """
 
     bible_corpus = 'PBC'
