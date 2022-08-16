@@ -35,7 +35,8 @@ if __name__ == '__main__':
         config=cfg
     )
 
-    lm.save('output/simple_lm.pth')
+    model_name = 'simple_lm'
+    lm.save(f'output/{model_name}.pth')
 
     print('After training:')
     print_pred(lm, training_data, word_to_ix, ix_to_word)
@@ -43,7 +44,7 @@ if __name__ == '__main__':
     print('\n'.join([' '.join(sentence) for sentence in training_data]))
 
     simple_losses = {k:v for k, v in {'train': train_losses, 'validation': validation_losses}.items() if v}
-    save_losses(simple_losses, 'output/loss_vs_epoch.txt')
+    save_losses(simple_losses, f'output/{model_name}_losses.txt')
 
     if validation_losses:
         plot_losses({'train': train_losses, 'validation': validation_losses})
