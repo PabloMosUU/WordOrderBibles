@@ -22,8 +22,7 @@ class LSTMLanguageModel(nn.Module):
             hidden_dim,
             word_index: dict,
             n_layers: int,
-            loss_function: nn.Module,
-            log_gradients: bool
+            loss_function: nn.Module
     ):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
@@ -37,14 +36,6 @@ class LSTMLanguageModel(nn.Module):
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
-
-        # Variables to store the number of training and validation data points and the number of epochs
-        self.train_size = None
-        self.validation_size = None
-        self.n_epochs = None
-        self.gradient_logging = log_gradients
-        self.big_gradients = []
-        self.epoch = -1
 
     def forward(self, sequences, original_sequence_lengths: torch.Tensor):
         embeds = self.word_embeddings(sequences)
@@ -66,23 +57,13 @@ class LSTMLanguageModel(nn.Module):
 
     def save(self, filename: str) -> None:
         torch.save(self, filename)
-        if self.gradient_logging:
-            with open(f'{filename}.log', 'w') as logfile:
-                logfile.write('\n'.join([', '.join([str(el) for el in t]) for t in self.big_gradients]))
 
     @staticmethod
     def load(filename: str) -> nn.Module:
         return torch.load(filename)
 
     def log_gradients(self, batch_ix: int):
-        if self.gradient_logging:
-            for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
-                for i, p in enumerate(v.parameters()):
-                    gradients = abs(p.grad.flatten())
-                    if any(gradients > 0.5):
-                        self.big_gradients.append(
-                            (self.epoch, batch_ix, k, i, np.array2string(gradients.detach().numpy()))
-                        )
+        raise NotImplementedError()
 
 class TrainConfig:
     def __init__(
@@ -188,6 +169,7 @@ def train_batch(
         batch_ix: int,
         optimizer: nn.Module,
         clip_gradients: bool,
+        log_gradients: bool,
         original_sequence_lengths: list
 ) -> float:
     """
@@ -197,6 +179,7 @@ def train_batch(
     :param batch_ix: the index of the batch we want to use for training
     :param optimizer: the optimizer used for training
     :param clip_gradients: whether we want to clip the gradients
+    :param log_gradients: whether we want to log gradients for debugging purposes
     :param original_sequence_lengths: a list of lists of sequence lengths
     :return: the average sample loss for this batch
     """
@@ -217,7 +200,8 @@ def train_batch(
     loss.backward()
 
     # Log the gradients of the cost function for all model parameters
-    model.log_gradients(batch_ix)
+    if log_gradients:
+        model.log_gradients(batch_ix)
 
     # Clip gradients to avoid explosions
     if clip_gradients:
@@ -325,6 +309,7 @@ def train_(model: nn.Module,
                     batch_ix,
                     optimizer,
                     config.clip_gradients,
+                    config.gradient_logging,
                     original_sequence_lengths
                 )
             )
@@ -398,8 +383,7 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         config.hidden_dim,
         word_index,
         config.n_layers,
-        loss_function,
-        config.gradient_logging
+        loss_function
     )
     lr = config.learning_rate
     optimizer_name = config.optimizer
