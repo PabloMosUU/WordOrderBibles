@@ -7,7 +7,6 @@ import configparser
 import data
 import torch.nn as nn
 import torch
-import torch.nn.functional as functional
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -57,9 +56,7 @@ class LSTMLanguageModel(nn.Module):
         # undo the packing operation
         padded_lstm_outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
 
-        next_word_space = self.hidden2word(padded_lstm_outputs)
-        next_word_scores = functional.log_softmax(next_word_space, dim=1)
-        return next_word_scores
+        return self.hidden2word(padded_lstm_outputs)
 
     def loss(self, Y_true, Y_pred):
         return self.loss_function(Y_pred, Y_true)
