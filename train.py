@@ -63,7 +63,14 @@ class LSTMLanguageModel(nn.Module):
         return torch.load(filename)
 
     def log_gradients(self, batch_ix: int):
-        raise NotImplementedError()
+        for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
+            for i, p in enumerate(v.parameters()):
+                gradients = p.grad.flatten()
+                # any(gradients > 0.5)
+                # np.array2string(gradients.detach().numpy())
+        # make sure gradient exists for every component in network
+        # print average gradient for each group of parameters
+        #raise NotImplementedError()
 
 class TrainConfig:
     def __init__(
