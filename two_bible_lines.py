@@ -1,6 +1,6 @@
 import configparser
 
-from LstmLM.train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config, \
+from lstmlm.train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config, \
     print_pred
 
 if __name__ == '__main__':

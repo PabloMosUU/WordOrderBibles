@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-from LstmLM import train
+from lstmlm import train
 
 
 class TestTrain(unittest.TestCase):
