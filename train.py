@@ -10,7 +10,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from data import prepare_sequence
+from data import prepare_sequence, batch, get_n_batches
 import sys
 
 class LSTMLanguageModel(nn.Module):
@@ -248,52 +248,6 @@ def validate_batch(
 
     return loss.item()
 
-def pad_batch(sequences: list) -> list:
-    """
-    Given a list of sequences, pad all but one to have the same length as the longest one
-    :param sequences: a list of sequences
-    :return: the same sequences with a padding symbol added accordingly
-    """
-    max_length = max([len(el) for el in sequences])
-    padded = [seq + [data.PAD_TOKEN] * (max_length - len(seq)) for seq in sequences]
-    return padded
-
-def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
-    """
-    Breaks up a dataset into batches and puts them in tensor format for PyTorch to train
-    :param dataset: a list of sequences, each of which is a list of tokens
-    :param batch_size: the desired batch size
-    :param word_index: a map from words to indices
-    :return: a tensor containing the entire dataset separated into batches, with appropriate padding
-    """
-    # Break up into batches
-    batches = [dataset[batch_size*i:batch_size*(i+1)] for i in range(int(np.ceil(len(dataset)/batch_size)))]
-
-    # Sort sequences in each batch from longest to shortest
-    sorted_batches = [sorted(b, key=lambda seq: -len(seq)) for b in batches]
-
-    # Add start- and end-of-sentence tokens
-    enclosed = [[[data.START_OF_VERSE_TOKEN] + seq + [data.END_OF_VERSE_TOKEN] for seq in b] for b in sorted_batches]
-    original_sequence_lengths = [[len(seq) for seq in b] for b in enclosed]
-
-    # Pad inside each batch using a padding token
-    padded_batches = [pad_batch(b) for b in enclosed]
-
-    # Convert words to indices
-    as_indices = [[[word_index[w] if w in word_index else word_index[data.UNKNOWN_TOKEN] for w in seq] for seq in b] \
-                  for b in padded_batches]
-
-    return as_indices, original_sequence_lengths
-    # TODO: this function might belong to the data module
-
-def get_n_batches(dataset: list) -> int:
-    """
-    From the relevant dimension, extract the number of batches
-    :param dataset: a dataset as returned by the batch method, in tensor format
-    :return: the number of batches
-    """
-    # TODO: this function might belong to the data module
-    return len(dataset)
 
 def train_(model: nn.Module,
            corpus: list,
