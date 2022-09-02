@@ -22,6 +22,7 @@ class LSTMLanguageModel(nn.Module):
             word_index: dict,
             n_layers: int,
             loss_function: nn.Module,
+            dropout: float,
             log_gradients: bool
     ):
         super(LSTMLanguageModel, self).__init__()
@@ -31,7 +32,7 @@ class LSTMLanguageModel(nn.Module):
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
         self.loss_function = loss_function
 
         # The linear layer that maps from hidden state space to next-word space
@@ -92,6 +93,7 @@ class TrainConfig:
             clip_gradients: bool,
             optimizer: str,
             batch_size: int,
+            dropout: float,
             verbose: bool,
             gradient_logging: bool
     ):
@@ -103,6 +105,7 @@ class TrainConfig:
         self.clip_gradients = clip_gradients
         self.optimizer = optimizer
         self.batch_size = batch_size
+        self.dropout = dropout
         self.verbose = verbose
         self.gradient_logging = gradient_logging
 
@@ -112,8 +115,8 @@ class TrainConfig:
     def to_dict(self):
         return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
-                'optimizer': self.optimizer, 'batch_size': self.batch_size, 'verbose': self.verbose,
-                'gradient_logging': self.gradient_logging}
+                'optimizer': self.optimizer, 'batch_size': self.batch_size, 'dropout': self.dropout,
+                'verbose': self.verbose, 'gradient_logging': self.gradient_logging}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -350,6 +353,7 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         word_index,
         config.n_layers,
         loss_function,
+        config.dropout,
         config.gradient_logging
     )
     lr = config.learning_rate
@@ -411,6 +415,7 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         params['clip_gradients'] == 'True',
         params['optimizer'],
         int(params['batch_size']),
+        float(params['dropout']),
         params['verbose'] == 'True',
         params['gradient_logging'] == 'True'
     )
