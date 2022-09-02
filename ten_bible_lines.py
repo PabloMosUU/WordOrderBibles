@@ -5,8 +5,8 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
-import train
-from train import get_word_index, invert_dict, initialize_model, train_, to_train_config
+from lstmlm import train
+from lstmlm.train import get_word_index, invert_dict, initialize_model, train_, to_train_config
 
 if __name__ == '__main__':
     bible_corpus = 'PBC'

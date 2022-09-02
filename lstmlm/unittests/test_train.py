@@ -2,7 +2,7 @@ import unittest
 
 import torch
 
-import train
+from lstmlm import train
 
 class TestTrain(unittest.TestCase):
     def test_select_batch_input(self):
