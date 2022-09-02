@@ -7,7 +7,7 @@ import torch.nn.functional as func
 import torch.optim as optim
 
 # Following https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
-from train import TrainConfig
+from LstmLM.train import TrainConfig
 
 
 class TrainedModel(nn.Module):
