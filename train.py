@@ -92,6 +92,7 @@ class TrainConfig:
             n_epochs: int,
             clip_gradients: bool,
             optimizer: str,
+            weight_decay: float,
             batch_size: int,
             dropout: float,
             verbose: bool,
@@ -104,6 +105,7 @@ class TrainConfig:
         self.n_epochs = n_epochs
         self.clip_gradients = clip_gradients
         self.optimizer = optimizer
+        self.weight_decay = weight_decay
         self.batch_size = batch_size
         self.dropout = dropout
         self.verbose = verbose
@@ -115,8 +117,8 @@ class TrainConfig:
     def to_dict(self):
         return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
-                'optimizer': self.optimizer, 'batch_size': self.batch_size, 'dropout': self.dropout,
-                'verbose': self.verbose, 'gradient_logging': self.gradient_logging}
+                'optimizer': self.optimizer, 'weight_decay': self.weight_decay, 'batch_size': self.batch_size,
+                'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -359,9 +361,9 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
     lr = config.learning_rate
     optimizer_name = config.optimizer
     if optimizer_name == 'AdamW':
-        optimizer = torch.optim.AdamW(model.parameters(), lr=lr)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=config.weight_decay)
     elif optimizer_name == 'SGD':
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr)
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=config.weight_decay)
     else:
         raise ValueError(f'Unknown optimizer type {optimizer_name}')
     return model, optimizer
@@ -414,6 +416,7 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         int(params['n_epochs']),
         params['clip_gradients'] == 'True',
         params['optimizer'],
+        float(params['weight_decay']),
         int(params['batch_size']),
         float(params['dropout']),
         params['verbose'] == 'True',
@@ -437,9 +440,9 @@ if __name__ == '__main__':
     is_debug = sys.argv[6] == 'True'
     """
     bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
-    cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg'
-    cfg_name = 'simpler.model.first'
-    model_name = 'simpler_model_first'
+    cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/dropout.cfg'
+    cfg_name = 'dropout01'
+    model_name = 'dropout01'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
     is_debug = True
     """
