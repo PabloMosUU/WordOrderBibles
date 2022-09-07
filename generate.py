@@ -91,8 +91,12 @@ def beam_search_decoder(model: LSTMLanguageModel, seed: list, k: int, length: in
         if len(sequences[0][0]) - len(seed) == length:
             break
         elif length < 0:
+            # TODO
             raise NotImplementedError("We do not handle termination at EOS symbol yet")
     return sequences
+
+
+# TODO: write a function generate random text by seeding with a random word based on the starting probabilities
 
 
 if __name__ == '__main__':
