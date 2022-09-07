@@ -1,4 +1,5 @@
 import unittest
+from collections import Counter
 from unittest.mock import patch, MagicMock
 
 import numpy as np
@@ -64,6 +65,18 @@ class TestGenerate(unittest.TestCase):
                     ('f', -15.393530171377245), ('g', -10.735630171377245)]
         self.assertTrue(all([expected[i][0] == lp[0] and almost_equal(expected[i][1], lp[1]) \
                              for i, lp in enumerate(log_probabilities)]))
+
+
+    def test_generate_first_words(self):
+        # Since this is random, we can only check that a certain word is produced more or less at the right rate
+        model = MagicMock(return_value=tensor([[[2.0133, 6.5948, 3.9017, 2.2569, 2.2569, 1.3556, 0.0311, 0.6919]]]))
+        model.word_index = {str(i): i for i in range(7)}
+        model.word_index[data.START_OF_VERSE_TOKEN] = 7
+        words = generate._generate_first_words(model, 1000)
+        word_counter = Counter(words)
+        real = word_counter['2']
+        self.assertTrue(30 < real < 150)
+        self.assertEqual('1', word_counter.most_common(1)[0][0])
 
 
 if __name__ == "__main__":
