@@ -1,7 +1,7 @@
 import configparser
 
-from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config, \
-    print_pred
+from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config
+from generate import print_pred
 
 if __name__ == '__main__':
     training_data = [
