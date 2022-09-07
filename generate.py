@@ -50,7 +50,7 @@ def _get_next_word_log_probabilities(model: LSTMLanguageModel, sample: list, wor
     # Batching is obligatory with my model
     seq = torch.tensor([prepare_sequence(words, word_ix)], dtype=torch.long)
     original_input_sequence_lengths = torch.tensor([len(seq[0])])
-    trained_next_word_scores = log_softmax(model(seq, original_input_sequence_lengths)[0][-1])
+    trained_next_word_scores = log_softmax(model(seq, original_input_sequence_lengths)[0][-1], dim=0)
 
     return [(ix_word[i], lp.item()) for i, lp in enumerate(trained_next_word_scores)]
 
@@ -96,6 +96,8 @@ def beam_search_decoder(model: LSTMLanguageModel, seed: list, k: int, length: in
 
 
 if __name__ == '__main__':
-    model_name = 'test.loss.fix'
+    model_name = 'dropout00'
     old_model = LSTMLanguageModel.load(f'output/{model_name}.pth')
     print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 3, 10))
+    print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 1, 10))
+    print(pred(old_model, [[data.START_OF_VERSE_TOKEN] * 11], old_model.word_index, train.invert_dict(old_model.word_index)))
