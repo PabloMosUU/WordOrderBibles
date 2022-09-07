@@ -5,15 +5,9 @@ from torch import nn as nn
 from data import prepare_sequence
 
 
-def pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> list:
-    with torch.no_grad():
-        return [_pred_sample(model, seq, word_ix, ix_word) for seq in corpus]
-
-
-def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> None:
-    predictions = pred(model, corpus, word_ix, ix_word)
-    for prediction in predictions:
-        print(' '.join(prediction))
+def _get_next_words(scores: torch.Tensor, ix_next_word: dict) -> np.ndarray:
+    pred_ixs = scores.max(dim=1).indices.numpy()
+    return np.vectorize(lambda ix: ix_next_word[ix])(pred_ixs)
 
 
 def _pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
@@ -32,6 +26,12 @@ def _pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -
     return np.array(words)
 
 
-def _get_next_words(scores: torch.Tensor, ix_next_word: dict) -> np.ndarray:
-    pred_ixs = scores.max(dim=1).indices.numpy()
-    return np.vectorize(lambda ix: ix_next_word[ix])(pred_ixs)
+def pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> list:
+    with torch.no_grad():
+        return [_pred_sample(model, seq, word_ix, ix_word) for seq in corpus]
+
+
+def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> None:
+    predictions = pred(model, corpus, word_ix, ix_word)
+    for prediction in predictions:
+        print(' '.join(prediction))
