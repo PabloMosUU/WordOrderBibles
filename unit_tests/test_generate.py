@@ -30,8 +30,12 @@ class TestGenerate(unittest.TestCase):
         length = 10
         with patch('generate._get_next_word_log_probabilities', side_effect=mock_get_next_word_log_probabilities):
             generated_words = generate.beam_search_decoder(model, seed, k, length)
-        self.assertEqual([4, 0, 4, 0, 4, 0, 4, 0, 4, 0], generated_words[0][-length:])
-        self.assertEqual(6.931471805599453, generated_words[1])
+        expected = [[[4, 0, 4, 0, 4, 0, 4, 0, 4, 0], 6.931471805599453],
+                    [[4, 0, 4, 0, 4, 0, 4, 0, 4, 1], 7.154615356913663],
+                    [[4, 0, 4, 0, 4, 0, 4, 0, 3, 0], 7.154615356913663]]
+        for i, expected_candidate in enumerate(expected):
+            self.assertEqual(expected_candidate[0], generated_words[i][0][-length:])
+            self.assertEqual(expected_candidate[1], generated_words[i][1])
 
 
 if __name__ == "__main__":
