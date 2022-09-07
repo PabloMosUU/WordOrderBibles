@@ -70,7 +70,7 @@ class LSTMLanguageModel(nn.Module):
                 logfile.write('\n'.join([', '.join([str(el) for el in t]) for t in self.big_gradients]))
 
     @staticmethod
-    def load(filename: str) -> nn.Module:
+    def load(filename: str):
         return torch.load(filename)
 
     def log_gradients(self, batch_ix: int):
