@@ -23,6 +23,7 @@ class LSTMLanguageModel(nn.Module):
             word_index: dict,
             n_layers: int,
             loss_function: nn.Module,
+            avg_loss_per_token: bool,
             dropout: float,
             log_gradients: bool
     ):
@@ -35,6 +36,7 @@ class LSTMLanguageModel(nn.Module):
         # with dimensionality hidden_dim.
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
         self.loss_function = loss_function
+        self.avg_loss_per_token = avg_loss_per_token
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
@@ -97,7 +99,8 @@ class TrainConfig:
             batch_size: int,
             dropout: float,
             verbose: bool,
-            gradient_logging: bool
+            gradient_logging: bool,
+            avg_loss_per_token: bool
     ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -111,6 +114,7 @@ class TrainConfig:
         self.dropout = dropout
         self.verbose = verbose
         self.gradient_logging = gradient_logging
+        self.avg_loss_per_token = avg_loss_per_token
 
     def __repr__(self):
         return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
@@ -119,7 +123,8 @@ class TrainConfig:
         return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
                 'optimizer': self.optimizer, 'weight_decay': self.weight_decay, 'batch_size': self.batch_size,
-                'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging}
+                'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging,
+                'avg_loss_per_verse': self.avg_loss_per_token}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -287,11 +292,14 @@ def train_(model: nn.Module,
             print(f'LOG: train_batch_losses {batch_losses}')
 
         if validate:
-            epoch_val_loss.append(validate_(model, validation_set, word_ix, config.batch_size, config.verbose))
+            epoch_val_loss.append(
+                _validate(model, validation_set, word_ix, config.batch_size, config.verbose, config.avg_loss_per_token)
+            )
 
-        # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
-        avg_sentence_loss = sum(batch_losses) / n_batches_train
-        epoch_train_loss.append(avg_sentence_loss)
+        if config.avg_loss_per_token:
+            epoch_train_loss.append(sum(batch_losses) / n_batches_train)
+        else:
+            epoch_train_loss.append(sum(batch_losses) / len(corpus))
 
     # Set the size of the training set in the model and the number of epochs
     model.train_size = len(corpus)
@@ -299,7 +307,8 @@ def train_(model: nn.Module,
 
     return epoch_train_loss, epoch_val_loss
 
-def validate_(model: nn.Module, validation_set: list, word_ix: dict, batch_size: int, verbose: bool) -> float:
+def _validate(model: nn.Module, validation_set: list, word_ix: dict, batch_size: int, verbose: bool,
+              avg_loss_per_token: bool) -> float:
 
     X_val_batched, original_sequence_lengths = batch(validation_set, batch_size, word_ix)
     n_batches_val = get_n_batches(X_val_batched)
@@ -312,24 +321,25 @@ def validate_(model: nn.Module, validation_set: list, word_ix: dict, batch_size:
     # Set the size of the validation set in the model
     model.validation_size = len(validation_set)
 
-    # Compute the average loss per sequence
-    # TODO: consider computing the absolute batch loss, and not the average verse loss, then divide by corpus size
-    avg_sentence_loss = sum(batch_losses) / n_batches_val
-
     if verbose:
         print(f'LOG: validation_batch_losses {batch_losses}')
 
-    return avg_sentence_loss
+    if avg_loss_per_token:
+        return sum(batch_losses) / n_batches_val
+    else:
+        return sum(batch_losses) / len(validation_set)
 
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
-    loss_function = nn.CrossEntropyLoss(ignore_index=word_index[data.PAD_TOKEN])
+    reduction = 'mean' if config.avg_loss_per_token else 'sum'
+    loss_function = nn.CrossEntropyLoss(ignore_index=word_index[data.PAD_TOKEN], reduction=reduction)
     model = LSTMLanguageModel(
         config.embedding_dim,
         config.hidden_dim,
         word_index,
         config.n_layers,
         loss_function,
+        config.avg_loss_per_token,
         config.dropout,
         config.gradient_logging
     )
@@ -343,12 +353,12 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         raise ValueError(f'Unknown optimizer type {optimizer_name}')
     return model, optimizer
 
-def plot_losses(dataset_epoch_losses: dict) -> None:
+def plot_losses(dataset_epoch_losses: dict, avg_loss_per_token: bool) -> None:
     assert len(set([len(losses) for losses in dataset_epoch_losses.values()])) == 1
     for dataset, losses in dataset_epoch_losses.items():
         plt.plot(range(len(losses)), losses, label=dataset)
     plt.xlabel('Epoch')
-    plt.ylabel('Avg token loss')
+    plt.ylabel(f'Avg {"token" if avg_loss_per_token else "sentence"} loss')
     plt.legend()
     plt.show()
 
@@ -395,7 +405,8 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         int(params['batch_size']),
         float(params['dropout']),
         params['verbose'] == 'True',
-        params['gradient_logging'] == 'True'
+        params['gradient_logging'] == 'True',
+        params['avg_loss_per_token'] == 'True'
     )
 
 if __name__ == '__main__':
@@ -433,7 +444,8 @@ if __name__ == '__main__':
     training_data = split_bible.train_data
     validation_data = split_bible.hold_out_data
     if is_debug:
-        training_data, validation_data = [data_segment[:50] for data_segment in (training_data, validation_data)]
+        training_data, validation_data = [[sent[:3] for sent in data_segment[:50]] \
+                                          for data_segment in (training_data, validation_data)]
 
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)

@@ -47,6 +47,6 @@ if __name__ == '__main__':
     save_losses(simple_losses, f'output/{model_name}_losses.txt')
 
     if validation_losses:
-        plot_losses({'train': train_losses, 'validation': validation_losses})
+        plot_losses({'train': train_losses, 'validation': validation_losses}, True)
     else:
-        plot_losses({'train': train_losses})
+        plot_losses({'train': train_losses}, True)
