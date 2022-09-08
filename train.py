@@ -348,7 +348,7 @@ def plot_losses(dataset_epoch_losses: dict) -> None:
     for dataset, losses in dataset_epoch_losses.items():
         plt.plot(range(len(losses)), losses, label=dataset)
     plt.xlabel('Epoch')
-    plt.ylabel('Avg verse loss')
+    plt.ylabel('Avg token loss')
     plt.legend()
     plt.show()
 
@@ -415,9 +415,9 @@ if __name__ == '__main__':
     is_debug = sys.argv[6] == 'True'
     """
     bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
-    cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/dropout.cfg'
-    cfg_name = 'dropout01'
-    model_name = 'dropout01'
+    cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg'
+    cfg_name = 'simple.lm'
+    model_name = 'simple_lm'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
     is_debug = True
     """
@@ -433,8 +433,7 @@ if __name__ == '__main__':
     training_data = split_bible.train_data
     validation_data = split_bible.hold_out_data
     if is_debug:
-        training_data = training_data[:50]
-        validation_data = validation_data[:10]
+        training_data, validation_data = [data_segment[:50] for data_segment in (training_data, validation_data)]
 
     word_to_ix = get_word_index(training_data)
     ix_to_word = invert_dict(word_to_ix)
