@@ -23,6 +23,7 @@ class LSTMLanguageModel(nn.Module):
             word_index: dict,
             n_layers: int,
             loss_function: nn.Module,
+            avg_loss_per_token: bool,
             dropout: float,
             log_gradients: bool
     ):
@@ -35,6 +36,7 @@ class LSTMLanguageModel(nn.Module):
         # with dimensionality hidden_dim.
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
         self.loss_function = loss_function
+        self.avg_loss_per_token = avg_loss_per_token
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
@@ -337,6 +339,7 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         word_index,
         config.n_layers,
         loss_function,
+        config.avg_loss_per_token,
         config.dropout,
         config.gradient_logging
     )
@@ -350,12 +353,12 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         raise ValueError(f'Unknown optimizer type {optimizer_name}')
     return model, optimizer
 
-def plot_losses(dataset_epoch_losses: dict) -> None:
+def plot_losses(dataset_epoch_losses: dict, avg_loss_per_token: bool) -> None:
     assert len(set([len(losses) for losses in dataset_epoch_losses.values()])) == 1
     for dataset, losses in dataset_epoch_losses.items():
         plt.plot(range(len(losses)), losses, label=dataset)
     plt.xlabel('Epoch')
-    plt.ylabel('Avg token loss')
+    plt.ylabel(f'Avg {"token" if avg_loss_per_token else "sentence"} loss')
     plt.legend()
     plt.show()
 
