@@ -101,9 +101,11 @@ class LSTMLanguageModel(nn.Module):
         # now iterate over next words and get their probabilities
         log_p_sum = 0
         for i, word in enumerate(index_seq[1:]):
+            if word == self.word_index[data.PAD_TOKEN]:
+                break
             if not force_sentence_restart or word.item() != self.word_index[data.START_OF_VERSE_TOKEN]:
                 log_p_sum += probabilities[i][word].item()
-        return np.exp(-log_p_sum/len(index_seq))
+        return np.exp(-log_p_sum/len([el for el in index_seq if el.item() != self.word_index[data.PAD_TOKEN]]))
 
 
 class TrainConfig:

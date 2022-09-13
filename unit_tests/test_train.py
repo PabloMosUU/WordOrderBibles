@@ -1,11 +1,52 @@
 import unittest
-from unittest import mock
 
 import numpy as np
 import torch
 
 import data
 import train
+
+class SimpleModel(train.LSTMLanguageModel):
+    def __init__(self, embedding_dim, hidden_dim, n_layers: int, loss_function: torch.nn.Module,
+                 avg_loss_per_token: bool, dropout: float, log_gradients: bool):
+        # Take a simple language model
+        # SOS -> the (80%), a (20%)
+        # the, a -> dog (40%), cat (60%)
+        # dog -> barked (90%), walked (10%)
+        # cat -> meowed (80%), walked (20%)
+        # walked, barked, meowed -> EOS (100%)
+        # EOS -> SOS (100%)
+        self.all_words = [data.START_OF_VERSE_TOKEN, data.END_OF_VERSE_TOKEN, data.PAD_TOKEN] + \
+                         "the a dog cat barked walked meowed".split()
+        self.word_index = {word: i for i, word in enumerate(self.all_words)}
+        super().__init__(embedding_dim, hidden_dim, self.word_index, n_layers, loss_function, avg_loss_per_token,
+                         dropout, log_gradients)
+        self.probs = {data.START_OF_VERSE_TOKEN: {'the': 0.8, 'a': 0.2},
+                        'the': {'dog': 0.4, 'cat': 0.6},
+                        'a': {'dog': 0.4, 'cat': 0.6},
+                        'dog': {'barked': 0.9, 'walked': 0.1},
+                        'cat': {'meowed': 0.8, 'walked': 0.2},
+                        'walked': {data.END_OF_VERSE_TOKEN: 1},
+                        'barked': {data.END_OF_VERSE_TOKEN: 1},
+                        'meowed': {data.END_OF_VERSE_TOKEN: 1},
+                        data.END_OF_VERSE_TOKEN: {data.START_OF_VERSE_TOKEN: 1},
+                      data.PAD_TOKEN: {}}
+        self.index_word = train.invert_dict(self.word_index)
+
+    # noinspection PyUnusedLocal
+    def forward(self, batch_sequences, lengths):
+        if len(batch_sequences) != 1:
+            raise ValueError('Only implemented for batches of size 1')
+        seq = batch_sequences[0]
+        pred_word_scores = []
+        for word in seq:
+            scores = [-10000 for _ in range(len(self.all_words))]
+            next_word_prob = self.probs[self.index_word[word.item()]]
+            for next_word, prob in next_word_prob.items():
+                scores[self.word_index[next_word]] = np.log(prob)
+            pred_word_scores.append(scores)
+        return torch.tensor([pred_word_scores])
+
 
 class TestTrain(unittest.TestCase):
     def test_select_batch_input(self):
@@ -37,49 +78,24 @@ class TestTrain(unittest.TestCase):
 
 
     def test_get_perplexity(self):
-        # Take a simple language model
-        # SOS -> the (80%), a (20%)
-        # the, a -> dog (40%), cat (60%)
-        # dog -> barked (90%), walked (10%)
-        # cat -> meowed (80%), walked (20%)
-        # walked, barked, meowed -> EOS (100%)
-        # EOS -> SOS (100%)
-        all_words = [data.START_OF_VERSE_TOKEN, data.END_OF_VERSE_TOKEN, data.PAD_TOKEN] + \
-                    "the a dog cat barked walked meowed".split()
-        word_index = {word: i for i, word in enumerate(all_words)}
-        probs = {data.START_OF_VERSE_TOKEN: {'the': 0.8, 'a': 0.2},
-                 'the': {'dog': 0.4, 'cat': 0.6},
-                 'a': {'dog': 0.4, 'cat': 0.6},
-                 'dog': {'barked': 0.9, 'walked': 0.1},
-                 'cat': {'meowed': 0.8, 'walked': 0.2},
-                 'walked': {data.END_OF_VERSE_TOKEN: 1},
-                 'barked': {data.END_OF_VERSE_TOKEN: 1},
-                 'meowed': {data.END_OF_VERSE_TOKEN: 1},
-                 data.END_OF_VERSE_TOKEN: {data.START_OF_VERSE_TOKEN: 1}}
-        index_word = train.invert_dict(word_index)
-
-        # noinspection PyUnusedLocal
-        def mock_forward(_, batch_sequences, lengths):
-            if len(batch_sequences) != 1:
-                raise ValueError('Only implemented for batches of size 1')
-            seq = batch_sequences[0]
-            pred_word_scores = []
-            for word in seq:
-                scores = [-10000 for _ in range(len(all_words))]
-                next_word_prob = probs[index_word[word.item()]]
-                for next_word, prob in next_word_prob.items():
-                    scores[word_index[next_word]] = np.log(prob)
-                pred_word_scores.append(scores)
-            return torch.tensor([pred_word_scores])
-
         test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN]
-        test_sequence = torch.tensor([word_index[word] for word in test_words])
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        test_sequence = torch.tensor([model.word_index[word] for word in test_words])
         # Probability: 0.8 * 0.4 * 0.1 * 1 = 0.032
         expected = 1.99054
         # Mock the forward method
-        with mock.patch.object(train.LSTMLanguageModel, 'forward', new=mock_forward):
-            model = train.LSTMLanguageModel(300, 300, word_index, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
-            perplexity = model.get_perplexity(test_sequence)
+        perplexity = model.get_perplexity(test_sequence)
+        self.assertAlmostEqual(expected, perplexity, places=5)
+
+
+    def test_get_perplexity_padded(self):
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN, data.PAD_TOKEN]
+        test_sequence = torch.tensor([model.word_index[word] for word in test_words])
+        # Probability: 0.8 * 0.4 * 0.1 * 1 = 0.032
+        expected = 1.99054
+        # Mock the forward method
+        perplexity = model.get_perplexity(test_sequence)
         self.assertAlmostEqual(expected, perplexity, places=5)
 
 
