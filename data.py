@@ -245,7 +245,7 @@ if __name__ == '__main__':
     pre_processed_bible.save(output_filename)
 
 
-def prepare_sequence(seq: list, to_ix: dict) -> list:
+def to_indices(seq: list, to_ix: dict) -> list:
     return [to_ix[w] if w in to_ix else to_ix[UNKNOWN_TOKEN] for w in seq]
 
 
@@ -271,7 +271,7 @@ def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     padded_batches = [pad_batch(b) for b in enclosed]
 
     # Convert words to indices
-    as_indices = [[prepare_sequence(seq, word_index) for seq in b] \
+    as_indices = [[to_indices(seq, word_index) for seq in b] \
                   for b in padded_batches]
 
     return as_indices, original_sequence_lengths
