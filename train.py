@@ -4,6 +4,8 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 """
 import configparser
 
+from torch import Tensor
+
 import data
 import torch.nn as nn
 import torch
@@ -86,21 +88,20 @@ class LSTMLanguageModel(nn.Module):
                         )
 
 
-    def get_perplexity(self, sequence: list) -> float:
+    def get_perplexity(self, index_seq: Tensor) -> float:
         """
         Computes the perplexity of a sequence
-        :param sequence: the sequence of (str) words for which we want to calculate the perplexity
+        :param index_seq: the sequence of word indices for which we want to calculate the perplexity
         :return: the perplexity of the language model for this test sequence
         """
-        index_seq = [self.word_index[word] for word in sequence]
-        scores = self.forward(torch.tensor([index_seq]), torch.tensor([len(index_seq)]))[0]
+        scores = self.forward(index_seq.view(1, -1), torch.tensor([len(index_seq)]))[0]
         # normalize scores of next words
         probabilities = torch.nn.functional.log_softmax(scores, dim=1)
         # now iterate over next words and get their probabilities
         log_p_sum = 0
-        for i, word in enumerate(sequence[1:]):
-            log_p_sum += probabilities[i][self.word_index[word]]
-        return np.exp(-log_p_sum/len(sequence)).item()
+        for i, word in enumerate(index_seq[1:]):
+            log_p_sum += probabilities[i][word]
+        return np.exp(-log_p_sum/len(index_seq)).item()
 
 
 class TrainConfig:

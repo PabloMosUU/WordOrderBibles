@@ -72,7 +72,8 @@ class TestTrain(unittest.TestCase):
                 pred_word_scores.append(scores)
             return torch.tensor([pred_word_scores])
 
-        test_sequence = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN]
+        test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN]
+        test_sequence = torch.tensor([word_index[word] for word in test_words])
         # Probability: 0.8 * 0.4 * 0.1 * 1 = 0.032
         expected = 1.99054
         # Mock the forward method
