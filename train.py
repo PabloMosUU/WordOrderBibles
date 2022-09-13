@@ -10,7 +10,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from data import batch, get_n_batches
+from data import batch
 import sys
 
 
@@ -162,17 +162,13 @@ def get_word_index(sequences: list) -> dict:
         word_ix[special_token] = len(word_ix)
     return word_ix
 
-def select_batch(dataset: list, batch_ix: int, is_input: bool) -> torch.Tensor:
+def truncate(selected_batch: list, is_input: bool) -> torch.Tensor:
     """
     Select the indexed batch from the dataset, which is assumed to be padded
-    :param dataset: a full dataset
-    :param batch_ix: the batch index we want to select
+    :param selected_batch: the batch that we want to truncate and tensorize
     :param is_input: whether we want to process these sequences as inputs (as opposed to targets)
     :return: the tensor with the adjusted sequences
     """
-    # Select the correct batch
-    selected_batch = dataset[batch_ix]
-
     # Convert to inputs or targets
     truncated = [seq[:len(seq)-1] if is_input else seq[1:] for seq in selected_batch]
 
@@ -210,8 +206,8 @@ def train_batch(
     model.zero_grad()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = select_batch(dataset, batch_ix, is_input=True)
-    Y = select_batch(dataset, batch_ix, is_input=False)
+    X = truncate(dataset[batch_ix], is_input=True)
+    Y = truncate(dataset[batch_ix], is_input=False)
     original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
 
     # Run our forward pass. The output is a tensor because we are using batching
@@ -236,17 +232,16 @@ def train_batch(
 
 def validate_batch(
         model: nn.Module,
-        dataset: list,
-        batch_ix: int,
+        batch_seqs: list,
         original_sequence_lengths: list
 ) -> float:
     # Put the model in evaluation mode
     model.eval()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = select_batch(dataset, batch_ix, is_input=True)
-    Y = select_batch(dataset, batch_ix, is_input=False)
-    original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
+    X = truncate(batch_seqs, is_input=True)
+    Y = truncate(batch_seqs, is_input=False)
+    original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths])
 
     # Run our forward pass
     partial_pred_scores = model(X, original_input_sequence_lengths)
@@ -268,15 +263,16 @@ def train_(model: nn.Module,
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
-    X_train_batched, original_sequence_lengths = batch(corpus, config.batch_size, word_ix)
-    n_batches_train = get_n_batches(X_train_batched)
+    X_train_batched, original_sequence_lengths_train = batch(corpus, config.batch_size, word_ix)
+    X_val_batched, original_sequence_lengths_val = batch(validation_set, config.batch_size, word_ix)
+    model.validation_size = len(validation_set)
 
     for epoch in range(n_epochs):
         model.epoch = epoch
         if config.verbose:
             print(f'LOG: epoch {epoch}')
         batch_losses = []
-        for batch_ix in range(n_batches_train):
+        for batch_ix in range(len(X_train_batched)):
             batch_losses.append(
                 train_batch(
                     model,
@@ -284,7 +280,7 @@ def train_(model: nn.Module,
                     batch_ix,
                     optimizer,
                     config.clip_gradients,
-                    original_sequence_lengths
+                    original_sequence_lengths_train
                 )
             )
 
@@ -293,11 +289,17 @@ def train_(model: nn.Module,
 
         if validate:
             epoch_val_loss.append(
-                _validate(model, validation_set, word_ix, config.batch_size, config.verbose, config.avg_loss_per_token)
+                _validate(
+                    model,
+                    X_val_batched,
+                    original_sequence_lengths_val,
+                    config.verbose,
+                    config.avg_loss_per_token
+                )
             )
 
         if config.avg_loss_per_token:
-            epoch_train_loss.append(sum(batch_losses) / n_batches_train)
+            epoch_train_loss.append(sum(batch_losses) / len(X_train_batched))
         else:
             epoch_train_loss.append(sum(batch_losses) / len(corpus))
 
@@ -307,27 +309,27 @@ def train_(model: nn.Module,
 
     return epoch_train_loss, epoch_val_loss
 
-def _validate(model: nn.Module, validation_set: list, word_ix: dict, batch_size: int, verbose: bool,
-              avg_loss_per_token: bool) -> float:
-
-    X_val_batched, original_sequence_lengths = batch(validation_set, batch_size, word_ix)
-    n_batches_val = get_n_batches(X_val_batched)
-
+def _validate(
+        model: nn.Module,
+        X_val_batched: list,
+        original_sequence_lengths: list,
+        verbose: bool,
+        avg_loss_per_token: bool
+) -> float:
     batch_losses = []
+    validation_set_size = 0
     with torch.no_grad():
-        for batch_ix in range(n_batches_val):
-            batch_losses.append(validate_batch(model, X_val_batched, batch_ix, original_sequence_lengths))
-
-    # Set the size of the validation set in the model
-    model.validation_size = len(validation_set)
+        for batch_ix, batch_seqs in enumerate(X_val_batched):
+            batch_losses.append(validate_batch(model, batch_seqs, original_sequence_lengths[batch_ix]))
+            validation_set_size += len(batch_seqs)
 
     if verbose:
         print(f'LOG: validation_batch_losses {batch_losses}')
 
     if avg_loss_per_token:
-        return sum(batch_losses) / n_batches_val
+        return sum(batch_losses) / len(X_val_batched)
     else:
-        return sum(batch_losses) / len(validation_set)
+        return sum(batch_losses) / validation_set_size
 
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
