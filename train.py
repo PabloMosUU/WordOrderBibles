@@ -88,10 +88,11 @@ class LSTMLanguageModel(nn.Module):
                         )
 
 
-    def get_perplexity(self, index_seq: Tensor) -> float:
+    def get_perplexity(self, index_seq: Tensor, force_sentence_restart=False) -> float:
         """
         Computes the perplexity of a sequence
         :param index_seq: the sequence of word indices for which we want to calculate the perplexity
+        :param force_sentence_restart: if True, assume P(SOS|EOS) = 1
         :return: the perplexity of the language model for this test sequence
         """
         scores = self.forward(index_seq.view(1, -1), torch.tensor([len(index_seq)]))[0]
@@ -100,7 +101,8 @@ class LSTMLanguageModel(nn.Module):
         # now iterate over next words and get their probabilities
         log_p_sum = 0
         for i, word in enumerate(index_seq[1:]):
-            log_p_sum += probabilities[i][word].item()
+            if not force_sentence_restart or word.item() != self.word_index[data.START_OF_VERSE_TOKEN]:
+                log_p_sum += probabilities[i][word].item()
         return np.exp(-log_p_sum/len(index_seq))
 
 

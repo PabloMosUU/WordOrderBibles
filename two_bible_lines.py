@@ -57,3 +57,12 @@ if __name__ == '__main__':
     test_seq = f'{data.START_OF_VERSE_TOKEN} this is a sentence {data.END_OF_VERSE_TOKEN}'.split()
     perplexity = lm.get_perplexity(torch.tensor(data.to_indices(test_seq, word_to_ix)))
     print(perplexity)
+
+    # Now get the perplexity for two sentences together
+    test_seqs = test_seq + f'{data.START_OF_VERSE_TOKEN} this is another sentence {data.END_OF_VERSE_TOKEN}'.split()
+    batch_pp = lm.get_perplexity(torch.tensor(data.to_indices(test_seqs, word_to_ix)))
+    print(batch_pp)
+
+    # And repeat this, but force sentence restart
+    batch_pp_restart = lm.get_perplexity(torch.tensor(data.to_indices(test_seqs, word_to_ix)), True)
+    print(batch_pp_restart)
