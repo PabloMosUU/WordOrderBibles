@@ -286,12 +286,3 @@ def pad_batch(sequences: list) -> list:
     max_length = max([len(el) for el in sequences])
     padded = [seq + [PAD_TOKEN] * (max_length - len(seq)) for seq in sequences]
     return padded
-
-
-def get_n_batches(dataset: list) -> int:
-    """
-    From the relevant dimension, extract the number of batches
-    :param dataset: a dataset as returned by the batch method, in tensor format
-    :return: the number of batches
-    """
-    return len(dataset)
