@@ -162,17 +162,13 @@ def get_word_index(sequences: list) -> dict:
         word_ix[special_token] = len(word_ix)
     return word_ix
 
-def select_batch(dataset: list, batch_ix: int, is_input: bool) -> torch.Tensor:
+def truncate(selected_batch: list, is_input: bool) -> torch.Tensor:
     """
     Select the indexed batch from the dataset, which is assumed to be padded
-    :param dataset: a full dataset
-    :param batch_ix: the batch index we want to select
+    :param selected_batch: a full dataset
     :param is_input: whether we want to process these sequences as inputs (as opposed to targets)
     :return: the tensor with the adjusted sequences
     """
-    # Select the correct batch
-    selected_batch = dataset[batch_ix]
-
     # Convert to inputs or targets
     truncated = [seq[:len(seq)-1] if is_input else seq[1:] for seq in selected_batch]
 
@@ -210,8 +206,8 @@ def train_batch(
     model.zero_grad()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = select_batch(dataset, batch_ix, is_input=True)
-    Y = select_batch(dataset, batch_ix, is_input=False)
+    X = truncate(dataset[batch_ix], is_input=True)
+    Y = truncate(dataset[batch_ix], is_input=False)
     original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
 
     # Run our forward pass. The output is a tensor because we are using batching
@@ -244,8 +240,8 @@ def validate_batch(
     model.eval()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = select_batch(dataset, batch_ix, is_input=True)
-    Y = select_batch(dataset, batch_ix, is_input=False)
+    X = truncate(dataset[batch_ix], is_input=True)
+    Y = truncate(dataset[batch_ix], is_input=False)
     original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
 
     # Run our forward pass
