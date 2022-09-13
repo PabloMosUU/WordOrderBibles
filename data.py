@@ -271,7 +271,7 @@ def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     padded_batches = [pad_batch(b) for b in enclosed]
 
     # Convert words to indices
-    as_indices = [[[word_index[w] if w in word_index else word_index[UNKNOWN_TOKEN] for w in seq] for seq in b] \
+    as_indices = [[prepare_sequence(seq, word_index) for seq in b] \
                   for b in padded_batches]
 
     return as_indices, original_sequence_lengths
