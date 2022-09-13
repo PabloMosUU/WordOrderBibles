@@ -1,7 +1,10 @@
 import configparser
 
+import torch
+
 from train import get_word_index, invert_dict, initialize_model, save_losses, plot_losses, train_, to_train_config
 from generate import print_pred
+import data
 
 if __name__ == '__main__':
     training_data = [
@@ -50,3 +53,7 @@ if __name__ == '__main__':
         plot_losses({'train': train_losses, 'validation': validation_losses}, True)
     else:
         plot_losses({'train': train_losses}, True)
+
+    test_seq = f'{data.START_OF_VERSE_TOKEN} this is a sentence {data.END_OF_VERSE_TOKEN}'.split()
+    perplexity = lm.get_perplexity(torch.tensor(data.to_indices(test_seq, word_to_ix)))
+    print(perplexity)

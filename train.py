@@ -100,8 +100,8 @@ class LSTMLanguageModel(nn.Module):
         # now iterate over next words and get their probabilities
         log_p_sum = 0
         for i, word in enumerate(index_seq[1:]):
-            log_p_sum += probabilities[i][word]
-        return np.exp(-log_p_sum/len(index_seq)).item()
+            log_p_sum += probabilities[i][word].item()
+        return np.exp(-log_p_sum/len(index_seq))
 
 
 class TrainConfig:
