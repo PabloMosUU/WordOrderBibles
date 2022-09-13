@@ -165,7 +165,7 @@ def get_word_index(sequences: list) -> dict:
 def truncate(selected_batch: list, is_input: bool) -> torch.Tensor:
     """
     Select the indexed batch from the dataset, which is assumed to be padded
-    :param selected_batch: a full dataset
+    :param selected_batch: the batch that we want to truncate and tensorize
     :param is_input: whether we want to process these sequences as inputs (as opposed to targets)
     :return: the tensor with the adjusted sequences
     """
