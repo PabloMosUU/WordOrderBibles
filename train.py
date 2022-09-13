@@ -268,8 +268,11 @@ def train_(model: nn.Module,
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
-    X_train_batched, original_sequence_lengths = batch(corpus, config.batch_size, word_ix)
+    X_train_batched, original_sequence_lengths_train = batch(corpus, config.batch_size, word_ix)
     n_batches_train = get_n_batches(X_train_batched)
+
+    X_val_batched, original_sequence_lengths_val = batch(validation_set, config.batch_size, word_ix)
+    n_batches_val = get_n_batches(X_val_batched)
 
     for epoch in range(n_epochs):
         model.epoch = epoch
@@ -284,7 +287,7 @@ def train_(model: nn.Module,
                     batch_ix,
                     optimizer,
                     config.clip_gradients,
-                    original_sequence_lengths
+                    original_sequence_lengths_train
                 )
             )
 
@@ -293,7 +296,14 @@ def train_(model: nn.Module,
 
         if validate:
             epoch_val_loss.append(
-                _validate(model, validation_set, word_ix, config.batch_size, config.verbose, config.avg_loss_per_token)
+                _validate(
+                    model,
+                    X_val_batched,
+                    n_batches_val,
+                    original_sequence_lengths_val,
+                    config.verbose,
+                    config.avg_loss_per_token
+                )
             )
 
         if config.avg_loss_per_token:
@@ -307,19 +317,23 @@ def train_(model: nn.Module,
 
     return epoch_train_loss, epoch_val_loss
 
-def _validate(model: nn.Module, validation_set: list, word_ix: dict, batch_size: int, verbose: bool,
-              avg_loss_per_token: bool) -> float:
-
-    X_val_batched, original_sequence_lengths = batch(validation_set, batch_size, word_ix)
-    n_batches_val = get_n_batches(X_val_batched)
-
+def _validate(
+        model: nn.Module,
+        X_val_batched: list,
+        n_batches_val: int,
+        original_sequence_lengths: list,
+        verbose: bool,
+        avg_loss_per_token: bool
+) -> float:
     batch_losses = []
     with torch.no_grad():
         for batch_ix in range(n_batches_val):
             batch_losses.append(validate_batch(model, X_val_batched, batch_ix, original_sequence_lengths))
 
+    validation_set_size = sum([len(el) for el in X_val_batched])
+
     # Set the size of the validation set in the model
-    model.validation_size = len(validation_set)
+    model.validation_size = validation_set_size
 
     if verbose:
         print(f'LOG: validation_batch_losses {batch_losses}')
@@ -327,7 +341,7 @@ def _validate(model: nn.Module, validation_set: list, word_ix: dict, batch_size:
     if avg_loss_per_token:
         return sum(batch_losses) / n_batches_val
     else:
-        return sum(batch_losses) / len(validation_set)
+        return sum(batch_losses) / validation_set_size
 
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
