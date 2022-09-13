@@ -85,6 +85,24 @@ class LSTMLanguageModel(nn.Module):
                             (self.epoch, batch_ix, k, i, np.array2string(gradients.detach().numpy()))
                         )
 
+
+    def get_perplexity(self, sequence: list) -> float:
+        """
+        Computes the perplexity of a sequence
+        :param sequence: the sequence of (str) words for which we want to calculate the perplexity
+        :return: the perplexity of the language model for this test sequence
+        """
+        index_seq = [self.word_index[word] for word in sequence]
+        scores = self.forward(torch.tensor([index_seq]), torch.tensor([len(index_seq)]))[0]
+        # normalize scores of next words
+        probabilities = torch.nn.functional.log_softmax(scores, dim=1)
+        # now iterate over next words and get their probabilities
+        log_p_sum = 0
+        for i, word in enumerate(sequence[1:]):
+            log_p_sum += probabilities[i][self.word_index[word]]
+        return np.exp(-log_p_sum/len(sequence)).item()
+
+
 class TrainConfig:
     def __init__(
             self,
@@ -381,14 +399,6 @@ def load_losses(filename: str) -> dict:
     for i in range(int(len(lines) / 2)):
         dataset_epoch_losses[lines[2*i].strip()] = [float(el.strip()) for el in lines[2*i+1].split(',')]
     return dataset_epoch_losses
-
-def get_perplexity(loss: float) -> float:
-    """
-    Computes the perplexity given the loss. It is equivalent to torch.exp(loss_tensor).item()
-    :param loss: the loss computed from a language model
-    :return: the perplexity of the language model
-    """
-    return np.exp(loss)
 
 
 def to_train_config(config: configparser.ConfigParser, version: str) -> TrainConfig:
