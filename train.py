@@ -10,7 +10,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
-from data import batch, get_n_batches
+from data import batch
 import sys
 
 
@@ -269,17 +269,14 @@ def train_(model: nn.Module,
     n_epochs = config.n_epochs
 
     X_train_batched, original_sequence_lengths_train = batch(corpus, config.batch_size, word_ix)
-    n_batches_train = get_n_batches(X_train_batched)
-
     X_val_batched, original_sequence_lengths_val = batch(validation_set, config.batch_size, word_ix)
-    n_batches_val = get_n_batches(X_val_batched)
 
     for epoch in range(n_epochs):
         model.epoch = epoch
         if config.verbose:
             print(f'LOG: epoch {epoch}')
         batch_losses = []
-        for batch_ix in range(n_batches_train):
+        for batch_ix in range(len(X_train_batched)):
             batch_losses.append(
                 train_batch(
                     model,
@@ -299,7 +296,6 @@ def train_(model: nn.Module,
                 _validate(
                     model,
                     X_val_batched,
-                    n_batches_val,
                     original_sequence_lengths_val,
                     config.verbose,
                     config.avg_loss_per_token
@@ -307,7 +303,7 @@ def train_(model: nn.Module,
             )
 
         if config.avg_loss_per_token:
-            epoch_train_loss.append(sum(batch_losses) / n_batches_train)
+            epoch_train_loss.append(sum(batch_losses) / len(X_train_batched))
         else:
             epoch_train_loss.append(sum(batch_losses) / len(corpus))
 
@@ -320,14 +316,13 @@ def train_(model: nn.Module,
 def _validate(
         model: nn.Module,
         X_val_batched: list,
-        n_batches_val: int,
         original_sequence_lengths: list,
         verbose: bool,
         avg_loss_per_token: bool
 ) -> float:
     batch_losses = []
     with torch.no_grad():
-        for batch_ix in range(n_batches_val):
+        for batch_ix in range(len(X_val_batched)):
             batch_losses.append(validate_batch(model, X_val_batched, batch_ix, original_sequence_lengths))
 
     validation_set_size = sum([len(el) for el in X_val_batched])
@@ -339,7 +334,7 @@ def _validate(
         print(f'LOG: validation_batch_losses {batch_losses}')
 
     if avg_loss_per_token:
-        return sum(batch_losses) / n_batches_val
+        return sum(batch_losses) / len(X_val_batched)
     else:
         return sum(batch_losses) / validation_set_size
 
