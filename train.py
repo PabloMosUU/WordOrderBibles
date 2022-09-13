@@ -232,17 +232,16 @@ def train_batch(
 
 def validate_batch(
         model: nn.Module,
-        dataset: list,
-        batch_ix: int,
+        batch_seqs: list,
         original_sequence_lengths: list
 ) -> float:
     # Put the model in evaluation mode
     model.eval()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = truncate(dataset[batch_ix], is_input=True)
-    Y = truncate(dataset[batch_ix], is_input=False)
-    original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
+    X = truncate(batch_seqs, is_input=True)
+    Y = truncate(batch_seqs, is_input=False)
+    original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths])
 
     # Run our forward pass
     partial_pred_scores = model(X, original_input_sequence_lengths)
@@ -266,6 +265,7 @@ def train_(model: nn.Module,
 
     X_train_batched, original_sequence_lengths_train = batch(corpus, config.batch_size, word_ix)
     X_val_batched, original_sequence_lengths_val = batch(validation_set, config.batch_size, word_ix)
+    model.validation_size = len(validation_set)
 
     for epoch in range(n_epochs):
         model.epoch = epoch
@@ -317,14 +317,11 @@ def _validate(
         avg_loss_per_token: bool
 ) -> float:
     batch_losses = []
+    validation_set_size = 0
     with torch.no_grad():
-        for batch_ix in range(len(X_val_batched)):
-            batch_losses.append(validate_batch(model, X_val_batched, batch_ix, original_sequence_lengths))
-
-    validation_set_size = sum([len(el) for el in X_val_batched])
-
-    # Set the size of the validation set in the model
-    model.validation_size = validation_set_size
+        for batch_ix, batch_seqs in enumerate(X_val_batched):
+            batch_losses.append(validate_batch(model, batch_seqs, original_sequence_lengths[batch_ix]))
+            validation_set_size += len(batch_seqs)
 
     if verbose:
         print(f'LOG: validation_batch_losses {batch_losses}')
