@@ -280,14 +280,14 @@ def validate_batch(
     return loss.item()
 
 
-def train_(model: nn.Module,
-           corpus: list,
-           word_ix: dict,
-           optimizer,
-           validate: bool,
-           validation_set: list,
-           config: TrainConfig
-           ) -> tuple:
+def train(model: nn.Module,
+          corpus: list,
+          word_ix: dict,
+          optimizer,
+          validate: bool,
+          validation_set: list,
+          config: TrainConfig
+          ) -> tuple:
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
@@ -480,7 +480,7 @@ if __name__ == '__main__':
 
     lm, sgd = initialize_model(word_to_ix, cfg)
 
-    train_losses, validation_losses = train_(
+    train_losses, validation_losses = train(
         lm,
         training_data,
         word_to_ix,
