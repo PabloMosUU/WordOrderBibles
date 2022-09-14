@@ -13,7 +13,7 @@ class SimpleModel(train.LSTMLanguageModel):
         # SOS -> the (80%), a (20%)
         # the, a -> dog (40%), cat (60%)
         # dog -> barked (90%), walked (10%)
-        # cat -> meowed (80%), walked (20%)
+        # cat -> meowed (70%), walked (20%), EOS (10%)
         # walked, barked, meowed -> EOS (100%)
         # EOS -> SOS (100%)
         self.all_words = [data.START_OF_VERSE_TOKEN, data.END_OF_VERSE_TOKEN, data.PAD_TOKEN] + \
@@ -25,7 +25,7 @@ class SimpleModel(train.LSTMLanguageModel):
                         'the': {'dog': 0.4, 'cat': 0.6},
                         'a': {'dog': 0.4, 'cat': 0.6},
                         'dog': {'barked': 0.9, 'walked': 0.1},
-                        'cat': {'meowed': 0.8, 'walked': 0.2},
+                        'cat': {'meowed': 0.7, 'walked': 0.2, data.END_OF_VERSE_TOKEN: 0.1},
                         'walked': {data.END_OF_VERSE_TOKEN: 1},
                         'barked': {data.END_OF_VERSE_TOKEN: 1},
                         'meowed': {data.END_OF_VERSE_TOKEN: 1},
@@ -33,10 +33,10 @@ class SimpleModel(train.LSTMLanguageModel):
                       data.PAD_TOKEN: {}}
         self.index_word = train.invert_dict(self.word_index)
 
-    # noinspection PyUnusedLocal
-    def forward(self, batch_sequences, lengths):
+
+    def forward(self, batch_sequences, _):
         if len(batch_sequences) != 1:
-            raise ValueError('Only implemented for batches of size 1')
+            return torch.tensor([self.forward([seq], None)[0].numpy() for seq in batch_sequences])
         seq = batch_sequences[0]
         pred_word_scores = []
         for word in seq:
@@ -83,7 +83,6 @@ class TestTrain(unittest.TestCase):
         test_sequence = torch.tensor([model.word_index[word] for word in test_words])
         # Probability: 0.8 * 0.4 * 0.1 * 1 = 0.032
         expected = 1.99054
-        # Mock the forward method
         perplexity = model.get_perplexity(test_sequence)
         self.assertAlmostEqual(expected, perplexity, places=5)
 
@@ -94,7 +93,6 @@ class TestTrain(unittest.TestCase):
         test_sequence = torch.tensor([model.word_index[word] for word in test_words])
         # Probability: 0.8 * 0.4 * 0.1 * 1 = 0.032
         expected = 1.99054
-        # Mock the forward method
         perplexity = model.get_perplexity(test_sequence)
         self.assertAlmostEqual(expected, perplexity, places=5)
 
@@ -107,7 +105,6 @@ class TestTrain(unittest.TestCase):
         Y_true = train.truncate(test_sequence, is_input=False)
         Y_pred = model.forward(X, torch.tensor([len(test_words) - 1]))
         expected = 1.99054
-        # Mock the forward method
         perplexity = model.perplexity(Y_true, Y_pred.permute(0, 2, 1), False)
         self.assertAlmostEqual(expected, perplexity, places=5)
 
@@ -120,7 +117,22 @@ class TestTrain(unittest.TestCase):
         Y_true = train.truncate(test_sequence, is_input=False)
         Y_pred = model.forward(X, torch.tensor([len(test_words) - 1]))
         expected = 1.99054
-        # Mock the forward method
+        perplexity = model.perplexity(Y_true, Y_pred.permute(0, 2, 1), False)
+        self.assertAlmostEqual(expected, perplexity, places=5)
+
+
+    def test_perplexity_two(self):
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        test_sentences = ("the dog walked", "the cat")
+        test_sequences = [data.to_indices(f'{data.START_OF_VERSE_TOKEN} {sent} {data.END_OF_VERSE_TOKEN}'.split(),
+                                          model.word_index) \
+                          for sent in test_sentences]
+        # Pad the second sentence
+        test_sequences[-1].append(model.word_index[data.PAD_TOKEN])
+        X = train.truncate(test_sequences, is_input=True)
+        Y_true = train.truncate(test_sequences, is_input=False)
+        Y_pred = model.forward(X, torch.tensor([5, 4]))
+        expected = 2.05411
         perplexity = model.perplexity(Y_true, Y_pred.permute(0, 2, 1), False)
         self.assertAlmostEqual(expected, perplexity, places=5)
 
