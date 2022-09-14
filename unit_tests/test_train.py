@@ -5,6 +5,8 @@ import torch
 
 import data
 import train
+import util
+
 
 class SimpleModel(train.LSTMLanguageModel):
     def __init__(self, embedding_dim, hidden_dim, n_layers: int, loss_function: torch.nn.Module,
@@ -31,7 +33,7 @@ class SimpleModel(train.LSTMLanguageModel):
                         'meowed': {data.END_OF_VERSE_TOKEN: 1},
                         data.END_OF_VERSE_TOKEN: {data.START_OF_VERSE_TOKEN: 1},
                       data.PAD_TOKEN: {}}
-        self.index_word = train.invert_dict(self.word_index)
+        self.index_word = util.invert_dict(self.word_index)
 
 
     def forward(self, batch_sequences, _):

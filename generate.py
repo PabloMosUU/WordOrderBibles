@@ -7,6 +7,7 @@ from torch.nn.functional import log_softmax
 
 import data
 import train
+import util
 from data import to_indices
 from train import LSTMLanguageModel
 
@@ -69,7 +70,7 @@ def beam_search_decoder(model: LSTMLanguageModel, seed: list, k: int, length: in
     sequences = [[seed.copy(), 0.0]]
 
     # invert the word-to-index dictionary
-    ix_word = train.invert_dict(model.word_index)
+    ix_word = util.invert_dict(model.word_index)
 
     # walk over each step in sequence
     while True:
@@ -102,7 +103,7 @@ def _generate_first_words(model: LSTMLanguageModel, n: int) -> list:
     scores = model(tensor([[model.word_index[data.START_OF_VERSE_TOKEN]]]), tensor([1]))[0][0]
     probabilities = torch.nn.functional.softmax(scores, dim=0)
     first_word_ixs = random.choices(list(range(len(probabilities))), weights=probabilities, k=n)
-    ix_word = train.invert_dict(model.word_index)
+    ix_word = util.invert_dict(model.word_index)
     return [ix_word[i] for i in first_word_ixs]
 
 
@@ -129,5 +130,5 @@ if __name__ == '__main__':
     old_model = LSTMLanguageModel.load(f'output/{model_name}.pth')
     print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 3, 10))
     print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 1, 10))
-    print(pred(old_model, [[data.START_OF_VERSE_TOKEN] * 11], old_model.word_index, train.invert_dict(old_model.word_index)))
+    print(pred(old_model, [[data.START_OF_VERSE_TOKEN] * 11], old_model.word_index, util.invert_dict(old_model.word_index)))
     print(generate_sentences(old_model, 10, 5, 20))

@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from data import batch
 import sys
 
+from util import invert_dict
+
 
 class LSTMLanguageModel(nn.Module):
 
@@ -159,12 +161,6 @@ class TrainConfig:
         config['DEFAULT'] = {k: str(v) for k, v in self.to_dict().items()}
         with open(filename, 'w') as f:
             config.write(f)
-
-
-def invert_dict(key_val: dict) -> dict:
-    if len(set(key_val.values())) != len(key_val):
-        raise ValueError('Dictionary contains repeated values and cannot be inverted')
-    return {v:k for k,v in key_val.items()}
 
 
 def get_word_index(sequences: list) -> dict:
