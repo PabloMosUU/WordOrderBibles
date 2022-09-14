@@ -3,7 +3,7 @@ The idea in this program is to reproduce the tutorial provided here:
 https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
 while using my tools as much as possible
 """
-from data import prepare_sequence
+from data import to_indices
 import torch.nn as nn
 import torch
 import torch.nn.functional as functional
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     # Note that element i,j of the output is the score for tag j for word i.
     # Here we don't need to train, so the code is wrapped in torch.no_grad()
     with torch.no_grad():
-        inputs = torch.tensor(prepare_sequence(training_data[0][0], word_to_ix), dtype=torch.long)
+        inputs = torch.tensor(to_indices(training_data[0][0], word_to_ix), dtype=torch.long)
         untrained_tag_scores = model(inputs)
         print(f'Predictions before training: {get_tags(untrained_tag_scores, ix_to_tag)}')
 
@@ -77,8 +77,8 @@ if __name__ == '__main__':
 
             # Step 2. Get our inputs ready for the network, that is, turn them into
             # Tensors of word indices.
-            sentence_in = torch.tensor(prepare_sequence(training_sentence, word_to_ix), dtype=torch.long)
-            targets = torch.tensor(prepare_sequence(tags, tag_to_ix))
+            sentence_in = torch.tensor(to_indices(training_sentence, word_to_ix), dtype=torch.long)
+            targets = torch.tensor(to_indices(tags, tag_to_ix))
 
             # Step 3. Run our forward pass.
             partial_tag_scores = model(sentence_in)
@@ -91,7 +91,7 @@ if __name__ == '__main__':
 
     # See what the scores are after training
     with torch.no_grad():
-        inputs = torch.tensor(prepare_sequence(training_data[0][0], word_to_ix), dtype=torch.long)
+        inputs = torch.tensor(to_indices(training_data[0][0], word_to_ix), dtype=torch.long)
         trained_tag_scores = model(inputs)
 
         # The sentence is "the dog ate the apple".  i,j corresponds to score for tag j

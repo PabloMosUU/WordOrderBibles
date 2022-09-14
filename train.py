@@ -37,6 +37,10 @@ class LSTMLanguageModel(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
         self.loss_function = loss_function
         self.avg_loss_per_token = avg_loss_per_token
+        self.perplexity_loss_function = torch.nn.CrossEntropyLoss(
+            ignore_index=word_index[data.PAD_TOKEN],
+            reduction='sum'
+        )
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
@@ -65,6 +69,15 @@ class LSTMLanguageModel(nn.Module):
     def loss(self, Y_true, Y_pred):
         return self.loss_function(Y_pred, Y_true)
 
+    def perplexity(self, Y_true: torch.Tensor, Y_pred: torch.Tensor, concatenate: bool) -> float:
+        with torch.no_grad():
+            if concatenate:
+                raise NotImplementedError()
+            total_loss = self.perplexity_loss_function(Y_pred, Y_true).item()
+            # The additional len(Y_true) accounts for START_OF_VERSE_TOKEN
+            n_tokens = torch.sum(Y_true != self.word_index[data.PAD_TOKEN]).item() + len(Y_true)
+            return np.exp(total_loss / n_tokens)
+
     def save(self, filename: str) -> None:
         torch.save(self, filename)
         if self.gradient_logging:
@@ -84,6 +97,21 @@ class LSTMLanguageModel(nn.Module):
                         self.big_gradients.append(
                             (self.epoch, batch_ix, k, i, np.array2string(gradients.detach().numpy()))
                         )
+
+
+    def get_perplexity(self, corpus: list, concatenate: bool) -> float:
+        """
+        Compute the perplexity for an entire corpus
+        :param corpus: a corpus represented as a list of sequences, each of which is a list of tokens
+        :param concatenate: whether we want to concatenate the entire corpus together for perplexity computations
+        :return: the perplexity on the entire corpus
+        """
+        dataset, original_sequence_lengths = batch(corpus, len(corpus), self.word_index)
+        X = truncate(dataset[0], True)
+        Y = truncate(dataset[0], False)
+        Y_pred = self.forward(X, torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[0]]))
+        return self.perplexity(Y, Y_pred.permute(0, 2, 1), concatenate)
+
 
 class TrainConfig:
     def __init__(
@@ -383,14 +411,6 @@ def load_losses(filename: str) -> dict:
     for i in range(int(len(lines) / 2)):
         dataset_epoch_losses[lines[2*i].strip()] = [float(el.strip()) for el in lines[2*i+1].split(',')]
     return dataset_epoch_losses
-
-def get_perplexity(loss: float) -> float:
-    """
-    Computes the perplexity given the loss. It is equivalent to torch.exp(loss_tensor).item()
-    :param loss: the loss computed from a language model
-    :return: the perplexity of the language model
-    """
-    return np.exp(loss)
 
 
 def to_train_config(config: configparser.ConfigParser, version: str) -> TrainConfig:

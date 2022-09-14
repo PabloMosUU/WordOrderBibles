@@ -1,7 +1,7 @@
 import torch
 
 import data
-from data import SplitData, prepare_sequence
+from data import SplitData, to_indices
 import torch.nn as nn
 import torch.nn.functional as func
 import torch.optim as optim
@@ -58,8 +58,8 @@ def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> Traine
             model.zero_grad()
 
             # Turn our inputs into tensors of word indices
-            sentence_in = torch.tensor(prepare_sequence(sentence, word_to_ix), dtype=torch.long)
-            targets = torch.tensor(prepare_sequence(next_word_target(sentence), word_to_ix), dtype=torch.long)
+            sentence_in = torch.tensor(to_indices(sentence, word_to_ix), dtype=torch.long)
+            targets = torch.tensor(to_indices(next_word_target(sentence), word_to_ix), dtype=torch.long)
 
             # Run our forward pass.
             next_word_scores = model(sentence_in)
@@ -79,7 +79,7 @@ def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dic
     :param ix_to_word: a dictionary from indices to words allowed in the output
     :return: a list of predictions, each of which is a list of tokens
     """
-    sentences_in = [torch.tensor(prepare_sequence(seq, word_to_ix), dtype=torch.long) for seq in sequences]
+    sentences_in = [torch.tensor(to_indices(seq, word_to_ix), dtype=torch.long) for seq in sequences]
     sentences_out = [model.pred(sentence) for sentence in sentences_in]
     maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
     return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]

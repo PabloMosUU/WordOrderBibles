@@ -7,7 +7,7 @@ from torch.nn.functional import log_softmax
 
 import data
 import train
-from data import prepare_sequence
+from data import to_indices
 from train import LSTMLanguageModel
 
 
@@ -23,7 +23,7 @@ def _pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -
     words = sample.copy()
     for i in range(1, len(sample)):
         # Batching is obligatory with my model
-        seq = torch.tensor([prepare_sequence(words, word_ix)], dtype=torch.long)
+        seq = torch.tensor([to_indices(words, word_ix)], dtype=torch.long)
         original_input_sequence_lengths = torch.tensor([len(seq[0])])
         trained_next_word_scores = model(seq, original_input_sequence_lengths)[0]
 
@@ -50,7 +50,7 @@ def _get_next_word_log_probabilities(model: LSTMLanguageModel, sample: list, wor
     words = sample.copy()
 
     # Batching is obligatory with my model
-    seq = torch.tensor([prepare_sequence(words, word_ix)], dtype=torch.long)
+    seq = torch.tensor([to_indices(words, word_ix)], dtype=torch.long)
     original_input_sequence_lengths = torch.tensor([len(seq[0])])
     trained_next_word_scores = log_softmax(model(seq, original_input_sequence_lengths)[0][-1], dim=0)
 

@@ -50,3 +50,15 @@ if __name__ == '__main__':
         plot_losses({'train': train_losses, 'validation': validation_losses}, True)
     else:
         plot_losses({'train': train_losses}, True)
+
+    test_seq = f'this is a sentence'.split()
+    perplexity = lm.get_perplexity([test_seq], False)
+    print(perplexity)
+
+    # Now get the perplexity for two sentences together
+    test_seqs = [test_seq, f'this is another sentence'.split()]
+    batch_pp = lm.get_perplexity(test_seqs, False)
+    print(batch_pp)
+
+    # Now on the training data
+    print('Perplexity on the training data:', lm.get_perplexity(training_data, False))
