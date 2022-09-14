@@ -432,7 +432,6 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
     )
 
 if __name__ == '__main__':
-    """
     if len(sys.argv) != 7:
         print(
             'USAGE:',
@@ -454,6 +453,7 @@ if __name__ == '__main__':
     model_name = 'simple_lm'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
     is_debug = True
+    """
 
     bible_corpus = 'PBC'
 
