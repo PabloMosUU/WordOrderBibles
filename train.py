@@ -39,6 +39,10 @@ class LSTMLanguageModel(nn.Module):
         self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
         self.loss_function = loss_function
         self.avg_loss_per_token = avg_loss_per_token
+        self.perplexity_loss_function = torch.nn.CrossEntropyLoss(
+            ignore_index=word_index[data.PAD_TOKEN],
+            reduction='none'
+        )
 
         # The linear layer that maps from hidden state space to next-word space
         self.hidden2word = nn.Linear(hidden_dim, vocab_size)
@@ -66,6 +70,23 @@ class LSTMLanguageModel(nn.Module):
 
     def loss(self, Y_true, Y_pred):
         return self.loss_function(Y_pred, Y_true)
+
+    def perplexity(self, Y_true: torch.Tensor, Y_pred: torch.Tensor, concatenate: bool) -> float:
+        with torch.no_grad():
+            if concatenate:
+                raise NotImplementedError()
+            neg_log_likelihoods = self.perplexity_loss_function(Y_pred, Y_true)
+            all_seqs_log_prob, N = 0, 0
+            for seq_ix, seq in enumerate(Y_true):
+                # now iterate over next words and get their probabilities
+                log_p_sum = 0
+                for i, word in enumerate(seq[1:]):
+                    if word == self.word_index[data.PAD_TOKEN]:
+                        break
+                    log_p_sum += neg_log_likelihoods[seq_ix][i].item()
+                all_seqs_log_prob += log_p_sum
+                N += (len([el for el in seq if el.item() != self.word_index[data.PAD_TOKEN]]) + 1)
+            return np.exp(all_seqs_log_prob / N)
 
     def save(self, filename: str) -> None:
         torch.save(self, filename)
