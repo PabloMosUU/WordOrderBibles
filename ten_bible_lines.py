@@ -36,7 +36,6 @@ if __name__ == '__main__':
         lm,
         training_data,
         optimizer=ten_line_opt,
-        validate=True,
         validation_set=validation_data,
         config=cfg
     )

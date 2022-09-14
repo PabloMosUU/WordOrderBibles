@@ -130,7 +130,8 @@ class TrainConfig:
             dropout: float,
             verbose: bool,
             gradient_logging: bool,
-            avg_loss_per_token: bool
+            avg_loss_per_token: bool,
+            validation_metrics: list
     ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -145,6 +146,7 @@ class TrainConfig:
         self.verbose = verbose
         self.gradient_logging = gradient_logging
         self.avg_loss_per_token = avg_loss_per_token
+        self.validation_metrics = validation_metrics
 
     def __repr__(self):
         return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
@@ -154,7 +156,7 @@ class TrainConfig:
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
                 'optimizer': self.optimizer, 'weight_decay': self.weight_decay, 'batch_size': self.batch_size,
                 'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging,
-                'avg_loss_per_verse': self.avg_loss_per_token}
+                'avg_loss_per_verse': self.avg_loss_per_token, 'validation_metrics': ' '.join(self.validation_metrics)}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -255,10 +257,12 @@ def train_batch(
     return loss.item()
 
 def validate_batch(
-        model: nn.Module,
+        model: LSTMLanguageModel,
         batch_seqs: list,
-        original_sequence_lengths: list
-) -> float:
+        original_sequence_lengths: list,
+        validation_metrics: list,
+        average_loss_per_token: bool
+) -> list:
     # Put the model in evaluation mode
     model.eval()
 
@@ -270,16 +274,19 @@ def validate_batch(
     # Run our forward pass
     partial_pred_scores = model(X, original_input_sequence_lengths)
 
-    # Compute the loss
-    loss = model.loss(Y, partial_pred_scores.permute(0, 2, 1))
+    metrics = {}
+    if 'loss' in validation_metrics:
+        divider = 1 if average_loss_per_token else len(batch_seqs)
+        metrics['loss'] = model.loss(Y, partial_pred_scores.permute(0, 2, 1)).item() / divider
+    if 'perplexity' in validation_metrics:
+        metrics['perplexity'] = model.perplexity(Y, partial_pred_scores.permute(0, 2, 1), False)
 
-    return loss.item()
+    return [metrics[metric] for metric in validation_metrics]
 
 
 def train(model: LSTMLanguageModel,
           corpus: list,
           optimizer,
-          validate: bool,
           validation_set: list,
           config: TrainConfig
           ) -> tuple:
@@ -311,14 +318,15 @@ def train(model: LSTMLanguageModel,
         if config.verbose:
             print(f'LOG: train_batch_losses {batch_losses}')
 
-        if validate:
+        if len(config.validation_metrics) > 0:
             epoch_val_loss.append(
                 _validate(
                     model,
                     X_val_batched[0],
                     original_sequence_lengths_val[0],
                     config.verbose,
-                    config.avg_loss_per_token
+                    config.avg_loss_per_token,
+                    config.validation_metrics
                 )
             )
 
@@ -334,12 +342,13 @@ def train(model: LSTMLanguageModel,
     return epoch_train_loss, epoch_val_loss
 
 def _validate(
-        model: nn.Module,
+        model: LSTMLanguageModel,
         X_val_batched: list,
         original_sequence_lengths: list,
         verbose: bool,
-        avg_loss_per_token: bool
-) -> float:
+        avg_loss_per_token: bool,
+        val_metrics: list
+) -> list:
     """
     Validate a model on a validation set
     :param model: the model you want to validate
@@ -347,18 +356,17 @@ def _validate(
     :param original_sequence_lengths: the original lengths of the sequences (without padding)
     :param verbose: whether to print out validation information
     :param avg_loss_per_token: whether to average the loss per token
+    :param val_metrics: the list of metrics to be computed during validation
     :return: the averaged validation loss (per token or per verse)
     """
+    # TODO: get rid of the _validate method, i.e., move all validate_batch here
     with torch.no_grad():
-        loss = validate_batch(model, X_val_batched, original_sequence_lengths)
+        metrics = validate_batch(model, X_val_batched, original_sequence_lengths, val_metrics, avg_loss_per_token)
 
     if verbose:
-        print(f'LOG: validation loss {loss}')
+        print(f'LOG: validation loss {metrics}')
 
-    if avg_loss_per_token:
-        return loss
-    else:
-        return loss / len(X_val_batched)
+    return metrics
 
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
@@ -429,7 +437,8 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         float(params['dropout']),
         params['verbose'] == 'True',
         params['gradient_logging'] == 'True',
-        params['avg_loss_per_token'] == 'True'
+        params['avg_loss_per_token'] == 'True',
+        [metric.strip() for metric in params['validation_metrics'].split()]
     )
 
 if __name__ == '__main__':
@@ -485,7 +494,6 @@ if __name__ == '__main__':
         lm,
         training_data,
         optimizer=sgd,
-        validate=True,
         validation_set=validation_data,
         config=cfg
     )
