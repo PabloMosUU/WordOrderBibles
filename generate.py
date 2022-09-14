@@ -6,7 +6,6 @@ from torch import nn as nn, tensor
 from torch.nn.functional import log_softmax
 
 import data
-import train
 import util
 from data import to_indices
 from train import LSTMLanguageModel

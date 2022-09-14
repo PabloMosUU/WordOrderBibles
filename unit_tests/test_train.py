@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import torch
@@ -18,7 +19,7 @@ class SimpleModel(train.LSTMLanguageModel):
         # cat -> meowed (70%), walked (20%), EOS (10%)
         # walked, barked, meowed -> EOS (100%)
         # EOS -> SOS (100%)
-        self.all_words = [data.START_OF_VERSE_TOKEN, data.END_OF_VERSE_TOKEN, data.PAD_TOKEN] + \
+        self.all_words = [data.START_OF_VERSE_TOKEN, data.END_OF_VERSE_TOKEN, data.PAD_TOKEN, data.UNKNOWN_TOKEN] + \
                          "the a dog cat barked walked meowed".split()
         self.word_index = {word: i for i, word in enumerate(self.all_words)}
         super().__init__(embedding_dim, hidden_dim, self.word_index, n_layers, loss_function, avg_loss_per_token,
@@ -125,6 +126,37 @@ class TestTrain(unittest.TestCase):
         expected = 2.05411
         perplexity = model.get_perplexity(test_sentences, False)
         self.assertAlmostEqual(expected, perplexity, places=5)
+
+
+    def test_validate_on_full_validation_set(self):
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        corpus = ["the dog walked".split(), "the cat".split()]
+        optimizer = None
+        validate = True
+        validation_set = 2 * corpus
+        config = train.TrainConfig(300, 300, 2, 0.1, 1, False, "", 0, 1, 0, False, False, True)
+        with patch.object(train, 'train_batch', return_value=0) as _:
+            with patch.object(train, '_validate') as mock_method:
+                train.train(model, corpus, optimizer, validate, validation_set, config)
+        # Assert that _validate is called with a single batch, and not a list of batches
+        mock_method.assert_called_once()
+        _, dataset, orig_lengths, _, _ = mock_method.call_args[0]
+        self.assertEqual(len(validation_set), len(dataset))
+        self.assertEqual(5, len(dataset[0]))
+        self.assertEqual(len(validation_set), len(orig_lengths))
+        self.assertEqual(4, orig_lengths[3])
+
+
+    def test_validate(self):
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        corpus = ["the dog walked {data.END_OF_VERSE_TOKEN}",
+                  f"the cat {data.END_OF_VERSE_TOKEN} {data.PAD_TOKEN}"]
+        X = [data.to_indices(f'{data.START_OF_VERSE_TOKEN} {el}'.split(), model.word_index) \
+             for el in corpus]
+        orig_seq_len = []
+        with patch.object(train, 'validate_batch') as mock_validate_batch:
+            train._validate(model, X, orig_seq_len, False, True)
+        mock_validate_batch.assert_called_once_with(model, X, orig_seq_len)
 
 
 if __name__ == "__main__":

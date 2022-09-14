@@ -29,7 +29,6 @@ if __name__ == '__main__':
     train_losses, validation_losses = train(
         lm,
         training_data,
-        word_to_ix,
         lm_optimizer,
         validate=True,
         validation_set=validation_data,
