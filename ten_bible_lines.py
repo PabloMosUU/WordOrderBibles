@@ -46,3 +46,7 @@ if __name__ == '__main__':
     train.save_losses({'train': train_losses, 'validation': validation_losses},
                       f'output/{model_name}_losses.txt')
     cfg.save(f'output/{model_name}.cfg')
+
+    print('Perplexity:')
+    print('Training data:', lm.get_perplexity(training_data, False))
+    print('Validation data:', lm.get_perplexity(validation_data, False))
