@@ -112,5 +112,18 @@ class TestTrain(unittest.TestCase):
         self.assertAlmostEqual(expected, perplexity, places=5)
 
 
+    def test_perplexity_pad(self):
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN, data.PAD_TOKEN]
+        test_sequence = [[model.word_index[word] for word in test_words]]
+        X = train.truncate(test_sequence, is_input=True)
+        Y_true = train.truncate(test_sequence, is_input=False)
+        Y_pred = model.forward(X, torch.tensor([len(test_words) - 1]))
+        expected = 1.99054
+        # Mock the forward method
+        perplexity = model.perplexity(Y_true, Y_pred.permute(0, 2, 1), False)
+        self.assertAlmostEqual(expected, perplexity, places=5)
+
+
 if __name__ == "__main__":
     unittest.main()
