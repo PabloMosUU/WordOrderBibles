@@ -79,12 +79,7 @@ class LSTMLanguageModel(nn.Module):
             all_seqs_log_prob, N = 0, 0
             for seq_ix, seq in enumerate(Y_true):
                 # now iterate over next words and get their probabilities
-                log_p_sum = 0
-                for i, word in enumerate(seq[1:]):
-                    if word == self.word_index[data.PAD_TOKEN]:
-                        break
-                    log_p_sum += neg_log_likelihoods[seq_ix][i].item()
-                all_seqs_log_prob += log_p_sum
+                all_seqs_log_prob += sum([neg_log_likelihoods[seq_ix][i].item() for i, _ in enumerate(seq[1:])])
                 N += (len([el for el in seq if el.item() != self.word_index[data.PAD_TOKEN]]) + 1)
             return np.exp(all_seqs_log_prob / N)
 
