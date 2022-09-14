@@ -30,7 +30,6 @@ if __name__ == '__main__':
         lm,
         training_data,
         lm_optimizer,
-        validate=True,
         validation_set=validation_data,
         config=cfg
     )

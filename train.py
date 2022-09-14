@@ -130,7 +130,8 @@ class TrainConfig:
             dropout: float,
             verbose: bool,
             gradient_logging: bool,
-            avg_loss_per_token: bool
+            avg_loss_per_token: bool,
+            validation_metrics: list
     ):
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
@@ -145,6 +146,7 @@ class TrainConfig:
         self.verbose = verbose
         self.gradient_logging = gradient_logging
         self.avg_loss_per_token = avg_loss_per_token
+        self.validation_metrics = validation_metrics
 
     def __repr__(self):
         return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
@@ -154,7 +156,7 @@ class TrainConfig:
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
                 'optimizer': self.optimizer, 'weight_decay': self.weight_decay, 'batch_size': self.batch_size,
                 'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging,
-                'avg_loss_per_verse': self.avg_loss_per_token}
+                'avg_loss_per_verse': self.avg_loss_per_token, 'validation_metrics': ' '.join(self.validation_metrics)}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -279,7 +281,6 @@ def validate_batch(
 def train(model: LSTMLanguageModel,
           corpus: list,
           optimizer,
-          validate: bool,
           validation_set: list,
           config: TrainConfig
           ) -> tuple:
@@ -311,7 +312,7 @@ def train(model: LSTMLanguageModel,
         if config.verbose:
             print(f'LOG: train_batch_losses {batch_losses}')
 
-        if validate:
+        if len(config.validation_metrics) > 0:
             epoch_val_loss.append(
                 _validate(
                     model,
@@ -429,7 +430,8 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         float(params['dropout']),
         params['verbose'] == 'True',
         params['gradient_logging'] == 'True',
-        params['avg_loss_per_token'] == 'True'
+        params['avg_loss_per_token'] == 'True',
+        [metric.strip() for metric in params['validation_metrics']]
     )
 
 if __name__ == '__main__':
@@ -485,7 +487,6 @@ if __name__ == '__main__':
         lm,
         training_data,
         optimizer=sgd,
-        validate=True,
         validation_set=validation_data,
         config=cfg
     )
