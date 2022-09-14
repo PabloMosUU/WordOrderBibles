@@ -467,7 +467,7 @@ if __name__ == '__main__':
     training_data = split_bible.train_data
     validation_data = split_bible.hold_out_data
     if is_debug:
-        training_data, validation_data = [[sent[:3] for sent in data_segment[:50]] \
+        training_data, validation_data = [[sent for sent in data_segment[:100]] \
                                           for data_segment in (training_data, validation_data)]
 
     word_to_ix = get_word_index(training_data)
