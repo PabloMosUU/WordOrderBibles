@@ -36,7 +36,7 @@ class SimpleModel(train.LSTMLanguageModel):
 
     def forward(self, batch_sequences, _):
         if len(batch_sequences) != 1:
-            return torch.tensor([self.forward([seq], None)[0].numpy() for seq in batch_sequences])
+            return torch.tensor(np.array([self.forward([seq], None)[0].numpy() for seq in batch_sequences]))
         seq = batch_sequences[0]
         pred_word_scores = []
         for word in seq:
@@ -77,26 +77,6 @@ class TestTrain(unittest.TestCase):
         self.assertEqual(word_index['line'], batch_tensor[0][0].item())
 
 
-    def test_get_perplexity(self):
-        test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN]
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
-        test_sequence = torch.tensor([model.word_index[word] for word in test_words])
-        # Probability: 0.8 * 0.4 * 0.1 * 1 = 0.032
-        expected = 1.99054
-        perplexity = model.get_perplexity(test_sequence)
-        self.assertAlmostEqual(expected, perplexity, places=5)
-
-
-    def test_get_perplexity_padded(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
-        test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN, data.PAD_TOKEN]
-        test_sequence = torch.tensor([model.word_index[word] for word in test_words])
-        # Probability: 0.8 * 0.4 * 0.1 * 1 = 0.032
-        expected = 1.99054
-        perplexity = model.get_perplexity(test_sequence)
-        self.assertAlmostEqual(expected, perplexity, places=5)
-
-
     def test_perplexity(self):
         model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
         test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN]
@@ -134,6 +114,14 @@ class TestTrain(unittest.TestCase):
         Y_pred = model.forward(X, torch.tensor([5, 4]))
         expected = 2.05411
         perplexity = model.perplexity(Y_true, Y_pred.permute(0, 2, 1), False)
+        self.assertAlmostEqual(expected, perplexity, places=5)
+
+
+    def test_get_perplexity(self):
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        test_sentences = ["the dog walked".split(), "the cat".split()]
+        expected = 2.05411
+        perplexity = model.get_perplexity(test_sentences, False)
         self.assertAlmostEqual(expected, perplexity, places=5)
 
 

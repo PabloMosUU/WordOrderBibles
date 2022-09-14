@@ -4,8 +4,6 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 """
 import configparser
 
-from torch import Tensor
-
 import data
 import torch.nn as nn
 import torch
@@ -41,7 +39,7 @@ class LSTMLanguageModel(nn.Module):
         self.avg_loss_per_token = avg_loss_per_token
         self.perplexity_loss_function = torch.nn.CrossEntropyLoss(
             ignore_index=word_index[data.PAD_TOKEN],
-            reduction='none'
+            reduction='sum'
         )
 
         # The linear layer that maps from hidden state space to next-word space
@@ -75,13 +73,10 @@ class LSTMLanguageModel(nn.Module):
         with torch.no_grad():
             if concatenate:
                 raise NotImplementedError()
-            neg_log_likelihoods = self.perplexity_loss_function(Y_pred, Y_true)
-            all_seqs_log_prob, N = 0, 0
-            for seq_ix, seq in enumerate(Y_true):
-                # now iterate over next words and get their probabilities
-                all_seqs_log_prob += sum([neg_log_likelihoods[seq_ix][i].item() for i, _ in enumerate(seq[1:])])
-                N += (len([el for el in seq if el.item() != self.word_index[data.PAD_TOKEN]]) + 1)
-            return np.exp(all_seqs_log_prob / N)
+            total_loss = self.perplexity_loss_function(Y_pred, Y_true).item()
+            # The additional len(Y_true) accounts for START_OF_VERSE_TOKEN
+            n_tokens = torch.sum(Y_true != self.word_index[data.PAD_TOKEN]).item() + len(Y_true)
+            return np.exp(total_loss / n_tokens)
 
     def save(self, filename: str) -> None:
         torch.save(self, filename)
@@ -104,24 +99,18 @@ class LSTMLanguageModel(nn.Module):
                         )
 
 
-    def get_perplexity(self, index_seq: Tensor, force_sentence_restart=False) -> float:
+    def get_perplexity(self, corpus: list, concatenate: bool) -> float:
         """
-        Computes the perplexity of a sequence
-        :param index_seq: the sequence of word indices for which we want to calculate the perplexity
-        :param force_sentence_restart: if True, assume P(SOS|EOS) = 1
-        :return: the perplexity of the language model for this test sequence
+        Compute the perplexity for an entire corpus
+        :param corpus: a corpus represented as a list of sequences, each of which is a list of tokens
+        :param concatenate: whether we want to concatenate the entire corpus together for perplexity computations
+        :return: the perplexity on the entire corpus
         """
-        scores = self.forward(index_seq.view(1, -1), torch.tensor([len(index_seq)]))[0]
-        # normalize scores of next words
-        probabilities = torch.nn.functional.log_softmax(scores, dim=1)
-        # now iterate over next words and get their probabilities
-        log_p_sum = 0
-        for i, word in enumerate(index_seq[1:]):
-            if word == self.word_index[data.PAD_TOKEN]:
-                break
-            if not force_sentence_restart or word.item() != self.word_index[data.START_OF_VERSE_TOKEN]:
-                log_p_sum += probabilities[i][word].item()
-        return np.exp(-log_p_sum/len([el for el in index_seq if el.item() != self.word_index[data.PAD_TOKEN]]))
+        dataset, original_sequence_lengths = batch(corpus, len(corpus), self.word_index)
+        X = truncate(dataset[0], True)
+        Y = truncate(dataset[0], False)
+        Y_pred = self.forward(X, torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[0]]))
+        return self.perplexity(Y, Y_pred.permute(0, 2, 1), concatenate)
 
 
 class TrainConfig:
@@ -443,6 +432,7 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
     )
 
 if __name__ == '__main__':
+    """
     if len(sys.argv) != 7:
         print(
             'USAGE:',
@@ -464,7 +454,6 @@ if __name__ == '__main__':
     model_name = 'simple_lm'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
     is_debug = True
-    """
 
     bible_corpus = 'PBC'
 
