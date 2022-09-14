@@ -6,7 +6,8 @@ import configparser
 
 import data
 import train
-from train import get_word_index, invert_dict, initialize_model, train_, to_train_config
+from train import get_word_index, initialize_model, to_train_config
+from util import invert_dict
 
 if __name__ == '__main__':
     bible_corpus = 'PBC'
@@ -31,10 +32,9 @@ if __name__ == '__main__':
 
     lm, ten_line_opt = initialize_model(word_to_ix, cfg)
 
-    train_losses, validation_losses = train_(
+    train_losses, validation_losses = train.train(
         lm,
         training_data,
-        word_to_ix,
         optimizer=ten_line_opt,
         validate=True,
         validation_set=validation_data,

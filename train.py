@@ -13,6 +13,8 @@ import matplotlib.pyplot as plt
 from data import batch
 import sys
 
+from util import invert_dict
+
 
 class LSTMLanguageModel(nn.Module):
 
@@ -161,12 +163,6 @@ class TrainConfig:
             config.write(f)
 
 
-def invert_dict(key_val: dict) -> dict:
-    if len(set(key_val.values())) != len(key_val):
-        raise ValueError('Dictionary contains repeated values and cannot be inverted')
-    return {v:k for k,v in key_val.items()}
-
-
 def get_word_index(sequences: list) -> dict:
     """
     Generate a look up word->index dictionary from a corpus
@@ -280,19 +276,19 @@ def validate_batch(
     return loss.item()
 
 
-def train_(model: nn.Module,
-           corpus: list,
-           word_ix: dict,
-           optimizer,
-           validate: bool,
-           validation_set: list,
-           config: TrainConfig
-           ) -> tuple:
+def train(model: LSTMLanguageModel,
+          corpus: list,
+          optimizer,
+          validate: bool,
+          validation_set: list,
+          config: TrainConfig
+          ) -> tuple:
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
-    X_train_batched, original_sequence_lengths_train = batch(corpus, config.batch_size, word_ix)
-    X_val_batched, original_sequence_lengths_val = batch(validation_set, config.batch_size, word_ix)
+    X_train_batched, original_sequence_lengths_train = batch(corpus, config.batch_size, model.word_index)
+    # For validation we create a single batch with all the sequences
+    X_val_batched, original_sequence_lengths_val = batch(validation_set, len(validation_set), model.word_index)
     model.validation_size = len(validation_set)
 
     for epoch in range(n_epochs):
@@ -319,8 +315,8 @@ def train_(model: nn.Module,
             epoch_val_loss.append(
                 _validate(
                     model,
-                    X_val_batched,
-                    original_sequence_lengths_val,
+                    X_val_batched[0],
+                    original_sequence_lengths_val[0],
                     config.verbose,
                     config.avg_loss_per_token
                 )
@@ -344,20 +340,25 @@ def _validate(
         verbose: bool,
         avg_loss_per_token: bool
 ) -> float:
-    batch_losses = []
-    validation_set_size = 0
+    """
+    Validate a model on a validation set
+    :param model: the model you want to validate
+    :param X_val_batched: the validation dataset as a single batch of all sentences, expressed as word indices
+    :param original_sequence_lengths: the original lengths of the sequences (without padding)
+    :param verbose: whether to print out validation information
+    :param avg_loss_per_token: whether to average the loss per token
+    :return: the averaged validation loss (per token or per verse)
+    """
     with torch.no_grad():
-        for batch_ix, batch_seqs in enumerate(X_val_batched):
-            batch_losses.append(validate_batch(model, batch_seqs, original_sequence_lengths[batch_ix]))
-            validation_set_size += len(batch_seqs)
+        loss = validate_batch(model, X_val_batched, original_sequence_lengths)
 
     if verbose:
-        print(f'LOG: validation_batch_losses {batch_losses}')
+        print(f'LOG: validation loss {loss}')
 
     if avg_loss_per_token:
-        return sum(batch_losses) / len(X_val_batched)
+        return loss
     else:
-        return sum(batch_losses) / validation_set_size
+        return loss / len(X_val_batched)
 
 
 def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
@@ -466,7 +467,7 @@ if __name__ == '__main__':
     training_data = split_bible.train_data
     validation_data = split_bible.hold_out_data
     if is_debug:
-        training_data, validation_data = [[sent[:3] for sent in data_segment[:50]] \
+        training_data, validation_data = [[sent for sent in data_segment[:100]] \
                                           for data_segment in (training_data, validation_data)]
 
     word_to_ix = get_word_index(training_data)
@@ -480,10 +481,9 @@ if __name__ == '__main__':
 
     lm, sgd = initialize_model(word_to_ix, cfg)
 
-    train_losses, validation_losses = train_(
+    train_losses, validation_losses = train(
         lm,
         training_data,
-        word_to_ix,
         optimizer=sgd,
         validate=True,
         validation_set=validation_data,
