@@ -413,12 +413,21 @@ def save_losses(dataset_epoch_losses: dict, filename: str) -> None:
             f.write(k + '\n')
             f.write(', '.join([str(el) for el in v]) + '\n')
 
+def parse_losses(losses: str) -> list:
+    if losses[0] == '[':
+        stripped = losses.strip()
+        epoch_metrics = stripped[1:len(stripped)-1].split('], [')
+        return [parse_losses(el) for el in epoch_metrics]
+    else:
+        return [float(el.strip()) for el in losses.split(',')]
+
 def load_losses(filename: str) -> dict:
+    # There are two file formats: one has validation as a list of numbers, the other as a list of lists
     with open(filename, 'r') as f:
         lines = f.readlines()
     dataset_epoch_losses = {}
     for i in range(int(len(lines) / 2)):
-        dataset_epoch_losses[lines[2*i].strip()] = [float(el.strip()) for el in lines[2*i+1].split(',')]
+        dataset_epoch_losses[lines[2*i].strip()] = parse_losses(lines[2*i+1])
     return dataset_epoch_losses
 
 
