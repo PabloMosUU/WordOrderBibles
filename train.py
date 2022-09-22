@@ -36,7 +36,7 @@ class LSTMLanguageModel(nn.Module):
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
+        self.lstm = nn.GRU(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
         self.loss_function = loss_function
         self.avg_loss_per_token = avg_loss_per_token
         self.perplexity_loss_function = torch.nn.CrossEntropyLoss(
