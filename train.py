@@ -10,6 +10,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
+import embed
 from data import batch
 import sys
 
@@ -108,7 +109,7 @@ class LSTMLanguageModel(nn.Module):
         :param concatenate: whether we want to concatenate the entire corpus together for perplexity computations
         :return: the perplexity on the entire corpus
         """
-        dataset, original_sequence_lengths = batch(corpus, len(corpus), self.word_index)
+        dataset, original_sequence_lengths, _ = batch(corpus, len(corpus), self.word_index, self.word_index)
         X = truncate(dataset[0], True)
         Y = truncate(dataset[0], False)
         Y_pred = self.forward(X, torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[0]]))
@@ -288,14 +289,25 @@ def train(model: LSTMLanguageModel,
           corpus: list,
           optimizer,
           validation_set: list,
-          config: TrainConfig
+          config: TrainConfig,
+          word_embedding: dict
           ) -> tuple:
     epoch_train_loss, epoch_val_loss = [], []
     n_epochs = config.n_epochs
 
-    X_train_batched, original_sequence_lengths_train = batch(corpus, config.batch_size, model.word_index)
+    X_train_batched, original_sequence_lengths_train, X_train_batched_embed = batch(
+        corpus,
+        config.batch_size,
+        model.word_index,
+        word_embedding
+    )
     # For validation we create a single batch with all the sequences
-    X_val_batched, original_sequence_lengths_val = batch(validation_set, len(validation_set), model.word_index)
+    X_val_batched, original_sequence_lengths_val, X_val_batched_embed = batch(
+        validation_set,
+        len(validation_set),
+        model.word_index,
+        word_embedding
+    )
     model.validation_size = len(validation_set)
 
     for epoch in range(n_epochs):
@@ -475,6 +487,7 @@ if __name__ == '__main__':
     """
 
     bible_corpus = 'PBC'
+    embeddings_file = '/home/pablo/Documents/tools/Glove/glove.6B.300d.txt'
 
     # Read a bible and pre-process it
     pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
@@ -497,6 +510,9 @@ if __name__ == '__main__':
     cfg = to_train_config(cfg, cfg_name)
     cfg.save(f'{output_dir}/{model_name}.cfg')
 
+    # Load the pre-trained word embeddings
+    pretrained_embeddings = embed.load_embeddings(embeddings_file)
+
     lm, sgd = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train(
@@ -504,7 +520,8 @@ if __name__ == '__main__':
         training_data,
         optimizer=sgd,
         validation_set=validation_data,
-        config=cfg
+        config=cfg,
+        word_embedding=pretrained_embeddings
     )
 
     lm.save(f'{output_dir}/{model_name}.pth')

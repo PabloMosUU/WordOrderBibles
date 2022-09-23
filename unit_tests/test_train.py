@@ -136,7 +136,7 @@ class TestTrain(unittest.TestCase):
         config = train.TrainConfig(300, 300, 2, 0.1, 1, False, "", 0, 1, 0, False, False, True, ['loss'])
         with patch.object(train, 'train_batch', return_value=0) as _:
             with patch.object(train, '_validate') as mock_method:
-                train.train(model, corpus, optimizer, validation_set, config)
+                train.train(model, corpus, optimizer, validation_set, config, model.word_index)
         # Assert that _validate is called with a single batch, and not a list of batches
         mock_method.assert_called_once()
         _, dataset, orig_lengths, _, _, validation_metrics = mock_method.call_args[0]

@@ -249,12 +249,13 @@ def to_indices(seq: list, to_ix: dict) -> list:
     return [to_ix[w] if w in to_ix else to_ix[UNKNOWN_TOKEN] for w in seq]
 
 
-def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
+def batch(dataset: list, batch_size: int, word_index: dict, word_embedding: dict) -> tuple:
     """
     Breaks up a dataset into batches and puts them in tensor format for PyTorch to train
     :param dataset: a list of sequences, each of which is a list of tokens
     :param batch_size: the desired batch size
     :param word_index: a map from words to indices
+    :param word_embedding: a map from words to embedding vectors
     :return: a tensor containing the entire dataset separated into batches, with appropriate padding
     """
     # Break up into batches
@@ -274,7 +275,10 @@ def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     as_indices = [[to_indices(seq, word_index) for seq in b] \
                   for b in padded_batches]
 
-    return as_indices, original_sequence_lengths
+    # Convert words to embeddings
+    as_embeddings = [[to_indices(seq, word_embedding) for seq in b] for b in padded_batches]
+
+    return as_indices, original_sequence_lengths, as_embeddings
 
 
 def pad_batch(sequences: list) -> list:

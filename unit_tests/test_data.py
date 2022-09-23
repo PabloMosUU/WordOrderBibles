@@ -10,7 +10,7 @@ class TestData(unittest.TestCase):
         word_index[data.PAD_TOKEN] = 170
         word_index[data.START_OF_VERSE_TOKEN] = 171
         word_index[data.END_OF_VERSE_TOKEN] = 172
-        dataset, original_sequence_lengths = data.batch(sequences, 2, word_index)
+        dataset, original_sequence_lengths, _ = data.batch(sequences, 2, word_index, word_index)
         self.assertEqual(3, len(dataset))
         self.assertTrue(all([len(el) <= 2 for el in dataset]))
         self.assertTrue(all([len(seq) == 6 for seq in dataset[0]]))
@@ -29,7 +29,7 @@ class TestData(unittest.TestCase):
         word_index[data.PAD_TOKEN] = 170
         word_index[data.START_OF_VERSE_TOKEN] = 171
         word_index[data.END_OF_VERSE_TOKEN] = 172
-        dataset, _ = data.batch(sequences, 2, word_index)
+        dataset, _, _ = data.batch(sequences, 2, word_index, word_index)
         self.assertEqual('My', index_word[dataset[0][0][1]])
 
     def test_pad_batch(self):
