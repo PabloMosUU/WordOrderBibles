@@ -45,7 +45,7 @@ if __name__ == '__main__':
     lm.save(f'output/{model_name}.pth')
 
     print('After training:')
-    print_pred(lm, training_data, word_to_ix, ix_to_word)
+    print_pred(lm, training_data, ix_to_word, pretrained_embeddings)
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data]))
 

@@ -6,6 +6,7 @@ from torch import nn as nn, tensor
 from torch.nn.functional import log_softmax
 
 import data
+import embed
 import util
 from data import to_indices
 from train import LSTMLanguageModel
@@ -16,14 +17,14 @@ def _get_next_words(scores: torch.Tensor, ix_next_word: dict) -> np.ndarray:
     return np.vectorize(lambda ix: ix_next_word[ix])(pred_ixs)
 
 
-def _pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -> np.ndarray:
+def _pred_sample(model: nn.Module, sample: list, ix_word: dict, word_embedding: dict) -> np.ndarray:
     # Put the model in evaluation mode
     model.eval()
 
     words = sample.copy()
     for i in range(1, len(sample)):
         # Batching is obligatory with my model
-        seq = torch.tensor([to_indices(words, word_ix)], dtype=torch.long)
+        seq = torch.tensor([to_indices(words, word_embedding)], dtype=torch.float)
         original_input_sequence_lengths = torch.tensor([len(seq[0])])
         trained_next_word_scores = model(seq, original_input_sequence_lengths)[0]
 
@@ -32,13 +33,13 @@ def _pred_sample(model: nn.Module, sample: list, word_ix: dict, ix_word: dict) -
     return np.array(words)
 
 
-def pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> list:
+def pred(model: nn.Module, corpus: list, ix_word: dict, word_embedding: dict) -> list:
     with torch.no_grad():
-        return [_pred_sample(model, seq, word_ix, ix_word) for seq in corpus]
+        return [_pred_sample(model, seq, ix_word, word_embedding) for seq in corpus]
 
 
-def print_pred(model: nn.Module, corpus: list, word_ix: dict, ix_word: dict) -> None:
-    predictions = pred(model, corpus, word_ix, ix_word)
+def print_pred(model: nn.Module, corpus: list, ix_word: dict, word_embedding: dict) -> None:
+    predictions = pred(model, corpus, ix_word, word_embedding)
     for prediction in predictions:
         print(' '.join(prediction))
 
@@ -126,8 +127,18 @@ def generate_sentences(model: LSTMLanguageModel, n: int, k: int, length: int) ->
 
 if __name__ == '__main__':
     model_name = 'dropout00'
+    embeddings_file = '/home/pablo/Documents/tools/Glove/glove.6B.300d.txt'
+
+    # Load the pre-trained word embeddings
+    pretrained_embeddings = embed.load_embeddings(embeddings_file)
+
     old_model = LSTMLanguageModel.load(f'output/{model_name}.pth')
     print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 3, 10))
     print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 1, 10))
-    print(pred(old_model, [[data.START_OF_VERSE_TOKEN] * 11], old_model.word_index, util.invert_dict(old_model.word_index)))
+    print(pred(
+        old_model,
+        [[data.START_OF_VERSE_TOKEN] * 11],
+        util.invert_dict(old_model.word_index),
+        pretrained_embeddings
+    ))
     print(generate_sentences(old_model, 10, 5, 20))

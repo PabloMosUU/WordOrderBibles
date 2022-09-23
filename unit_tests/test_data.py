@@ -1,4 +1,7 @@
 import unittest
+
+import numpy as np
+
 import data
 
 class TestData(unittest.TestCase):
@@ -10,7 +13,8 @@ class TestData(unittest.TestCase):
         word_index[data.PAD_TOKEN] = 170
         word_index[data.START_OF_VERSE_TOKEN] = 171
         word_index[data.END_OF_VERSE_TOKEN] = 172
-        dataset, original_sequence_lengths, _ = data.batch(sequences, 2, word_index, word_index)
+        word_embedding = {k: np.ones(5) for k in word_index.keys()}
+        dataset, original_sequence_lengths, _ = data.batch(sequences, 2, word_index, word_embedding)
         self.assertEqual(3, len(dataset))
         self.assertTrue(all([len(el) <= 2 for el in dataset]))
         self.assertTrue(all([len(seq) == 6 for seq in dataset[0]]))

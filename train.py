@@ -33,7 +33,6 @@ class LSTMLanguageModel(nn.Module):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
         vocab_size = len(self.word_index)
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=self.word_index[data.PAD_TOKEN])
 
         # The LSTM takes word embeddings as inputs, and outputs hidden states
         # with dimensionality hidden_dim.
@@ -57,10 +56,12 @@ class LSTMLanguageModel(nn.Module):
         self.epoch = -1
 
     def forward(self, sequences, original_sequence_lengths: torch.Tensor):
-        embeds = self.word_embeddings(sequences)
-
         # pack_padded_sequence so that padded items in the sequence won't be shown to the LSTM
-        packed_embeddings = torch.nn.utils.rnn.pack_padded_sequence(embeds, original_sequence_lengths, batch_first=True)
+        packed_embeddings = torch.nn.utils.rnn.pack_padded_sequence(
+            sequences,
+            original_sequence_lengths,
+            batch_first=True
+        )
 
         lstm_out, _ = self.lstm(packed_embeddings)
 
@@ -93,7 +94,7 @@ class LSTMLanguageModel(nn.Module):
 
     def log_gradients(self, batch_ix: int):
         if self.gradient_logging:
-            for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
+            for k, v in {'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
                 for i, p in enumerate(v.parameters()):
                     gradients = abs(p.grad.flatten())
                     if any(gradients > 0.5):
@@ -213,7 +214,7 @@ def get_n_datapoints(dataset: torch.Tensor) -> int:
 def train_batch(
         model: nn.Module,
         dataset: list,
-        dataset_embeddings: list,
+        dataset_embeddings: np.ndarray,
         batch_ix: int,
         optimizer: nn.Module,
         clip_gradients: bool,

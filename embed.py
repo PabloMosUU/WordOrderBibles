@@ -14,7 +14,7 @@ def replace_keys(word_embedding: dict, key_map: dict) -> dict:
 def load_embeddings(file: str) -> dict:
     embedding_df = pd.read_csv(file, sep=" ", quoting=3,
                                header=None, index_col=0, na_filter=False)
-    embeddings = {key: val.values for key, val in embedding_df.T.items()}
+    embeddings = {key: val.values.tolist() for key, val in embedding_df.T.items()}
     return replace_keys(embeddings, KEY_MAP)
 
 if __name__ == '__main__':
