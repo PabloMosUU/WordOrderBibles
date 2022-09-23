@@ -5,6 +5,7 @@ The code is adapted to do language modeling instead of part-of-speech tagging
 import configparser
 
 import data
+import embed
 import train
 from train import get_word_index, initialize_model, to_train_config
 from util import invert_dict
@@ -12,6 +13,7 @@ from util import invert_dict
 if __name__ == '__main__':
     bible_corpus = 'PBC'
     bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
+    embeddings_file = '/home/pablo/Documents/tools/Glove/glove.6B.300d.txt'
 
     # Read a bible and pre-process it
     pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
@@ -30,6 +32,9 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'bible.lm')
 
+    # Load the pre-trained word embeddings
+    pretrained_embeddings = embed.load_embeddings(embeddings_file)
+
     lm, ten_line_opt = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train.train(
@@ -37,7 +42,8 @@ if __name__ == '__main__':
         training_data,
         optimizer=ten_line_opt,
         validation_set=validation_data,
-        config=cfg
+        config=cfg,
+        word_embedding=pretrained_embeddings
     )
 
     model_name = 'ten_bible_lines'
