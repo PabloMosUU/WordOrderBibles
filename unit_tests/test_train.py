@@ -11,7 +11,7 @@ import util
 
 class SimpleModel(train.LSTMLanguageModel):
     def __init__(self, embedding_dim, hidden_dim, n_layers: int, loss_function: torch.nn.Module,
-                 avg_loss_per_token: bool, dropout: float, log_gradients: bool):
+                 avg_loss_per_token: bool, dropout: float, log_gradients: bool, max_grad: float):
         # Take a simple language model
         # SOS -> the (80%), a (20%)
         # the, a -> dog (40%), cat (60%)
@@ -23,7 +23,7 @@ class SimpleModel(train.LSTMLanguageModel):
                          "the a dog cat barked walked meowed".split()
         self.word_index = {word: i for i, word in enumerate(self.all_words)}
         super().__init__(embedding_dim, hidden_dim, self.word_index, n_layers, loss_function, avg_loss_per_token,
-                         dropout, log_gradients)
+                         dropout, log_gradients, max_grad)
         self.probs = {data.START_OF_VERSE_TOKEN: {'the': 0.8, 'a': 0.2},
                         'the': {'dog': 0.4, 'cat': 0.6},
                         'a': {'dog': 0.4, 'cat': 0.6},
@@ -81,7 +81,7 @@ class TestTrain(unittest.TestCase):
 
 
     def test_perplexity(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False, max_grad=10)
         test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN]
         test_sequence = [[model.word_index[word] for word in test_words]]
         X = train.truncate(test_sequence, is_input=True)
@@ -93,7 +93,7 @@ class TestTrain(unittest.TestCase):
 
 
     def test_perplexity_pad(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False, max_grad=10)
         test_words = [data.START_OF_VERSE_TOKEN] + "the dog walked".split() + [data.END_OF_VERSE_TOKEN, data.PAD_TOKEN]
         test_sequence = [[model.word_index[word] for word in test_words]]
         X = train.truncate(test_sequence, is_input=True)
@@ -105,7 +105,7 @@ class TestTrain(unittest.TestCase):
 
 
     def test_perplexity_two(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False, max_grad=10)
         test_sentences = ("the dog walked", "the cat")
         test_sequences = [data.to_indices(f'{data.START_OF_VERSE_TOKEN} {sent} {data.END_OF_VERSE_TOKEN}'.split(),
                                           model.word_index) \
@@ -121,7 +121,7 @@ class TestTrain(unittest.TestCase):
 
 
     def test_get_perplexity(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False, max_grad=10)
         test_sentences = ["the dog walked".split(), "the cat".split()]
         expected = 2.05411
         perplexity = model.get_perplexity(test_sentences, False)
@@ -129,11 +129,11 @@ class TestTrain(unittest.TestCase):
 
 
     def test_validate_on_full_validation_set(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False, max_grad=10)
         corpus = ["the dog walked".split(), "the cat".split()]
         optimizer = None
         validation_set = 2 * corpus
-        config = train.TrainConfig(300, 300, 2, 0.1, 1, False, "", 0, 1, 0, False, False, True, ['loss'])
+        config = train.TrainConfig(300, 300, 2, 0.1, 1, False, 0.1, "", 0, 1, 0, False, False, True, ['loss'])
         with patch.object(train, 'train_batch', return_value=0) as _:
             with patch.object(train, '_validate') as mock_method:
                 train.train(model, corpus, optimizer, validation_set, config)
@@ -148,7 +148,7 @@ class TestTrain(unittest.TestCase):
 
 
     def test_validate(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False, max_grad=0.1)
         corpus = ["the dog walked {data.END_OF_VERSE_TOKEN}",
                   f"the cat {data.END_OF_VERSE_TOKEN} {data.PAD_TOKEN}"]
         X = [data.to_indices(f'{data.START_OF_VERSE_TOKEN} {el}'.split(), model.word_index) \
@@ -160,7 +160,7 @@ class TestTrain(unittest.TestCase):
 
 
     def test_validate_batch_loss(self):
-        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False)
+        model = SimpleModel(300, 300, 1, torch.nn.CrossEntropyLoss(), True, 0, False, max_grad=0.03)
         batch_seqs = [[model.word_index[el] for el in (data.START_OF_VERSE_TOKEN, 'dog', data.END_OF_VERSE_TOKEN)]]
         orig_seq_lengths = [2]
         val_metrics = ['loss', 'perplexity']

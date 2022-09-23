@@ -27,7 +27,8 @@ class LSTMLanguageModel(nn.Module):
             loss_function: nn.Module,
             avg_loss_per_token: bool,
             dropout: float,
-            log_gradients: bool
+            log_gradients: bool,
+            max_grad: float
     ):
         super(LSTMLanguageModel, self).__init__()
         self.word_index = word_index
@@ -54,6 +55,7 @@ class LSTMLanguageModel(nn.Module):
         self.gradient_logging = log_gradients
         self.big_gradients = []
         self.epoch = -1
+        self.max_grad = max_grad
 
     def forward(self, sequences, original_sequence_lengths: torch.Tensor):
         embeds = self.word_embeddings(sequences)
@@ -124,6 +126,7 @@ class TrainConfig:
             learning_rate: float,
             n_epochs: int,
             clip_gradients: bool,
+            max_grad: float,
             optimizer: str,
             weight_decay: float,
             batch_size: int,
@@ -139,6 +142,7 @@ class TrainConfig:
         self.learning_rate = learning_rate
         self.n_epochs = n_epochs
         self.clip_gradients = clip_gradients
+        self.max_grad = max_grad
         self.optimizer = optimizer
         self.weight_decay = weight_decay
         self.batch_size = batch_size
@@ -154,9 +158,10 @@ class TrainConfig:
     def to_dict(self):
         return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
-                'optimizer': self.optimizer, 'weight_decay': self.weight_decay, 'batch_size': self.batch_size,
-                'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging,
-                'avg_loss_per_verse': self.avg_loss_per_token, 'validation_metrics': ' '.join(self.validation_metrics)}
+                'max_grad': self.max_grad, 'optimizer': self.optimizer, 'weight_decay': self.weight_decay,
+                'batch_size': self.batch_size, 'dropout': self.dropout, 'verbose': self.verbose,
+                'gradient_logging': self.gradient_logging, 'avg_loss_per_verse': self.avg_loss_per_token,
+                'validation_metrics': ' '.join(self.validation_metrics)}
 
     def save(self, filename):
         config = configparser.ConfigParser()
@@ -248,8 +253,7 @@ def train_batch(
 
     # Clip gradients to avoid explosions
     if clip_gradients:
-        clip_value = 0.03
-        nn.utils.clip_grad_value_(model.parameters(), clip_value=clip_value)
+        nn.utils.clip_grad_value_(model.parameters(), clip_value=model.max_grad)
 
     # update the parameters
     optimizer.step()
@@ -380,7 +384,8 @@ def initialize_model(word_index: dict, config: TrainConfig) -> tuple:
         loss_function,
         config.avg_loss_per_token,
         config.dropout,
-        config.gradient_logging
+        config.gradient_logging,
+        config.max_grad
     )
     lr = config.learning_rate
     optimizer_name = config.optimizer
@@ -440,6 +445,7 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
         float(params['learning_rate']),
         int(params['n_epochs']),
         params['clip_gradients'] == 'True',
+        float(params['max_grad']),
         params['optimizer'],
         float(params['weight_decay']),
         int(params['batch_size']),
