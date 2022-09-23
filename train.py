@@ -248,7 +248,7 @@ def train_batch(
 
     # Clip gradients to avoid explosions
     if clip_gradients:
-        clip_value = 0.1
+        clip_value = 0.03
         nn.utils.clip_grad_value_(model.parameters(), clip_value=clip_value)
 
     # update the parameters
@@ -468,10 +468,10 @@ if __name__ == '__main__':
     """
     bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
     cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg'
-    cfg_name = 'simple.lm'
+    cfg_name = 'fix.loss.100.clip'
     model_name = 'simple_lm'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
-    is_debug = True
+    is_debug = False
     """
 
     bible_corpus = 'PBC'
