@@ -156,7 +156,7 @@ class TrainConfig:
                 'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
                 'optimizer': self.optimizer, 'weight_decay': self.weight_decay, 'batch_size': self.batch_size,
                 'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging,
-                'avg_loss_per_verse': self.avg_loss_per_token, 'validation_metrics': ' '.join(self.validation_metrics)}
+                'avg_loss_per_token': self.avg_loss_per_token, 'validation_metrics': ' '.join(self.validation_metrics)}
 
     def save(self, filename):
         config = configparser.ConfigParser()
