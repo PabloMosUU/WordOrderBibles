@@ -213,6 +213,7 @@ def get_n_datapoints(dataset: torch.Tensor) -> int:
 def train_batch(
         model: nn.Module,
         dataset: list,
+        dataset_embeddings: list,
         batch_ix: int,
         optimizer: nn.Module,
         clip_gradients: bool,
@@ -221,7 +222,8 @@ def train_batch(
     """
     Train a model on a single batch
     :param model: the model to be trained
-    :param dataset: the dataset in tensor format with tokens converted to indices
+    :param dataset: the dataset with tokens converted to indices
+    :param dataset_embeddings: the dataset with tokens converted to embeddings
     :param batch_ix: the index of the batch we want to use for training
     :param optimizer: the optimizer used for training
     :param clip_gradients: whether we want to clip the gradients
@@ -233,7 +235,7 @@ def train_batch(
     model.zero_grad()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = truncate(dataset[batch_ix], is_input=True)
+    X = truncate(dataset_embeddings[batch_ix], is_input=True)
     Y = truncate(dataset[batch_ix], is_input=False)
     original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[batch_ix]])
 
@@ -260,6 +262,7 @@ def train_batch(
 def validate_batch(
         model: LSTMLanguageModel,
         batch_seqs: list,
+        batch_seq_embeddings: list,
         original_sequence_lengths: list,
         validation_metrics: list,
         average_loss_per_token: bool
@@ -268,7 +271,7 @@ def validate_batch(
     model.eval()
 
     # Select the right batch and remove the first or last token for inputs or outputs
-    X = truncate(batch_seqs, is_input=True)
+    X = truncate(batch_seq_embeddings, is_input=True)
     Y = truncate(batch_seqs, is_input=False)
     original_input_sequence_lengths = torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths])
 
@@ -309,6 +312,7 @@ def train(model: LSTMLanguageModel,
         word_embedding
     )
     model.validation_size = len(validation_set)
+    assert len(X_val_batched) == 1
 
     for epoch in range(n_epochs):
         model.epoch = epoch
@@ -320,6 +324,7 @@ def train(model: LSTMLanguageModel,
                 train_batch(
                     model,
                     X_train_batched,
+                    X_train_batched_embed,
                     batch_ix,
                     optimizer,
                     config.clip_gradients,
@@ -335,6 +340,7 @@ def train(model: LSTMLanguageModel,
                 _validate(
                     model,
                     X_val_batched[0],
+                    X_val_batched_embed[0],
                     original_sequence_lengths_val[0],
                     config.verbose,
                     config.avg_loss_per_token,
@@ -356,6 +362,7 @@ def train(model: LSTMLanguageModel,
 def _validate(
         model: LSTMLanguageModel,
         X_val_batched: list,
+        X_val_batched_embed: list,
         original_sequence_lengths: list,
         verbose: bool,
         avg_loss_per_token: bool,
@@ -365,6 +372,7 @@ def _validate(
     Validate a model on a validation set
     :param model: the model you want to validate
     :param X_val_batched: the validation dataset as a single batch of all sentences, expressed as word indices
+    :param X_val_batched_embed: the val set as a single batch of all sentences, expressed as word embeddings
     :param original_sequence_lengths: the original lengths of the sequences (without padding)
     :param verbose: whether to print out validation information
     :param avg_loss_per_token: whether to average the loss per token
@@ -373,7 +381,14 @@ def _validate(
     """
     # TODO: get rid of the _validate method, i.e., move all validate_batch here
     with torch.no_grad():
-        metrics = validate_batch(model, X_val_batched, original_sequence_lengths, val_metrics, avg_loss_per_token)
+        metrics = validate_batch(
+            model,
+            X_val_batched,
+            X_val_batched_embed,
+            original_sequence_lengths,
+            val_metrics,
+            avg_loss_per_token
+        )
 
     if verbose:
         print(f'LOG: validation loss {metrics}')

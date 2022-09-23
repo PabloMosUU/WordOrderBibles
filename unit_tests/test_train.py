@@ -139,7 +139,7 @@ class TestTrain(unittest.TestCase):
                 train.train(model, corpus, optimizer, validation_set, config, model.word_index)
         # Assert that _validate is called with a single batch, and not a list of batches
         mock_method.assert_called_once()
-        _, dataset, orig_lengths, _, _, validation_metrics = mock_method.call_args[0]
+        _, dataset, _, orig_lengths, _, _, validation_metrics = mock_method.call_args[0]
         self.assertEqual(len(validation_set), len(dataset))
         self.assertEqual(5, len(dataset[0]))
         self.assertEqual(len(validation_set), len(orig_lengths))
@@ -155,8 +155,8 @@ class TestTrain(unittest.TestCase):
              for el in corpus]
         orig_seq_len = []
         with patch.object(train, 'validate_batch') as mock_validate_batch:
-            train._validate(model, X, orig_seq_len, False, True, ['pepe'])
-        mock_validate_batch.assert_called_once_with(model, X, orig_seq_len, ['pepe'], True)
+            train._validate(model, X, X, orig_seq_len, False, True, ['pepe'])
+        mock_validate_batch.assert_called_once_with(model, X, X, orig_seq_len, ['pepe'], True)
 
 
     def test_validate_batch_loss(self):
@@ -167,7 +167,14 @@ class TestTrain(unittest.TestCase):
         avg_loss_per_token = True
         with patch.object(model, 'loss', return_value=torch.tensor(7)) as mock_loss:
             with patch.object(model, 'perplexity', return_value=11) as mock_pp:
-                metrics = train.validate_batch(model, batch_seqs, orig_seq_lengths, val_metrics, avg_loss_per_token)
+                metrics = train.validate_batch(
+                    model,
+                    batch_seqs,
+                    batch_seqs,
+                    orig_seq_lengths,
+                    val_metrics,
+                    avg_loss_per_token
+                )
         mock_loss.assert_called_once()
         mock_pp.assert_called_once()
         self.assertEqual([7, 11], metrics)

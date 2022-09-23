@@ -1,10 +1,13 @@
 import configparser
 
+import embed
 from train import get_word_index, initialize_model, save_losses, plot_losses, train, to_train_config
 from util import invert_dict
 from generate import print_pred
 
 if __name__ == '__main__':
+    embeddings_file = '/home/pablo/Documents/tools/Glove/glove.6B.300d.txt'
+
     training_data = [
         'that spoken word you yourselves know which was proclaimed throughout all judea beginning from galilee '
         'after the baptism which john preached',
@@ -24,6 +27,9 @@ if __name__ == '__main__':
     cfg.read('configs/pos_tagger.cfg')
     cfg = to_train_config(cfg, 'simple.lm')
 
+    # Load the pre-trained word embeddings
+    pretrained_embeddings = embed.load_embeddings(embeddings_file)
+
     lm, lm_optimizer = initialize_model(word_to_ix, cfg)
 
     train_losses, validation_losses = train(
@@ -31,7 +37,8 @@ if __name__ == '__main__':
         training_data,
         lm_optimizer,
         validation_set=validation_data,
-        config=cfg
+        config=cfg,
+        word_embedding=pretrained_embeddings
     )
 
     model_name = 'simple_lm'
