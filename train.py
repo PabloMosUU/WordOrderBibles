@@ -479,11 +479,11 @@ def to_train_config(config: configparser.ConfigParser, version: str) -> TrainCon
     )
 
 if __name__ == '__main__':
-    if len(sys.argv) != 7:
+    if len(sys.argv) != 8:
         print(
             'USAGE:',
             sys.argv[0],
-            '<bible_filename> <cfg_file> <cfg_name> <model_name> <output_dir> <is_debug>'
+            '<bible_filename> <cfg_file> <cfg_name> <model_name> <output_dir> <is_debug> <embeddings_file>'
         )
         exit(-1)
     bible_filename = sys.argv[1]
@@ -493,6 +493,7 @@ if __name__ == '__main__':
     output_dir = sys.argv[5]
     # In debug mode, only 50 verses are used for training
     is_debug = sys.argv[6] == 'True'
+    embeddings_file = sys.argv[7]
     """
     bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
     cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg'
@@ -500,10 +501,10 @@ if __name__ == '__main__':
     model_name = 'simple_lm'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
     is_debug = True
+    embeddings_file = '/home/pablo/Documents/tools/Glove/glove.6B.300d.txt'
     """
 
     bible_corpus = 'PBC'
-    embeddings_file = '/home/pablo/Documents/tools/Glove/glove.6B.300d.txt'
 
     # Read a bible and pre-process it
     pre_processed_bible = data.process_bible(bible_filename, bible_corpus)
