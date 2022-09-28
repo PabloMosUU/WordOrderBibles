@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 import data
 import util
@@ -16,6 +17,10 @@ def load_embeddings(file: str) -> dict:
                                header=None, index_col=0, na_filter=False)
     embeddings = {key: val.values.tolist() for key, val in embedding_df.T.items()}
     return replace_keys(embeddings, KEY_MAP)
+
+def normalize(word_embedding: dict) -> dict:
+    max_norm = max([np.sqrt(sum([el*el for el in embedding])) for embedding in word_embedding.values()])
+    return {word: [el/max_norm for el in embedding] for word, embedding in word_embedding.items()}
 
 if __name__ == '__main__':
     embed_dim = 300

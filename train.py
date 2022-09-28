@@ -14,7 +14,7 @@ import embed
 from data import batch
 import sys
 
-from util import invert_dict
+from util import invert_dict, normalize
 
 
 class LSTMLanguageModel(nn.Module):
@@ -497,10 +497,10 @@ if __name__ == '__main__':
     """
     bible_filename = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt'
     cfg_file = '/home/pablo/ownCloud/WordOrderBibles/GitHub/configs/pos_tagger.cfg'
-    cfg_name = 'simple.lm'
-    model_name = 'simple_lm'
+    cfg_name = 'glove.300.clip'
+    model_name = 'test_norm_embeddings'
     output_dir = '/home/pablo/ownCloud/WordOrderBibles/GitHub/output/'
-    is_debug = True
+    is_debug = False
     embeddings_file = '/home/pablo/Documents/tools/Glove/glove.6B.300d.txt'
     """
 
@@ -529,6 +529,9 @@ if __name__ == '__main__':
 
     # Load the pre-trained word embeddings
     pretrained_embeddings = embed.load_embeddings(embeddings_file)
+
+    # Normalize the embeddings so that vectors have a norm between 0 and 1
+    pretrained_embeddings = embed.normalize(pretrained_embeddings)
 
     lm, sgd = initialize_model(word_to_ix, cfg)
 
