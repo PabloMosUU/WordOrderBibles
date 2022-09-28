@@ -19,7 +19,7 @@ def load_embeddings(file: str) -> dict:
     return replace_keys(embeddings, KEY_MAP)
 
 def normalize(word_embedding: dict) -> dict:
-    max_norm = max([np.sqrt(sum([el*el for el in embedding])) for embedding in word_embedding.values()])
+    max_norm = max([float(np.sqrt(sum([el*el for el in embedding]))) for embedding in word_embedding.values()])
     return {word: [el/max_norm for el in embedding] for word, embedding in word_embedding.items()}
 
 if __name__ == '__main__':
