@@ -14,7 +14,7 @@ import embed
 from data import batch
 import sys
 
-from util import invert_dict, normalize
+from util import invert_dict
 
 
 class LSTMLanguageModel(nn.Module):
