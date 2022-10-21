@@ -306,6 +306,10 @@ def pad_batch(sequences: list) -> list:
     return padded
 
 
+def join_texts(texts: list, prompt: str, eot_token: str, separator: str) -> str:
+    return prompt + separator.join(texts) + separator + eot_token
+
+
 if __name__ == '__main__':
     if len(sys.argv) != 4:
         print(f'USAGE: {sys.argv[0]} <corpus> <bible_filename> <output_filename>')

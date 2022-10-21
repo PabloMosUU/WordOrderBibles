@@ -40,5 +40,13 @@ class TestData(unittest.TestCase):
         self.assertEqual(data.PAD_TOKEN, padded[0][-1])
 
 
+    def test_join_texts(self):
+        texts = ['something', 'else', 'is', 'here']
+        self.assertEqual(
+            '\n\nsomething else is here EOS',
+            data.join_texts(texts, prompt='\n\n', separator=' ', eot_token='EOS')
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
