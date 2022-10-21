@@ -51,26 +51,3 @@ def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device:
     # Division by np.log(2) is change of base to base-2 logarithm
     # return torch.stack(losses).sum() / end_loc / np.log(2)
     return torch.stack(neg_log_likelihoods).sum() / end_loc / np.log(2)
-
-
-def entropy_rate_pablo(model: nn.Module, encodings: torch.Tensor, stride: int, device: str) -> float:
-    assert len(encodings) == 1
-    encodings = encodings[0]
-    model.eval()
-    max_length = model.config.n_positions
-    begin_loc, end_loc = 0, max_length
-    seq_len = len(encodings)
-    loss_fn = torch.nn.CrossEntropyLoss(reduction='sum')
-    losses = []
-    with torch.no_grad():
-        while begin_loc < seq_len:
-            # We want to avoid considering the tokens that we have already considered before
-            first_logit = 1 if begin_loc == 0 else end_loc - 1 - begin_loc  # TODO: 1 is a magic number coming from 2 prompt tokens
-            end_loc = min(begin_loc + max_length, seq_len)
-            input_ids = encodings[begin_loc:end_loc].to(device)
-            logits = model(input_ids).logits
-            loss = loss_fn(logits[first_logit:-1], input_ids[first_logit + 1:]).item()
-            losses.append(loss)
-            begin_loc += stride
-    total_loss = sum(losses)
-    return (total_loss / (seq_len - 2)) / np.log(2)
