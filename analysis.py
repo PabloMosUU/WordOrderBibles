@@ -15,7 +15,14 @@ def unigram_entropy_direct(tokens: list) -> float:
     return log_Omega / n / np.log(2)
 
 
-#def unigram_entropy_by_counts()
+def unigram_entropy_by_counts(tokens: list, token_log_proba: dict) -> float:
+    """
+    :param tokens: list of tokens that compose a sequence for which we want to compute the entropy
+    :param token_log_proba: base-e logarithms of the unigram probability of each token
+    :return: the unigram entropy per word
+    """
+    log_probas = [token_log_proba[token] for token in tokens]
+    return -np.mean(log_probas) / np.log(2)
 
 
 def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device: str, mask_prompt_tokens: int) -> float:
