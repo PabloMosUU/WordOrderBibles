@@ -69,28 +69,3 @@ def entropy_rate_pablo(model: nn.Module, encodings: torch.Tensor, stride: int, d
             begin_loc += stride
     total_loss = sum(losses)
     return (total_loss / (seq_len - 2)) / np.log(2)
-
-
-def entropy_rate_no_stride(model: torch.nn.Module, encodings: torch.Tensor):
-    model.eval()
-    loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
-    with torch.no_grad():
-        assert len(encodings) == 1
-        outputs = model(encodings[0])
-        n_input_tokens = len(encodings[0])
-        fn_loss = loss_fn(outputs.logits[1:n_input_tokens - 1], encodings[0][2:])
-    float_loss = fn_loss.item()
-    return float_loss / np.log(2)
-
-
-def entropy_rate_no_stride_old(model: nn.Module, encodings: torch.Tensor):
-    model.eval()
-    loss_fn = torch.nn.CrossEntropyLoss(reduction='mean')
-    with torch.no_grad():
-        assert len(encodings) == 1
-        seq = encodings[0]
-        outputs = model(seq)
-        n_prompt_tokens = 2  # TODO: magic variable
-        n_input_tokens = len(seq)
-        fn_loss = loss_fn(outputs.logits[n_prompt_tokens - 1:n_input_tokens - 1], seq[n_prompt_tokens:])
-    return fn_loss.item() / np.log(2)
