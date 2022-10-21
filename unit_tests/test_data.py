@@ -64,19 +64,19 @@ class TestData(unittest.TestCase):
         lines = comment_lines + ['40001001\tFirst verse', '40001002\tSecond verse', '40002001\tNext chapter', '41001001\tAnother book',
                  '67001001\tAnother testament']
         bible = data.parse_pbc_bible_lines(lines, True, 'eng')
-        by_testament, by_book, by_chapter = bible.join_by_toc('\n\n', ' ', 'EOS')
+        by_testament, by_book, by_chapter = bible.join_by_toc()
         self.assertTrue('old' not in by_testament)
-        self.assertEqual('\n\nFirst verse Second verse Next chapter Another book EOS',
+        self.assertEqual('First verse_Second verse_Next chapter_Another book'.split('_'),
                          by_testament['new'])
-        self.assertEqual('\n\nAnother testament EOS',
+        self.assertEqual(['Another testament'],
                          by_testament['apocryphal'])
-        self.assertEqual('\n\nFirst verse Second verse Next chapter EOS', by_book[40])
-        self.assertEqual('\n\nAnother book EOS', by_book[41])
-        self.assertEqual('\n\nAnother testament EOS', by_book[67])
-        self.assertEqual('\n\nFirst verse Second verse EOS', by_chapter[40001])
-        self.assertEqual('\n\nNext chapter EOS', by_chapter[40002])
-        self.assertEqual('\n\nAnother book EOS', by_chapter[41001])
-        self.assertEqual('\n\nAnother testament EOS', by_chapter[67001])
+        self.assertEqual('First verse_Second verse_Next chapter'.split('_'), by_book[40])
+        self.assertEqual(['Another book'], by_book[41])
+        self.assertEqual('Another testament'.split('_'), by_book[67])
+        self.assertEqual('First verse_Second verse'.split('_'), by_chapter[40001])
+        self.assertEqual('Next chapter'.split('_'), by_chapter[40002])
+        self.assertEqual('Another book'.split('_'), by_chapter[41001])
+        self.assertEqual('Another testament'.split('_'), by_chapter[67001])
 
 
 if __name__ == "__main__":
