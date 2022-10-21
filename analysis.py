@@ -1,12 +1,21 @@
+from collections import Counter
+
 import torch.nn as nn
 import torch
 from tqdm import tqdm
 import numpy as np
 
+from util import log_factorial
 
-def unigram_entropy(model: nn.Module) -> float:
-    # Todo: challenge 4a
-    raise NotImplementedError()
+
+def unigram_entropy_direct(tokens: list) -> float:
+    n = len(tokens)
+    token_n_j = Counter(tokens)
+    log_Omega = log_factorial(n) - np.sum([log_factorial(n_j) for n_j in token_n_j.values()])
+    return log_Omega / n / np.log(2)
+
+
+#def unigram_entropy_by_counts()
 
 
 def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device: str, mask_prompt_tokens: int) -> float:
@@ -49,5 +58,4 @@ def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device:
             break
 
     # Division by np.log(2) is change of base to base-2 logarithm
-    # return torch.stack(losses).sum() / end_loc / np.log(2)
     return torch.stack(neg_log_likelihoods).sum() / end_loc / np.log(2)
