@@ -47,6 +47,37 @@ class TestData(unittest.TestCase):
             data.join_texts(texts, prompt='\n\n', separator=' ', eot_token='EOS')
         )
 
+    def test_join_by_hierarchy(self):
+        comments = """# language_name:        English
+# closest_ISO_639-3:    eng
+# ISO_15924:            Latn
+# year_short:           1997
+# year_long:            
+# vernacular_title:     
+# english_title:        World English Bible
+# URL:                  http://biblehub.com/web/matthew/1.htm
+# copyright_short:      Public Domain 1997
+# copyright_long:       
+# notes:                
+"""
+        comment_lines = comments.split('\n')
+        lines = comment_lines + ['40001001\tFirst verse', '40001002\tSecond verse', '40002001\tNext chapter', '41001001\tAnother book',
+                 '67001001\tAnother testament']
+        bible = data.parse_pbc_bible_lines(lines, True, 'eng')
+        by_testament, by_book, by_chapter = bible.join_by_toc('\n\n', ' ', 'EOS')
+        self.assertTrue('old' not in by_testament)
+        self.assertEqual('\n\nFirst verse Second verse Next chapter Another book EOS',
+                         by_testament['new'])
+        self.assertEqual('\n\nAnother testament EOS',
+                         by_testament['apocryphal'])
+        self.assertEqual('\n\nFirst verse Second verse Next chapter EOS', by_book[40])
+        self.assertEqual('\n\nAnother book EOS', by_book[41])
+        self.assertEqual('\n\nAnother testament EOS', by_book[67])
+        self.assertEqual('\n\nFirst verse Second verse EOS', by_chapter[40001])
+        self.assertEqual('\n\nNext chapter EOS', by_chapter[40002])
+        self.assertEqual('\n\nAnother book EOS', by_chapter[41001])
+        self.assertEqual('\n\nAnother testament EOS', by_chapter[67001])
+
 
 if __name__ == "__main__":
     unittest.main()

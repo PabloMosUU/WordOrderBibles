@@ -180,7 +180,7 @@ class PbcBible(Bible):
             raise ValueError(f'{book_id} does not belong to any known testament')
 
 
-    def join_by_toc(self):
+    def join_by_toc(self, prompt: str, separator: str, eos_token: str):
         by_testament = defaultdict(list)
         by_book = defaultdict(list)
         by_chapter = defaultdict(list)
@@ -194,7 +194,10 @@ class PbcBible(Bible):
             by_book[book].append(verse)
             testament = PbcBible.get_testament(book)
             by_testament[testament].append(verse)
-        return by_testament, by_book, by_chapter
+        return [{hid: join_texts(verses, prompt=prompt, eot_token=eos_token, separator=separator) \
+                 for hid, verses in by_h.items()} \
+                for by_h in (by_testament, by_book, by_chapter)]
+
 
 def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
     if lowercase:
