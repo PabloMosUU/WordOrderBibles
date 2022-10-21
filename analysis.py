@@ -9,13 +9,14 @@ def unigram_entropy(model: nn.Module) -> float:
     raise NotImplementedError()
 
 
-def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device: str) -> float:
+def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device: str, mask_prompt_tokens: int) -> float:
     """
     Compute the entropy rate (entropy per word) for a given text, given a model and a stride for the sliding window
     :param model: the language model that is used to compute probabilities
     :param encodings: the text for which you want to estimate the entropy, encoded as token IDs
     :param stride: the stride for the sliding window approach. 1 is call LM once per token
     :param device: the device where you want to run the computations (cuda or cpu)
+    :param mask_prompt_tokens: number of tokens to mask at the beginning of the entire text (prompt)
     :return: an entropy rate (entropy per word) in bits per word
     """
     max_length = model.config.n_positions
@@ -29,6 +30,10 @@ def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device:
         input_ids = encodings[:, begin_loc:end_loc].to(device)
         target_ids = input_ids.clone()
         target_ids[:, :-trg_len] = -100
+
+        # Mask prompt tokens
+        if begin_loc == 0 and mask_prompt_tokens > 0:
+            target_ids[:, :mask_prompt_tokens] = -100
 
         with torch.no_grad():
             outputs = model(input_ids, labels=target_ids)
