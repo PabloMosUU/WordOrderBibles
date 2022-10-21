@@ -1,6 +1,7 @@
 import random
 import sys
 import re
+from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import Iterator
 
@@ -167,6 +168,34 @@ class PbcBible(Bible):
                 content[key] = value
         return comments, content, hidden_content
 
+    @staticmethod
+    def get_testament(book_id: int) -> str:
+        if 1 <= book_id <= 39:
+            return 'old'
+        elif 40 <= book_id <= 66:
+            return 'new'
+        elif 67 <= book_id <= 86:
+            return 'apocryphal'
+        else:
+            raise ValueError(f'{book_id} does not belong to any known testament')
+
+
+    def join_by_toc(self):
+        by_testament = defaultdict(list)
+        by_book = defaultdict(list)
+        by_chapter = defaultdict(list)
+        last_code = "00000000"
+        for code, verse in self.content.items():
+            assert code >= last_code, f'The verses are not ordered by verse ID: ({last_code}, {code})'
+            last_code = code
+            chapter = int(code[:5])
+            by_chapter[chapter].append(verse)
+            book = int(code[:2])
+            by_book[book].append(verse)
+            testament = PbcBible.get_testament(book)
+            by_testament[testament].append(verse)
+        return by_testament, by_book, by_chapter
+
 def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
     if lowercase:
         text = text.lower()
@@ -234,17 +263,6 @@ def process_bible(filename: str, corpus: str) -> TokenizedBible:
     return preprocess(structured_bible)
 
 
-if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print(f'USAGE: {sys.argv[0]} <corpus> <bible_filename> <output_filename>')
-        exit(-1)
-    bible_corpus = sys.argv[1]
-    bible_filename = sys.argv[2]
-    output_filename = sys.argv[3]
-    pre_processed_bible = process_bible(bible_filename, bible_corpus)
-    pre_processed_bible.save(output_filename)
-
-
 def to_indices(seq: list, to_ix: dict) -> list:
     return [to_ix[w] if w in to_ix else to_ix[UNKNOWN_TOKEN] for w in seq]
 
@@ -286,3 +304,14 @@ def pad_batch(sequences: list) -> list:
     max_length = max([len(el) for el in sequences])
     padded = [seq + [PAD_TOKEN] * (max_length - len(seq)) for seq in sequences]
     return padded
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 4:
+        print(f'USAGE: {sys.argv[0]} <corpus> <bible_filename> <output_filename>')
+        exit(-1)
+    bible_corpus = sys.argv[1]
+    bible_filename = sys.argv[2]
+    output_filename = sys.argv[3]
+    pre_processed_bible = process_bible(bible_filename, bible_corpus)
+    pre_processed_bible.save(output_filename)
