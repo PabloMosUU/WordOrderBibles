@@ -183,12 +183,11 @@ class PbcBible(Bible):
     def join_by_toc(self):
         by_bible = {'bible': []}
         by_testament, by_book, by_chapter = defaultdict(list), defaultdict(list), defaultdict(list)
-        by_verse = {}
+        by_verse = {verse_id: [verse] for verse_id, verse in self.content.items()}
         last_code = "00000000"
         for code, verse in self.content.items():
             assert code >= last_code, f'The verses are not ordered by verse ID: ({last_code}, {code})'
             last_code = code
-            by_verse[code] = [verse]
             chapter = int(code[:5])
             by_chapter[chapter].append(verse)
             book = int(code[:2])
