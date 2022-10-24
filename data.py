@@ -182,21 +182,25 @@ class PbcBible(Bible):
 
 
     def join_by_toc(self):
-        by_bible = {'bible': []}
-        by_testament, by_book, by_chapter = defaultdict(list), defaultdict(list), defaultdict(list)
-        by_verse = {verse_id: [verse] for verse_id, verse in self.content.items()}
-        last_code = "00000000"
-        for code, verse in self.content.items():
-            assert code >= last_code, f'The verses are not ordered by verse ID: ({last_code}, {code})'
-            last_code = code
-            chapter = int(code[:5])
-            by_chapter[chapter].append(verse)
-            book = int(code[:2])
-            by_book[book].append(verse)
-            testament = PbcBible.get_testament(book)
-            by_testament[testament].append(verse)
-            by_bible['bible'].append(verse)
-        return by_bible, by_testament, by_book, by_chapter, by_verse
+        return _join_by_toc(self.content)
+
+
+def _join_by_toc(pbc_id_verse: MutableMapping) -> tuple:
+    by_bible = {'bible': []}
+    by_testament, by_book, by_chapter = defaultdict(list), defaultdict(list), defaultdict(list)
+    by_verse = {verse_id: [verse] for verse_id, verse in pbc_id_verse.items()}
+    last_code = "00000000"
+    for code, verse in pbc_id_verse.items():
+        assert code >= last_code, f'The verses are not ordered by verse ID: ({last_code}, {code})'
+        last_code = code
+        chapter = int(code[:5])
+        by_chapter[chapter].append(verse)
+        book = int(code[:2])
+        by_book[book].append(verse)
+        testament = PbcBible.get_testament(book)
+        by_testament[testament].append(verse)
+        by_bible['bible'].append(verse)
+    return by_bible, by_testament, by_book, by_chapter, by_verse
 
 
 def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
@@ -321,6 +325,16 @@ def log_likelihoods(text: str, remove_punctuation: bool, lowercase: bool) -> dic
     tokens = tokenize(text, remove_punctuation, lowercase)
     token_counts = collections.Counter(tokens)
     return {token: np.log(counts / len(tokens)) for token, counts in token_counts.items()}
+
+
+def log_likelihoods_smooth(text: str, remove_punctuation: bool, lowercase: bool, V: int) -> dict:
+    # V is the vocabulary size and it must include all words in the test set too
+    tokens = tokenize(text, remove_punctuation, lowercase)
+    token_counts = collections.Counter(tokens)
+    d = defaultdict(lambda: np.log(1 / (len(tokens) + V)))
+    for token, counts in token_counts.items():
+        d[token] = np.log((counts + 1) / (len(tokens) + V))
+    return d
 
 
 if __name__ == '__main__':
