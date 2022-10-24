@@ -67,7 +67,7 @@ def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device:
             break
 
     # Division by np.log(2) is change of base to base-2 logarithm
-    return torch.stack(neg_log_likelihoods).sum() / end_loc / np.log(2)
+    return (torch.stack(neg_log_likelihoods).sum() / end_loc / np.log(2)).item()
 
 def full_entropy_calculation(id_text: dict, model: torch.nn.Module,
                              tokenizer: transformers.PreTrainedTokenizerBase,
