@@ -181,20 +181,22 @@ class PbcBible(Bible):
 
 
     def join_by_toc(self):
-        by_testament = defaultdict(list)
-        by_book = defaultdict(list)
-        by_chapter = defaultdict(list)
+        by_bible = {'bible': []}
+        by_testament, by_book, by_chapter = defaultdict(list), defaultdict(list), defaultdict(list)
+        by_verse = {}
         last_code = "00000000"
         for code, verse in self.content.items():
             assert code >= last_code, f'The verses are not ordered by verse ID: ({last_code}, {code})'
             last_code = code
+            by_verse[code] = [verse]
             chapter = int(code[:5])
             by_chapter[chapter].append(verse)
             book = int(code[:2])
             by_book[book].append(verse)
             testament = PbcBible.get_testament(book)
             by_testament[testament].append(verse)
-        return by_testament, by_book, by_chapter
+            by_bible['bible'].append(verse)
+        return by_bible, by_testament, by_book, by_chapter, by_verse
 
 
 def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
