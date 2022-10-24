@@ -1,3 +1,4 @@
+import collections
 import random
 import sys
 import re
@@ -314,6 +315,12 @@ def join_texts(texts: list, prompt: str, eot_token: str, separator: str) -> str:
 
 def join_texts_in_dict(id_texts: dict, prompt: str, eot_token: str, separator: str) -> dict:
     return {k: join_texts(v, prompt, eot_token, separator) for k,v in id_texts.items()}
+
+
+def log_likelihoods(text: str, remove_punctuation: bool, lowercase: bool) -> dict:
+    tokens = tokenize(text, remove_punctuation, lowercase)
+    token_counts = collections.Counter(tokens)
+    return {token: np.log(counts / len(tokens)) for token, counts in token_counts.items()}
 
 
 if __name__ == '__main__':
