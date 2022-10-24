@@ -2,10 +2,12 @@ from collections import Counter
 
 import torch.nn as nn
 import torch
+import transformers
 from tqdm import tqdm
 import numpy as np
 
 from util import log_factorial
+import data
 
 
 def unigram_entropy_direct(tokens: list) -> float:
@@ -66,3 +68,38 @@ def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device:
 
     # Division by np.log(2) is change of base to base-2 logarithm
     return torch.stack(neg_log_likelihoods).sum() / end_loc / np.log(2)
+
+def full_entropy_calculation(id_text: dict, model: torch.nn.Module,
+                             tokenizer: transformers.PreTrainedTokenizerBase,
+                             stride: int, device: str,
+                             n_prompt_tokens: int,
+                             token_log_probas: dict, remove_punctuation: bool,
+                             lowercase: bool) -> dict:
+    """
+    Run a full entropy calculation for some mapping between an ID and a text
+    :param id_text: map between some ID (bible, testament, chapter, book, verse) and its corresponding text
+    :param model: the model used to compute the probabilities
+    :param tokenizer: the tokenizer associated with the model, used for tokenizing the text
+    :param stride: for the long-text entropy-calculation algorithm
+    :param device: where to run PyTorch calculations
+    :param n_prompt_tokens: the number of tokens in the prompt, according to the tokenizer # TODO: get from the tokenizer (but see below)
+    :param token_log_probas: base-e-log unigram probability distribution of tokens
+    :param remove_punctuation: whether to remove punctuation before computing unigram entropies
+    :param lowercase: whether to lowercase before computing unigram entropies
+    :return: the entropy rate, the unigram entropy by combinatorics, and the unigram entropy by counts, for each text
+    """
+    # TODO: add the option to compute the unigram entropy on the encodings
+    text_id_entropies = {}
+    for text_id, text in id_text.items():
+        # Tokenize for the language model
+        encodings = tokenizer(text, return_tensors='pt').input_ids.to(device)
+        # Tokenize for the unigram entropy computations
+        tokens = data.tokenize(text, remove_punctuation, lowercase)
+        # Compute the entropy rate
+        # TODO: add the option to compute the entropy rate without masking the prompt tokens
+        H = entropy_rate(model, encodings, stride, device, n_prompt_tokens)
+        # Compute the unigram entropy
+        H_s = unigram_entropy_direct(tokens)
+        H_r = unigram_entropy_by_counts(tokens, token_log_probas)
+        text_id_entropies[text_id] = (H, H_s, H_r)
+    return text_id_entropies
