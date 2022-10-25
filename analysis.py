@@ -17,13 +17,17 @@ def unigram_entropy_direct(tokens: list) -> float:
     return log_Omega / n / np.log(2)
 
 
-def unigram_entropy_by_counts(tokens: list, token_log_proba: dict) -> float:
+def unigram_entropy_by_counts(tokens: list, token_log_proba: dict, unk_token='') -> float:
     """
     :param tokens: list of tokens that compose a sequence for which we want to compute the entropy
     :param token_log_proba: base-e logarithms of the unigram probability of each token
+    :param unk_token: if non-empty, use it for querying the probability distribution for unknown tokens
     :return: the unigram entropy per word
     """
-    log_probas = [token_log_proba[token] for token in tokens]
+    log_probas = [token_log_proba[token] \
+                      if token in token_log_proba or unk_token == '' \
+                      else token_log_proba[unk_token] \
+                  for token in tokens]
     return -np.mean(log_probas) / np.log(2)
 
 
