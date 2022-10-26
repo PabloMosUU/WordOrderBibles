@@ -139,3 +139,4 @@ configs
 ???-*bible*.txt
 glove
 slurm-*
+*.sh
