@@ -28,7 +28,7 @@ if __name__ == '__main__':
     output_path = bibles_path + 'output/gpt2/'
     # Variables related to the processing of text for GPT-2
     prompt = '\n\n '
-    separator = ' \n\n '
+    separator = ' '
     add_eos_token = True
     # Variables related to the probability calculation with GPT-2
     stride = 256
