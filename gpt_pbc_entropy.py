@@ -46,14 +46,6 @@ if __name__ == '__main__':
     level_text = {level_name: data.join_texts_in_dict(id_texts, prompt, eos_token, separator) \
                   for level_name, id_texts in by_level.items()}
 
-    # DEBUG
-    for level in ('book', 'chapter', 'verse'):
-        del level_text[level]
-    level_text['bible']['bible'] = level_text['bible']['bible'][:300]
-    level_text['testament']['new'] = ' '.join(level_text['testament']['new'][:100].split(' ')[:-1])
-    level_text['testament']['old'] = ' '.join(level_text['testament']['new'][:50].split(' ')[:-1])
-    # END DEBUG
-
     token_log_likelihood = data.log_likelihoods(level_text['bible']['bible'],
                                                 remove_punctuation=remove_punctuation,
                                                 lowercase=lowercase)
