@@ -18,14 +18,14 @@ import analysis
 import data
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print(f'USAGE: {sys.argv[0]} <device>')
+    if len(sys.argv) != 3:
+        print(f'USAGE: {sys.argv[0]} <device> <filename>')
         exit(-1)
     # Variables related to the location of the data and the type of system
     bibles_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/'
-    bible_filename = 'eng-x-bible-world.txt'
     device = sys.argv[1]
-    output_path = bibles_path + 'output/gpt2/'
+    bible_filename = sys.argv[2]
+    output_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/gpt2/'
     # Variables related to the processing of text for GPT-2
     prompt = '\n\n '
     separator = ' '
