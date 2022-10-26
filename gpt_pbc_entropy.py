@@ -22,7 +22,7 @@ if __name__ == '__main__':
         print(f'USAGE: {sys.argv[0]} <device> <filename>')
         exit(-1)
     # Variables related to the location of the data and the type of system
-    bibles_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/'
+    bibles_path = '/hpc/uu_ics_ads/pmosteiro/EnglishBibles/'
     device = sys.argv[1]
     bible_filename = sys.argv[2]
     output_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/gpt2/'
