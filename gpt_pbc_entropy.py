@@ -9,6 +9,7 @@ The data is from the Parallel Bible Corpus (PBC), and the model used is GPT-2.
 The language is English.
 """
 
+import sys
 import numpy as np
 import pandas as pd
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -17,11 +18,14 @@ import analysis
 import data
 
 if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print(f'USAGE: {sys.argv[0]} <device>')
+        exit(-1)
     # Variables related to the location of the data and the type of system
-    bibles_path = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/'
+    bibles_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/'
     bible_filename = 'eng-x-bible-world.txt'
-    device = 'cpu'
-    output_path = '/home/pablo/Documents/GitHubRepos/WordOrderBibles/output/gpt2/'
+    device = sys.argv[1]
+    output_path = bibles_path + 'output/gpt2/'
     # Variables related to the processing of text for GPT-2
     prompt = '\n\n '
     separator = ' '
