@@ -9,7 +9,6 @@ The data is from the Parallel Bible Corpus (PBC), and the model used is GPT-2.
 The language is English.
 """
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -22,6 +21,7 @@ if __name__ == '__main__':
     bibles_path = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/'
     bible_filename = 'eng-x-bible-world.txt'
     device = 'cpu'
+    output_path = '/home/pablo/Documents/GitHubRepos/WordOrderBibles/output/gpt2/'
     # Variables related to the processing of text for GPT-2
     prompt = '\n\n '
     separator = ' '
@@ -47,9 +47,11 @@ if __name__ == '__main__':
                   for level_name, id_texts in by_level.items()}
 
     # DEBUG
-    for level in ('testament', 'book', 'chapter', 'verse'):
+    for level in ('book', 'chapter', 'verse'):
         del level_text[level]
     level_text['bible']['bible'] = level_text['bible']['bible'][:300]
+    level_text['testament']['new'] = ' '.join(level_text['testament']['new'][:100].split(' ')[:-1])
+    level_text['testament']['old'] = ' '.join(level_text['testament']['new'][:50].split(' ')[:-1])
     # END DEBUG
 
     token_log_likelihood = data.log_likelihoods(level_text['bible']['bible'],
@@ -69,43 +71,18 @@ if __name__ == '__main__':
 
     level_avg_text_len = {level_name: np.mean([len(data.tokenize(text, remove_punctuation, lowercase)) \
                                                for text in id_text.values()]) \
-                          for level_name, id_text in level_text}
+                          for level_name, id_text in level_text.items()}
 
-    """
-    For each of these, we can make two figures. 
-    One is a histogram of H, H_s and H_s-H, and the other is a histogram of H, H_r and H_r-H
-    """
-    df = pd.DataFrame(columns=['n_texts', 'H_mean', 'H_std', 'H_s_mean', 'H_s_std', 'H_r_mean', 'H_r_std',
-                               'D_s_mean', 'D_s_std', 'D_r_mean', 'D_r_std'],
-                      index=level_entropies.values())
-    for level_name, entropies in level_entropies.items():
-        H = [el[0] for el in entropies.values()]
-        H_s = [el[1] for el in entropies.values()]
-        H_r = [el[2] for el in entropies.values()]
-        D_s = [el[1] - el[0] for el in entropies.values()]
-        D_r = [el[2] - el[0] for el in entropies.values()]
-        plt.hist(H, label='H', color='green')
-        plt.hist(H_s, label='H_s', color='blue')
-        plt.hist(D_s, label='D_s', color='red')
-        plt.xlabel('entropy [bits/word]')
-        plt.ylabel(f'number of {level_name}s')
-        plt.legend()
-        plt.show()
-        plt.hist(H, label='H', color='green')
-        plt.hist(H_r, label='H_r', color='blue')
-        plt.hist(D_r, label='D_r', color='red')
-        plt.xlabel('entropy [bits/word]')
-        plt.ylabel(f'number of {level_name}s')
-        plt.legend()
-        plt.show()
-        name_quantity = {'H': H, 'H_s': H_s, 'H_r': H_r, 'D_s': D_s, 'D_r': D_r}
-        name_stat = {}
-        for name, quantity in name_quantity.items():
-            name_stat[name + '_mean'] = np.mean(quantity)
-            name_stat[name + '_std'] = np.std(quantity)
-        name_stat['n_texts'] = len(entropies.values())
-        print(f'{level_name}:', ', '.join(
-            [f'{name}={np.mean(quantity):.2f}+/-{np.std(quantity):.2f}' for name, quantity in name_quantity.items()]))
-        df.loc[level_name] = pd.Series(name_stat)
-    df['avg_text_len'] = df.index.map(level_avg_text_len)
-    df.to_csv(bibles_path + bible_filename.replace('.txt', '_entropies.csv'))
+    # Save all these values to a Pandas dataframe that we can use to make histograms and compute statistics
+    df = pd.DataFrame(columns=('level', 'n_tokens', 'H', 'H_s', 'H_r'))
+    for level_name, section_entropies in level_entropies.items():
+        for section_id, entropies in section_entropies.items():
+            row = (level_name, len(data.tokenize(level_text[level_name][section_id], remove_punctuation, lowercase)),
+                   entropies[0], entropies[1], entropies[2])
+            df.loc[len(df)] = row
+
+    # Average over all texts at each level
+    stats = df.groupby('level').agg(['mean', 'std'])
+
+    df.to_csv(output_path + bible_filename.replace('.txt', '_entropies.csv'), index=False)
+    stats.to_csv(output_path + bible_filename.replace('.txt', '_stats.csv'))
