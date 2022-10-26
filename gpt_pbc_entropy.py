@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
     # Compute the word-order entropies
     df['D_r'] = df['H_r'] - df['H']
-    df['D_s'] = df['H_s'] = df['H']
+    df['D_s'] = df['H_s'] - df['H']
 
     # Average over all texts at each level
     col_aggs = {col: ['mean', 'std'] for col in df.columns if col != 'level'}
