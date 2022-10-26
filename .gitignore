@@ -137,3 +137,5 @@ input
 fig
 configs
 ???-*bible*.txt
+glove
+slurm-*
