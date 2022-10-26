@@ -77,6 +77,10 @@ if __name__ == '__main__':
                    entropies[0], entropies[1], entropies[2])
             df.loc[len(df)] = row
 
+    # Compute the word-order entropies
+    df['D_r'] = df['H_r'] - df['H']
+    df['D_s'] = df['H_s'] = df['H']
+
     # Average over all texts at each level
     stats = df.groupby('level').agg(['mean', 'std'])
 
