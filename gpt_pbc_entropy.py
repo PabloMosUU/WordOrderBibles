@@ -29,7 +29,7 @@ if __name__ == '__main__':
     # Variables related to the processing of text for GPT-2
     prompt = '\n\n '
     separator = ' '
-    add_eos_token = True
+    add_eos_token = False
     # Variables related to the probability calculation with GPT-2
     stride = 256
     n_prompt_tokens = 2
