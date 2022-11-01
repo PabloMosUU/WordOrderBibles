@@ -6,7 +6,6 @@ In this notebook I will run an entire calculation of the entropy, random entropy
 as well as the difference between them. I will do it at the bible, testament, book, chapter and verse levels.
 
 The data is from the Parallel Bible Corpus (PBC), and the model used is GPT-2.
-The language is English.
 """
 
 import sys
