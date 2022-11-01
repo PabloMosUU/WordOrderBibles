@@ -18,13 +18,14 @@ import analysis
 import data
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        print(f'USAGE: {sys.argv[0]} <device> <filename>')
+    if len(sys.argv) != 5:
+        print(f'USAGE: {sys.argv[0]} <device> <filename> <bibles_path> <model_name>')
         exit(-1)
-    # Variables related to the location of the data and the type of system
-    bibles_path = '/hpc/uu_ics_ads/pmosteiro/EnglishBibles/'
     device = sys.argv[1]
     bible_filename = sys.argv[2]
+    bibles_path = sys.argv[3]
+    model_name = sys.argv[4]
+    # Variables related to the location of the data and the type of system
     output_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/gpt2/'
     # Variables related to the processing of text for GPT-2
     prompt = '\n\n '
@@ -37,8 +38,8 @@ if __name__ == '__main__':
     remove_punctuation = False
     lowercase = False
 
-    gpt2 = AutoModelForCausalLM.from_pretrained("gpt2", return_dict_in_generate=True).to(device)
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    gpt2 = AutoModelForCausalLM.from_pretrained(model_name, return_dict_in_generate=True).to(device)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     bible = data.parse_pbc_bible(bibles_path + bible_filename)
 
