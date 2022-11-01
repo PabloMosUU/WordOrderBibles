@@ -140,3 +140,4 @@ configs
 glove
 slurm-*
 *.sh
+nohup.out
