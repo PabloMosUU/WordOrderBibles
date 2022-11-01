@@ -141,3 +141,4 @@ glove
 slurm-*
 *.sh
 nohup.out
+*~
