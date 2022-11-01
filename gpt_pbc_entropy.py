@@ -25,11 +25,11 @@ if __name__ == '__main__':
     bibles_path = sys.argv[3]
     model_name = sys.argv[4]
     # Variables related to the location of the data and the type of system
-    output_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/gpt2/'
+    output_path = '/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/gpt2_all_languages/'
     # Variables related to the processing of text for GPT-2
     prompt = '\n\n '
     separator = ' '
-    add_eos_token = False
+    add_eos_token = True
     # Variables related to the probability calculation with GPT-2
     stride = 256
     n_prompt_tokens = 2
