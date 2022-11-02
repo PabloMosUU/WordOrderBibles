@@ -3,7 +3,7 @@
 Original file is located at
     https://colab.research.google.com/drive/1ntq0iIAKXnVNQsIQB2aq9f1cdkNDneN9
 In this notebook I will run an entire calculation of the entropy, random entropy, and direct entropy,
-as well as the difference between them. I will do it at the bible, testament, book, chapter and verse levels.
+as well as the difference between them. I will do it at the bible, testament, book, and chapter levels.
 
 The data is from the Parallel Bible Corpus (PBC), and the model used is GPT-2.
 """
@@ -43,8 +43,8 @@ if __name__ == '__main__':
     bible = data.parse_pbc_bible(bibles_path + bible_filename)
 
     """For each of these hierarchical orders, we can compute the entropy per word and the unigram entropy."""
-    by_bible, by_testament, by_book, by_chapter, by_verse = bible.join_by_toc()
-    by_level = {'bible': by_bible, 'testament': by_testament, 'book': by_book, 'chapter': by_chapter, 'verse': by_verse}
+    by_bible, by_testament, by_book, by_chapter, _ = bible.join_by_toc()
+    by_level = {'bible': by_bible, 'testament': by_testament, 'book': by_book, 'chapter': by_chapter}
 
     eos_token = ' ' + tokenizer.eos_token if add_eos_token else ''
     level_text = {level_name: data.join_texts_in_dict(id_texts, prompt, eos_token, separator) \
