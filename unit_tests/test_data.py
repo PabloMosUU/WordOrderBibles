@@ -64,7 +64,7 @@ class TestData(unittest.TestCase):
         lines = comment_lines + ['40001001\tFirst verse', '40001002\tSecond verse', '40002001\tNext chapter', '41001001\tAnother book',
                  '67001001\tAnother testament']
         bible = data.parse_pbc_bible_lines(lines, True, 'eng')
-        by_testament, by_book, by_chapter = bible.join_by_toc()
+        by_bible, by_testament, by_book, by_chapter, by_verse = bible.join_by_toc()
         self.assertTrue('old' not in by_testament)
         self.assertEqual('First verse_Second verse_Next chapter_Another book'.split('_'),
                          by_testament['new'])
@@ -77,6 +77,16 @@ class TestData(unittest.TestCase):
         self.assertEqual('Next chapter'.split('_'), by_chapter[40002])
         self.assertEqual('Another book'.split('_'), by_chapter[41001])
         self.assertEqual('Another testament'.split('_'), by_chapter[67001])
+
+    def test_to_dictionaries_repeated_commented_out_lines(self):
+        comment_lines = []
+        content_lines = [(1, "some lines", False),
+                         (2, "some other line", False),
+                         (3, "this line is commented out", True),
+                         (3, "again but with the same ID", True),
+                         (4, "some other line", False)]
+        _, _, hidden_content = data.PbcBible.to_dictionaries(comment_lines, content_lines)
+        self.assertEqual({3: 'again but with the same ID'}, hidden_content)
 
 
 if __name__ == "__main__":
