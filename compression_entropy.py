@@ -1,6 +1,7 @@
 import data
 import random
 import string
+import os
 
 
 def create_random_word(word: str) -> str:
@@ -25,16 +26,32 @@ def mask_word_structure(tokenized: data.TokenizedBible) -> dict:
 
 
 def join_verses(verse_tokens: dict) -> str:
-    raise NotImplementedError()
+    return ' '.join([' '.join(ell[1]) for ell in sorted(verse_tokens.items(), key=lambda el: el[0])])
 
 
 def to_file(text: str, orig_filename: str, appendix: str) -> str:
-    raise NotImplementedError()
+    dot_parts = orig_filename.split('/')[-1].split('.')
+    extension = dot_parts[-1]
+    prefix = '.'.join(dot_parts[:-1])
+    new_filename = prefix + '_' + appendix + '.' + extension
+    with open(new_filename, 'w') as f:
+        f.write(text)
+    return new_filename
 
 
-def run_mismatcher(version: str, preprocessed_filename: str) -> list:
-    raise NotImplementedError()
+def run_mismatcher(preprocessed_filename: str) -> list:
+    mismatcher_filename = preprocessed_filename + '_mismatcher'
+    os.system(f"""java -Xmx3500M -jar \
+    /home/pablo/ownCloud/WordOrderBibles/Literature/ThirdRound/dataverse_files/shortestmismatcher.jar \
+    {preprocessed_filename} {mismatcher_filename}""")
+    with open(mismatcher_filename, 'r') as f:
+        lines = f.readlines()
+    os.remove(mismatcher_filename)
+    return parse_mismatcher_lines(lines)
 
+
+def parse_mismatcher_lines(lines: list) -> list:
+    return [int(line.split('\t')[-1].strip()) for line in lines if line != '\n']
 
 def entropy(mismatches: list) -> float:
     raise NotImplementedError()
@@ -57,8 +74,13 @@ def run(filename: str) -> dict:
     # Save these to files to run the mismatcher
     filenames = {k: to_file(v, filename, k) for k, v in joined.items()}
     # Run the mismatcher
-    version_mismatches = {k: run_mismatcher(k, v) for k, v in filenames.items()}
+    version_mismatches = {version: run_mismatcher(preprocessed_filename) \
+                          for version, preprocessed_filename in filenames.items()}
     # Compute the entropy
     version_entropy = {version: entropy(mismatches) \
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
+
+
+if __name__ == '__main__':
+    run('eng-x-bible-world_sample.txt')
