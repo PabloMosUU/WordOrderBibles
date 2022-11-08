@@ -53,7 +53,7 @@ def run_mismatcher(preprocessed_filename: str) -> list:
 def parse_mismatcher_lines(lines: list) -> list:
     return [int(line.split('\t')[-1].strip()) for line in lines if line != '\n']
 
-def entropy(mismatches: list) -> float:
+def get_entropy(mismatches: list) -> float:
     raise NotImplementedError()
 
 
@@ -77,7 +77,7 @@ def run(filename: str) -> dict:
     version_mismatches = {version: run_mismatcher(preprocessed_filename) \
                           for version, preprocessed_filename in filenames.items()}
     # Compute the entropy
-    version_entropy = {version: entropy(mismatches) \
+    version_entropy = {version: get_entropy(mismatches) \
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
 

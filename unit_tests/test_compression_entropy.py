@@ -82,7 +82,7 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_entropy(self):
         mismatches = [1, 2, 6, 3, 2]
-        pablo = compression_entropy.entropy(mismatches)
+        pablo = compression_entropy.get_entropy(mismatches)
         raise NotImplementedError()
 
 
