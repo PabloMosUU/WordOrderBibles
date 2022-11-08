@@ -82,8 +82,8 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_entropy(self):
         mismatches = [1, 2, 6, 3, 2]
-        pablo = compression_entropy.get_entropy(mismatches)
-        raise NotImplementedError()
+        entropy = compression_entropy.get_entropy(mismatches)
+        self.assertAlmostEqual(0.61373, entropy, 4)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import data
 import random
 import string
 import os
+import numpy as np
 
 
 def create_random_word(word: str) -> str:
@@ -54,7 +55,7 @@ def parse_mismatcher_lines(lines: list) -> list:
     return [int(line.split('\t')[-1].strip()) for line in lines if line != '\n']
 
 def get_entropy(mismatches: list) -> float:
-    raise NotImplementedError()
+    return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
 
 def run(filename: str) -> dict:
