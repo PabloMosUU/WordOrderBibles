@@ -9,11 +9,11 @@ def create_random_word(word: str) -> str:
     return ''.join([random.choice(string.ascii_letters) for _ in word])
 
 
-def mask_word_structure(tokenized: data.TokenizedBible) -> dict:
+def mask_word_structure(tokenized: dict) -> dict:
     masked = {}
     word_map = {}
     new_words = set([])
-    for verse_id, tokens in tokenized.verse_tokens.items():
+    for verse_id, tokens in tokenized.items():
         masked_tokens = []
         for token in tokens:
             if token not in word_map:
@@ -57,7 +57,6 @@ def parse_mismatcher_lines(lines: list) -> list:
 def get_entropy(mismatches: list) -> float:
     return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
-
 def run(filename: str, lowercase: bool) -> dict:
     """
     Main program to run the entire pipeline on a single bible
@@ -73,7 +72,7 @@ def run(filename: str, lowercase: bool) -> dict:
     shuffled = {verse_id: random.sample(words, k=len(words)) \
                 for verse_id, words in tokenized.verse_tokens.items()}
     # Mask word structure
-    masked = mask_word_structure(tokenized)
+    masked = mask_word_structure(tokenized.verse_tokens)
     # Put them in a dictionary
     tokens = {'orig': tokenized.verse_tokens, 'shuffled': shuffled, 'masked': masked}
     # Join all verses together

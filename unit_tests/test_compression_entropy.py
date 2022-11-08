@@ -8,8 +8,7 @@ import os
 class TestCompressionEntropy(unittest.TestCase):
     def test_mask_word_structure(self):
         verse_tokens = {1: ['I', 'am', 'nice', 'and', 'clean', 'and', 'that', 'matters', '.']}
-        tokenized_bible = data.TokenizedBible('eng', 'eng_test.txt', verse_tokens)
-        shuffled = compression_entropy.mask_word_structure(tokenized_bible)
+        shuffled = compression_entropy.mask_word_structure(verse_tokens)
         self.assertEqual(1, len(shuffled))
         self.assertTrue(1 in shuffled)
         self.assertEqual(len(verse_tokens[1]), len(shuffled[1]))
@@ -20,8 +19,7 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_mask_word_structure_across_verses(self):
         verse_tokens = {1: ['This', 'is', 'it'], 2: ['It', 'is', 'good']}
-        tokenized_bible = data.TokenizedBible('eng', 'eng_test_2.txt', verse_tokens)
-        shuffled = compression_entropy.mask_word_structure(tokenized_bible)
+        shuffled = compression_entropy.mask_word_structure(verse_tokens)
         self.assertEqual(2, len(shuffled))
         self.assertTrue(1 in shuffled and 2 in shuffled)
         self.assertEqual(shuffled[1][1], shuffled[2][1])
