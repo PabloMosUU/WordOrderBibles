@@ -30,8 +30,15 @@ def join_verses(verse_tokens: dict) -> str:
     return ' '.join([' '.join(ell[1]) for ell in sorted(verse_tokens.items(), key=lambda el: el[0])])
 
 
-def to_file(text: str, orig_filename: str, appendix: str) -> str:
-    dot_parts = orig_filename.split('/')[-1].split('.')
+def to_file(text: str, base_filename: str, appendix: str) -> str:
+    """
+    Save a text to a file
+    :param text: the text to be saved
+    :param base_filename: base filename to be used
+    :param appendix: appendix to be added to this filename
+    :return: the new filename created
+    """
+    dot_parts = base_filename.split('.')
     extension = dot_parts[-1]
     prefix = '.'.join(dot_parts[:-1])
     new_filename = prefix + '_' + appendix + '.' + extension
@@ -40,14 +47,15 @@ def to_file(text: str, orig_filename: str, appendix: str) -> str:
     return new_filename
 
 
-def run_mismatcher(preprocessed_filename: str) -> list:
+def run_mismatcher(preprocessed_filename: str, remove_file: bool) -> list:
     mismatcher_filename = preprocessed_filename + '_mismatcher'
     os.system(f"""java -Xmx3500M -jar \
     /home/pablo/ownCloud/WordOrderBibles/Literature/ThirdRound/dataverse_files/shortestmismatcher.jar \
     {preprocessed_filename} {mismatcher_filename}""")
     with open(mismatcher_filename, 'r') as f:
         lines = f.readlines()
-    os.remove(mismatcher_filename)
+    if remove_file:
+        os.remove(mismatcher_filename)
     return parse_mismatcher_lines(lines)
 
 
@@ -57,7 +65,27 @@ def parse_mismatcher_lines(lines: list) -> list:
 def get_entropy(mismatches: list) -> float:
     return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
-def run(filename: str, lowercase: bool) -> dict:
+def get_entropies(verse_tokens: dict, base_filename: str, remove_mismatcher_files: bool) -> dict:
+    # Shuffle words within each verse
+    shuffled = {verse_id: random.sample(words, k=len(words)) \
+                for verse_id, words in verse_tokens.items()}
+    # Mask word structure
+    masked = mask_word_structure(verse_tokens)
+    # Put them in a dictionary
+    tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
+    # Join all verses together
+    joined = {k: join_verses(v) for k, v in tokens.items()}
+    # Save these to files to run the mismatcher
+    filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
+    # Run the mismatcher
+    version_mismatches = {version: run_mismatcher(preprocessed_filename, remove_mismatcher_files) \
+                          for version, preprocessed_filename in filenames.items()}
+    # Compute the entropy
+    version_entropy = {version: get_entropy(mismatches) \
+                       for version, mismatches in version_mismatches.items()}
+    return version_entropy
+
+def run(filename: str, lowercase: bool, remove_mismatcher_files: bool) -> dict:
     """
     Main program to run the entire pipeline on a single bible
     :param filename: the file containing the bible text
@@ -68,25 +96,9 @@ def run(filename: str, lowercase: bool) -> dict:
     bible = data.parse_pbc_bible(filename)
     # Tokenize by splitting on spaces
     tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
-    # Shuffle words within each verse
-    shuffled = {verse_id: random.sample(words, k=len(words)) \
-                for verse_id, words in tokenized.verse_tokens.items()}
-    # Mask word structure
-    masked = mask_word_structure(tokenized.verse_tokens)
-    # Put them in a dictionary
-    tokens = {'orig': tokenized.verse_tokens, 'shuffled': shuffled, 'masked': masked}
-    # Join all verses together
-    joined = {k: join_verses(v) for k, v in tokens.items()}
-    # Save these to files to run the mismatcher
-    filenames = {k: to_file(v, filename, k) for k, v in joined.items()}
-    # Run the mismatcher
-    version_mismatches = {version: run_mismatcher(preprocessed_filename) \
-                          for version, preprocessed_filename in filenames.items()}
-    # Compute the entropy
-    version_entropy = {version: get_entropy(mismatches) \
-                       for version, mismatches in version_mismatches.items()}
-    return version_entropy
-
+    # Create a base filename for saving the output
+    base_filename = 'output/KoplenigEtAl/' + filename.split('/')[-1]
+    return get_entropies(tokenized.verse_tokens, base_filename, remove_mismatcher_files)
 
 if __name__ == '__main__':
-    print(run('eng-x-bible-world_sample.txt', True))
+    print(run('eng-x-bible-world_sample.txt', True, True))

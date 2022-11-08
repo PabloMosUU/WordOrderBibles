@@ -41,20 +41,21 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_to_file(self):
         text = 'some text'
-        orig_filename = '/path/to/temp.txt'
+        orig_filename = '/home/pablo/temp.txt'
+        expected = '/home/pablo/temp_pablo.txt'
         appendix = 'pablo'
         new_filename = compression_entropy.to_file(text, orig_filename, appendix)
-        self.assertEqual('temp_pablo.txt', new_filename)
+        self.assertEqual(expected, new_filename)
         with open(new_filename, 'r') as f:
             self.assertEqual(text, f.read())
-        os.remove('temp_pablo.txt')
+        os.remove(expected)
 
 
     def test_run_mismatcher(self):
         preprocessed_filename = 'temp.txt'
         with open(preprocessed_filename, 'w') as f:
             f.write('manzanas')
-        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename)
+        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename, True)
         self.assertEqual([1, 1, 1, 1, 3, 2, 2, 1], mismatch_lengths)
         os.remove(preprocessed_filename)
 
@@ -62,7 +63,7 @@ class TestCompressionEntropy(unittest.TestCase):
         preprocessed_filename = 'temp.txt'
         with open(preprocessed_filename, 'w') as f:
             f.write('manzanas\nno')
-        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename)
+        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename, True)
         self.assertEqual([1, 1, 1, 1, 3, 2, 2, 1, 1, 2, 1], mismatch_lengths)
         os.remove(preprocessed_filename)
 
