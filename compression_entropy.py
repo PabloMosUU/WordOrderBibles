@@ -58,11 +58,18 @@ def get_entropy(mismatches: list) -> float:
     return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
 
-def run(filename: str) -> dict:
+def run(filename: str, lowercase: bool) -> dict:
+    """
+    Main program to run the entire pipeline on a single bible
+    :param filename: the file containing the bible text
+    :param lowercase: whether to lowercase the text before processing
+    :return: a dictionary with entropy versions and entropies
+    """
     # Read the complete bible
     bible = data.parse_pbc_bible(filename)
     # Tokenize by splitting on spaces
-    tokenized = bible.tokenize(remove_punctuation=False, lowercase=False)
+    # TODO: check if the lowercasing does what it's supposed to do for weird languages
+    tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
     # Shuffle words within each verse
     shuffled = {verse_id: random.sample(words, k=len(words)) \
                 for verse_id, words in tokenized.verse_tokens.items()}
@@ -84,4 +91,4 @@ def run(filename: str) -> dict:
 
 
 if __name__ == '__main__':
-    run('eng-x-bible-world_sample.txt')
+    print(run('eng-x-bible-world_sample.txt', True))
