@@ -68,7 +68,6 @@ def run(filename: str, lowercase: bool) -> dict:
     # Read the complete bible
     bible = data.parse_pbc_bible(filename)
     # Tokenize by splitting on spaces
-    # TODO: check if the lowercasing does what it's supposed to do for weird languages
     tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
     # Shuffle words within each verse
     shuffled = {verse_id: random.sample(words, k=len(words)) \
