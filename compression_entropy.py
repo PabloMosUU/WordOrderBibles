@@ -69,7 +69,20 @@ def parse_mismatcher_lines(lines: list) -> list:
 def get_entropy(mismatches: list) -> float:
     return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
-def get_entropies(verse_tokens: list, base_filename: str, remove_mismatcher_files: bool, char_set: str) -> dict:
+def get_entropies(sample_verses: list,
+                  base_filename: str,
+                  remove_mismatcher_files: bool,
+                  char_set: str) -> dict:
+    """
+    Get three entropies for a given sample of verses
+    :param sample_verses: the (ordered) pre-processed verses contained in the original sample
+    :param base_filename: the base filename to be used for the output
+    :param remove_mismatcher_files: whether to delete the mismatcher files after processing
+    :param char_set: the alphabet
+    :return: the entropies for the given sample (e.g., chapter)
+    """
+    # Randomize the order of the verses in each sample
+    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
     # Shuffle words within each verse
     shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Mask word structure
