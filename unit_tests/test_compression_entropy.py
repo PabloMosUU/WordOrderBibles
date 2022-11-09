@@ -81,6 +81,31 @@ class TestCompressionEntropy(unittest.TestCase):
         entropy = compression_entropy.get_entropy(mismatches)
         self.assertAlmostEqual(0.61373, entropy, 4)
 
+    def test_select_samples(self):
+        sample_sequences = {1: [[0, 2, 81, 9], [4, 7, 3]], 2: [[3, 1, 9]], 3: [[4, 3, 1, 958, 7], [0, 3, 9, 3, 0]]}
+        sample_sequences = {k: [[str(w) for w in seq] for seq in v] for k, v in sample_sequences.items()}
+        chosen_sample_ids = [1, 3]
+        truncate_samples = True
+        selected_sample_sequences = compression_entropy.select_samples(sample_sequences,
+                                                                       chosen_sample_ids,
+                                                                       truncate_samples)
+        self.assertEqual({1, 3}, set(selected_sample_sequences.keys()))
+        self.assertEqual({1: [['0', '2', '81', '9'], ['4', '7', '3']], 3: [['4', '3', '1', '958', '7'], ['0']]},
+                         selected_sample_sequences)
+
+    def test_get_text_length(self):
+        sequences = ['Can you see the real me'.split(), 'Tommy can you hear me'.split()]
+        length = compression_entropy.get_text_length(sequences)
+        self.assertEqual(45, length)
+
+    def test_truncate(self):
+        sequences = ['Can you see the real me'.split(), 'Tommy can you hear me'.split()]
+        excedent = 7
+        truncated = compression_entropy.truncate(sequences, excedent)
+        expected = ['Can you see the real me'.split(), 'Tommy can you'.split()]
+        self.assertEqual(expected, truncated)
+        self.assertEqual(['Can you see the real me'.split(), 'Tommy can you hear me'.split()], sequences)
+
 
 if __name__ == "__main__":
     unittest.main()

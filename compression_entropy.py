@@ -69,6 +69,36 @@ def parse_mismatcher_lines(lines: list) -> list:
 def get_entropy(mismatches: list) -> float:
     return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
+def get_text_length(sequences: list) -> int:
+    text = join_verses(sequences)
+    return len(text)
+
+def truncate(sequences: list, excedent: int) -> list:
+    """
+    Truncate a sample by removing the number of characters in the excedent
+    :param sequences: a sample represented as a list of sequences, each of which is a list of tokens
+    :param excedent: the excedent that should be removed
+    :return: a new list of sequences, the length of which is reduced by the excedent
+    """
+    orig_len = get_text_length(sequences)
+    desired_length = orig_len - excedent
+    output = [seq.copy() for seq in sequences]
+    while get_text_length(output) > desired_length:
+        if len(output[-1]) > 1:
+            output[-1].pop()
+        else:
+            output.pop()
+    return output
+
+def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_samples: bool) -> dict:
+    lengths = {sample_id: get_text_length(sample_sequences[sample_id]) for sample_id in chosen_sample_ids}
+    minimum_length = min(lengths.values())
+    differences = {sample_id: length - minimum_length for sample_id, length in lengths.items()}
+    full_samples = {sample_id: sample_sequences[sample_id] for sample_id in chosen_sample_ids}
+    if truncate_samples:
+        return {sample_id: truncate(sequences, differences[sample_id]) for sample_id, sequences in full_samples.items()}
+    return full_samples
+
 def get_entropies(sample_verses: list,
                   base_filename: str,
                   remove_mismatcher_files: bool,
@@ -101,13 +131,18 @@ def get_entropies(sample_verses: list,
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
 
-def run(filename: str, lowercase: bool, remove_mismatcher_files: bool, chosen_books: list) -> dict:
+def run(filename: str,
+        lowercase: bool,
+        remove_mismatcher_files: bool,
+        chosen_books: list,
+        truncate_books: bool) -> dict:
     """
     Main program to run the entire pipeline on a single bible
     :param filename: the file containing the bible text
     :param lowercase: whether to lowercase the text before processing
     :param remove_mismatcher_files: whether mismatcher files should be deleted after processing
     :param chosen_books: the books for which you want to compute the entropy (PBC IDs)
+    :param truncate_books: whether longer books should be truncated to the length of the shortest
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
     # Read the complete bible
@@ -117,15 +152,21 @@ def run(filename: str, lowercase: bool, remove_mismatcher_files: bool, chosen_bo
     # Obtain the repertoire of symbols
     char_set = ''.join(set(''.join([el for lis in tokenized.verse_tokens.values() for el in lis])))
     # Split by book
-    _, _, by_book, _, _ = data.join_by_toc(tokenized.verse_tokens)
+    _, _, book_verses, _, _ = data.join_by_toc(tokenized.verse_tokens)
+    # Select the books we are interested in
+    selected_book_verses = select_samples(book_verses, chosen_books, truncate_books)
+    # Create a base filename for each book
     book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
-                          for book_id in by_book.keys()}
-    return {book_id: get_entropies(by_book[book_id],
+                          for book_id in selected_book_verses.keys()}
+    return {book_id: get_entropies(verses,
                                    book_base_filename[book_id],
                                    remove_mismatcher_files,
                                    char_set) \
-            for book_id in chosen_books}
+            for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
     print(run('/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt',
-              lowercase=True, remove_mismatcher_files=True, chosen_books=[40, 41, 42, 43, 44, 66]))
+              lowercase=True,
+              remove_mismatcher_files=True,
+              chosen_books=[40, 41, 42, 43, 44, 66],
+              truncate_books=True))
