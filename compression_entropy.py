@@ -1,15 +1,14 @@
 import data
 import random
-import string
 import os
 import numpy as np
 
 
-def create_random_word(word: str) -> str:
-    return ''.join([random.choice(string.ascii_letters) for _ in word])
+def create_random_word(word: str, char_set: str) -> str:
+    return ''.join([random.choice(char_set) for _ in word])
 
 
-def mask_word_structure(tokenized: dict) -> dict:
+def mask_word_structure(tokenized: dict, char_set: str) -> dict:
     masked = {}
     word_map = {}
     new_words = set([])
@@ -17,7 +16,7 @@ def mask_word_structure(tokenized: dict) -> dict:
         masked_tokens = []
         for token in tokens:
             if token not in word_map:
-                new_word = create_random_word(token)
+                new_word = create_random_word(token, char_set)
                 if new_word in new_words:
                     raise ValueError('Random word already exists')
                 word_map[token] = new_word
@@ -65,12 +64,12 @@ def parse_mismatcher_lines(lines: list) -> list:
 def get_entropy(mismatches: list) -> float:
     return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
-def get_entropies(verse_tokens: dict, base_filename: str, remove_mismatcher_files: bool) -> dict:
+def get_entropies(verse_tokens: dict, base_filename: str, remove_mismatcher_files: bool, char_set: str) -> dict:
     # Shuffle words within each verse
     shuffled = {verse_id: random.sample(words, k=len(words)) \
                 for verse_id, words in verse_tokens.items()}
     # Mask word structure
-    masked = mask_word_structure(verse_tokens)
+    masked = mask_word_structure(verse_tokens, char_set)
     # Put them in a dictionary
     tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
     # Join all verses together
@@ -98,6 +97,8 @@ def run(filename: str, lowercase: bool, remove_mismatcher_files: bool, chosen_bo
     bible = data.parse_pbc_bible(filename)
     # Tokenize by splitting on spaces
     tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
+    # Obtain the repertoire of symbols
+    char_set = ''.join(set(''.join([el for lis in tokenized.verse_tokens.values() for el in lis])))
     # Split by book
     _, _, by_book, _, _ = data.join_by_toc(tokenized.verse_tokens)
     book_verse_tokens = {book_id: {str(i): tokens for i, tokens in enumerate(token_list)} \
@@ -106,7 +107,8 @@ def run(filename: str, lowercase: bool, remove_mismatcher_files: bool, chosen_bo
                           for book_id in book_verse_tokens.keys()}
     return {book_id: get_entropies(book_verse_tokens[book_id],
                                    book_base_filename[book_id],
-                                   remove_mismatcher_files) \
+                                   remove_mismatcher_files,
+                                   char_set) \
             for book_id in chosen_books}
 
 if __name__ == '__main__':

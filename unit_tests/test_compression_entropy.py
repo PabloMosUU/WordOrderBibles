@@ -1,14 +1,13 @@
 import compression_entropy
 import unittest
 
-import data
 import os
-
+import string
 
 class TestCompressionEntropy(unittest.TestCase):
     def test_mask_word_structure(self):
         verse_tokens = {1: ['I', 'am', 'nice', 'and', 'clean', 'and', 'that', 'matters', '.']}
-        shuffled = compression_entropy.mask_word_structure(verse_tokens)
+        shuffled = compression_entropy.mask_word_structure(verse_tokens, string.ascii_letters)
         self.assertEqual(1, len(shuffled))
         self.assertTrue(1 in shuffled)
         self.assertEqual(len(verse_tokens[1]), len(shuffled[1]))
@@ -19,7 +18,7 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_mask_word_structure_across_verses(self):
         verse_tokens = {1: ['This', 'is', 'it'], 2: ['It', 'is', 'good']}
-        shuffled = compression_entropy.mask_word_structure(verse_tokens)
+        shuffled = compression_entropy.mask_word_structure(verse_tokens, string.ascii_letters)
         self.assertEqual(2, len(shuffled))
         self.assertTrue(1 in shuffled and 2 in shuffled)
         self.assertEqual(shuffled[1][1], shuffled[2][1])
@@ -27,7 +26,7 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_create_random_word(self):
         word = 'something'
-        new_word = compression_entropy.create_random_word(word)
+        new_word = compression_entropy.create_random_word(word, string.ascii_letters)
         self.assertNotEqual(word, new_word)
         self.assertEqual(len(word), len(new_word))
         self.assertTrue(all([ch.strip() != '' for ch in new_word]))
