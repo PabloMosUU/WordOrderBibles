@@ -167,7 +167,7 @@ def run(filename: str,
 if __name__ == '__main__':
     with open('files_list.txt', 'r') as fi:
         files = fi.readlines()
-    files_with_path = ['/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/' + file for file in files]
+    files_with_path = ['/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/' + file.strip() for file in files]
     entropies = {files[i]: run(file_with_path,
                                 lowercase=True,
                                 remove_mismatcher_files=True,
