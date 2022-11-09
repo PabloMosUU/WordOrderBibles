@@ -85,12 +85,13 @@ def get_entropies(verse_tokens: dict, base_filename: str, remove_mismatcher_file
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
 
-def run(filename: str, lowercase: bool, remove_mismatcher_files: bool) -> dict:
+def run(filename: str, lowercase: bool, remove_mismatcher_files: bool, chosen_books: list) -> dict:
     """
     Main program to run the entire pipeline on a single bible
     :param filename: the file containing the bible text
     :param lowercase: whether to lowercase the text before processing
     :param remove_mismatcher_files: whether mismatcher files should be deleted after processing
+    :param chosen_books: the books for which you want to compute the entropy (PBC IDs)
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
     # Read the complete bible
@@ -103,9 +104,11 @@ def run(filename: str, lowercase: bool, remove_mismatcher_files: bool) -> dict:
                          for book_id, token_list in by_book.items()}
     book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
                           for book_id in book_verse_tokens.keys()}
-    return {book_id: get_entropies(verse_tokens, book_base_filename[book_id], remove_mismatcher_files) \
-            for book_id, verse_tokens in book_verse_tokens.items()}
+    return {book_id: get_entropies(book_verse_tokens[book_id],
+                                   book_base_filename[book_id],
+                                   remove_mismatcher_files) \
+            for book_id in chosen_books}
 
 if __name__ == '__main__':
     print(run('/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt',
-              True, True))
+              lowercase=True, remove_mismatcher_files=True, chosen_books=[40, 41, 42, 43, 44, 66]))
