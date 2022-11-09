@@ -2,7 +2,8 @@ import data
 import random
 import os
 import numpy as np
-
+import sys
+import json
 
 def create_random_word(word: str, char_set: str) -> str:
     return ''.join([random.choice(char_set) for _ in word])
@@ -165,8 +166,15 @@ def run(filename: str,
             for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
-    print(run('/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt',
-              lowercase=True,
-              remove_mismatcher_files=True,
-              chosen_books=[40, 41, 42, 43, 44, 66],
-              truncate_books=True))
+    if len(sys.argv) != 2:
+        print(f'ERROR: usage {sys.argv[0]} <bible_filename>')
+        exit(-1)
+    bible_filename = sys.argv[1]
+    entropies = run(bible_filename,
+                    lowercase=True,
+                    remove_mismatcher_files=True,
+                    chosen_books=[40, 41, 42, 43, 44, 66],
+                    truncate_books=True)
+    output_filename = f'output/KoplenigEtAl/{".".join(bible_filename.split("/")[-1].split(".")[:-1])}_entropies.json'
+    with open(output_filename, 'w') as fp:
+        json.dump(entropies, fp)
