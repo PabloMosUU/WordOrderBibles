@@ -182,10 +182,10 @@ class PbcBible(Bible):
 
 
     def join_by_toc(self):
-        return _join_by_toc(self.content)
+        return join_by_toc(self.content)
 
 
-def _join_by_toc(pbc_id_verse: MutableMapping) -> tuple:
+def join_by_toc(pbc_id_verse: MutableMapping) -> tuple:
     by_bible = {'bible': []}
     by_testament, by_book, by_chapter = defaultdict(list), defaultdict(list), defaultdict(list)
     by_verse = {verse_id: [verse] for verse_id, verse in pbc_id_verse.items()}

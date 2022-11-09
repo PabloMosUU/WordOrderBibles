@@ -90,15 +90,22 @@ def run(filename: str, lowercase: bool, remove_mismatcher_files: bool) -> dict:
     Main program to run the entire pipeline on a single bible
     :param filename: the file containing the bible text
     :param lowercase: whether to lowercase the text before processing
-    :return: a dictionary with entropy versions and entropies
+    :param remove_mismatcher_files: whether mismatcher files should be deleted after processing
+    :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
     # Read the complete bible
     bible = data.parse_pbc_bible(filename)
     # Tokenize by splitting on spaces
     tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
-    # Create a base filename for saving the output
-    base_filename = 'output/KoplenigEtAl/' + filename.split('/')[-1]
-    return get_entropies(tokenized.verse_tokens, base_filename, remove_mismatcher_files)
+    # Split by book
+    _, _, by_book, _, _ = data.join_by_toc(tokenized.verse_tokens)
+    book_verse_tokens = {book_id: {str(i): tokens for i, tokens in enumerate(token_list)} \
+                         for book_id, token_list in by_book.items()}
+    book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
+                          for book_id in book_verse_tokens.keys()}
+    return {book_id: get_entropies(verse_tokens, book_base_filename[book_id], remove_mismatcher_files) \
+            for book_id, verse_tokens in book_verse_tokens.items()}
 
 if __name__ == '__main__':
-    print(run('eng-x-bible-world_sample.txt', True, True))
+    print(run('/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt',
+              True, True))
