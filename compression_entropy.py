@@ -8,11 +8,11 @@ def create_random_word(word: str, char_set: str) -> str:
     return ''.join([random.choice(char_set) for _ in word])
 
 
-def mask_word_structure(tokenized: dict, char_set: str) -> dict:
-    masked = {}
+def mask_word_structure(tokenized: list, char_set: str) -> list:
+    masked = []
     word_map = {}
     new_words = set([])
-    for verse_id, tokens in tokenized.items():
+    for tokens in tokenized:
         masked_tokens = []
         for token in tokens:
             if token not in word_map:
@@ -21,12 +21,17 @@ def mask_word_structure(tokenized: dict, char_set: str) -> dict:
                     raise ValueError('Random word already exists')
                 word_map[token] = new_word
             masked_tokens.append(word_map[token])
-        masked[verse_id] = masked_tokens
+        masked.append(masked_tokens)
     return masked
 
 
-def join_verses(verse_tokens: dict) -> str:
-    return ' '.join([' '.join(ell[1]) for ell in sorted(verse_tokens.items(), key=lambda el: el[0])])
+def join_verses(verse_tokens: list) -> str:
+    """
+    Join the verses contained in a list of lists of tokens
+    :param verse_tokens: the list of verses, each of which is a list of tokens; order matters
+    :return: the concatenated string consisting of all the tokens in the original order
+    """
+    return ' '.join([' '.join(ell) for ell in verse_tokens])
 
 
 def to_file(text: str, base_filename: str, appendix: str) -> str:
@@ -64,10 +69,9 @@ def parse_mismatcher_lines(lines: list) -> list:
 def get_entropy(mismatches: list) -> float:
     return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
 
-def get_entropies(verse_tokens: dict, base_filename: str, remove_mismatcher_files: bool, char_set: str) -> dict:
+def get_entropies(verse_tokens: list, base_filename: str, remove_mismatcher_files: bool, char_set: str) -> dict:
     # Shuffle words within each verse
-    shuffled = {verse_id: random.sample(words, k=len(words)) \
-                for verse_id, words in verse_tokens.items()}
+    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Mask word structure
     masked = mask_word_structure(verse_tokens, char_set)
     # Put them in a dictionary
@@ -101,11 +105,9 @@ def run(filename: str, lowercase: bool, remove_mismatcher_files: bool, chosen_bo
     char_set = ''.join(set(''.join([el for lis in tokenized.verse_tokens.values() for el in lis])))
     # Split by book
     _, _, by_book, _, _ = data.join_by_toc(tokenized.verse_tokens)
-    book_verse_tokens = {book_id: {str(i): tokens for i, tokens in enumerate(token_list)} \
-                         for book_id, token_list in by_book.items()}
     book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
-                          for book_id in book_verse_tokens.keys()}
-    return {book_id: get_entropies(book_verse_tokens[book_id],
+                          for book_id in by_book.keys()}
+    return {book_id: get_entropies(by_book[book_id],
                                    book_base_filename[book_id],
                                    remove_mismatcher_files,
                                    char_set) \

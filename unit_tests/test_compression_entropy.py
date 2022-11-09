@@ -6,22 +6,20 @@ import string
 
 class TestCompressionEntropy(unittest.TestCase):
     def test_mask_word_structure(self):
-        verse_tokens = {1: ['I', 'am', 'nice', 'and', 'clean', 'and', 'that', 'matters', '.']}
+        verse_tokens = [['I', 'am', 'nice', 'and', 'clean', 'and', 'that', 'matters', '.']]
         shuffled = compression_entropy.mask_word_structure(verse_tokens, string.ascii_letters)
         self.assertEqual(1, len(shuffled))
-        self.assertTrue(1 in shuffled)
-        self.assertEqual(len(verse_tokens[1]), len(shuffled[1]))
-        self.assertTrue(all([verse_tokens[1][i] != shuffled[1][i] for i in range(len(shuffled[1]))]))
-        self.assertTrue(all([len(verse_tokens[1][i]) == len(shuffled[1][i]) \
-                             for i in range(len(shuffled[1]))]))
-        self.assertEqual(shuffled[1][3], shuffled[1][5])
+        self.assertEqual(len(verse_tokens[0]), len(shuffled[0]))
+        self.assertTrue(all([verse_tokens[0][i] != shuffled[0][i] for i in range(len(shuffled[0]))]))
+        self.assertTrue(all([len(verse_tokens[0][i]) == len(shuffled[0][i]) \
+                             for i in range(len(shuffled[0]))]))
+        self.assertEqual(shuffled[0][3], shuffled[0][5])
 
     def test_mask_word_structure_across_verses(self):
-        verse_tokens = {1: ['This', 'is', 'it'], 2: ['It', 'is', 'good']}
+        verse_tokens = [['This', 'is', 'it'], ['It', 'is', 'good']]
         shuffled = compression_entropy.mask_word_structure(verse_tokens, string.ascii_letters)
         self.assertEqual(2, len(shuffled))
-        self.assertTrue(1 in shuffled and 2 in shuffled)
-        self.assertEqual(shuffled[1][1], shuffled[2][1])
+        self.assertEqual(shuffled[0][1], shuffled[1][1])
 
 
     def test_create_random_word(self):
@@ -33,7 +31,7 @@ class TestCompressionEntropy(unittest.TestCase):
 
 
     def test_join_verses(self):
-        verse_tokens = {'3': ['I', 'love', 'this'], '2': ['I', 'hate', 'this']}
+        verse_tokens = [['I', 'hate', 'this'], ['I', 'love', 'this']]
         text = compression_entropy.join_verses(verse_tokens)
         self.assertEqual('I hate this I love this', text)
 
