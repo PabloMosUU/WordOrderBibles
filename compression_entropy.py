@@ -168,11 +168,18 @@ if __name__ == '__main__':
     with open('files_list.txt', 'r') as fi:
         files = fi.readlines()
     files_with_path = ['/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/' + file.strip() for file in files]
-    entropies = {files[i]: run(file_with_path,
-                                lowercase=True,
-                                remove_mismatcher_files=True,
-                                chosen_books=[40, 41, 42, 43, 44, 66],
-                                truncate_books=True) for i, file_with_path in enumerate(files_with_path)}
+    entropies = {}
+    for i, file_with_path in enumerate(files_with_path):
+        try:
+            entropies[files[i]] = run(file_with_path,
+                                        lowercase=True,
+                                        remove_mismatcher_files=True,
+                                        chosen_books=[40, 41, 42, 43, 44, 66],
+                                        truncate_books=True)
+        except Exception as e:
+            print(f'ERROR: {files[i]}')
+            print(e)
+            print('--------------------------')
     output_filename = f'output/KoplenigEtAl/entropies.json'
     with open(output_filename, 'w') as fp:
         json.dump(entropies, fp)
