@@ -91,10 +91,16 @@ def truncate(sequences: list, excedent: int) -> list:
     return output
 
 def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_samples: bool) -> dict:
-    lengths = {sample_id: get_text_length(sample_sequences[sample_id]) for sample_id in chosen_sample_ids}
+    lengths = {sample_id: get_text_length(sample_sequences[sample_id]) \
+               for sample_id in chosen_sample_ids \
+               if sample_id in sample_sequences}
+    if len(lengths) == 0:
+        return {}
     minimum_length = min(lengths.values())
     differences = {sample_id: length - minimum_length for sample_id, length in lengths.items()}
-    full_samples = {sample_id: sample_sequences[sample_id] for sample_id in chosen_sample_ids}
+    full_samples = {sample_id: sample_sequences[sample_id] \
+                    for sample_id in chosen_sample_ids \
+                    if sample_id in sample_sequences}
     if truncate_samples:
         return {sample_id: truncate(sequences, differences[sample_id]) for sample_id, sequences in full_samples.items()}
     return full_samples

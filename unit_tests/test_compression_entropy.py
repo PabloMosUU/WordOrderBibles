@@ -1,3 +1,5 @@
+import collections
+
 import compression_entropy
 import unittest
 
@@ -105,6 +107,14 @@ class TestCompressionEntropy(unittest.TestCase):
         expected = ['Can you see the real me'.split(), 'Tommy can you'.split()]
         self.assertEqual(expected, truncated)
         self.assertEqual(['Can you see the real me'.split(), 'Tommy can you hear me'.split()], sequences)
+
+    def test_select_samples_empty(self):
+        sample_sequences = collections.defaultdict(list)
+        sample_sequences[0] = [str(el) for el in [0, 1, 2]]
+        chosen_sample_ids = [0, 1]
+        truncate_samples = False
+        selected_samples = compression_entropy.select_samples(sample_sequences, chosen_sample_ids, truncate_samples)
+        self.assertEqual({0: [str(el) for el in [0, 1, 2]]}, selected_samples)
 
 
 if __name__ == "__main__":
