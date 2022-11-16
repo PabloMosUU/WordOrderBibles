@@ -88,3 +88,11 @@ vie-x-bible-bandich.txt
 deu-x-bible-elberfelder1905.txt
 eng-x-bible-newinternational.txt
 eng-x-bible-literal.txt
+zho-x-bible-contemp.txt
+zho-x-bible-new.txt
+zho-x-bible-newworld.txt
+zho-x-bible-orthodox.txt
+zho-x-bible-revised.txt
+zho-x-bible-shangti.txt
+zho-x-bible-shen.txt
+zho-x-bible-standard.txt
