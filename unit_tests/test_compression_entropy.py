@@ -34,7 +34,7 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_join_verses(self):
         verse_tokens = [['I', 'hate', 'this'], ['I', 'love', 'this']]
-        text = compression_entropy.join_verses(verse_tokens)
+        text = compression_entropy.join_verses(verse_tokens, insert_spaces=True)
         self.assertEqual('I hate this I love this', text)
 
 
@@ -116,6 +116,14 @@ class TestCompressionEntropy(unittest.TestCase):
         selected_samples = compression_entropy.select_samples(sample_sequences, chosen_sample_ids, truncate_samples)
         self.assertEqual({0: [str(el) for el in [0, 1, 2]]}, selected_samples)
 
+    def test_replace_words(self):
+        verse_tokens = [['I', 'hate', 'this'], ['I', 'love', 'this']]
+        characterized = compression_entropy.replace_words(verse_tokens)
+        self.assertTrue(all([len(verse_tokens[i]) == len(el) for i, el in enumerate(characterized)]))
+        self.assertTrue(characterized[0][0] == characterized[1][0] and characterized[0][2] == characterized[1][2])
+        self.assertFalse(characterized[0][1] == characterized[1][1])
+        self.assertEqual(4, len(set([el for lis in characterized for el in lis])))
+        self.assertTrue(all([all([len(ch) == 1 for ch in w]) for w in characterized]))
 
 if __name__ == "__main__":
     unittest.main()
