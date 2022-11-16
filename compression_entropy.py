@@ -168,10 +168,8 @@ def get_entropies_per_word(sample_verses: list,
     """
     # Randomize the order of the verses in each sample
     verse_tokens = random.sample(sample_verses, k=len(sample_verses))
-    # Shuffle words within each verse
-    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Put them in a dictionary
-    tokens = {'orig': verse_tokens, 'shuffled': shuffled}
+    tokens = {'orig': verse_tokens}
     # Replace words by characters
     characterized = {k: replace_words(v) for k, v in tokens.items()}
     # Join all verses together
@@ -188,8 +186,7 @@ def run(filename: str,
         lowercase: bool,
         remove_mismatcher_files: bool,
         chosen_books: list,
-        truncate_books: bool,
-        unit: str) -> dict:
+        truncate_books: bool) -> dict:
     """
     Main program to run the entire pipeline on a single bible
     :param filename: the file containing the bible text
@@ -197,10 +194,8 @@ def run(filename: str,
     :param remove_mismatcher_files: whether mismatcher files should be deleted after processing
     :param chosen_books: the books for which you want to compute the entropy (PBC IDs)
     :param truncate_books: whether longer books should be truncated to the length of the shortest
-    :param unit: the minimum unit considered for language (word or character)
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
-    assert unit in ('word', 'character'), f'Unknown unit {unit}; must be "word" or "character"'
     # Read the complete bible
     bible = data.parse_pbc_bible(filename)
     # Tokenize by splitting on spaces
@@ -212,19 +207,13 @@ def run(filename: str,
     # Select the books we are interested in
     selected_book_verses = select_samples(book_verses, chosen_books, truncate_books)
     # Create a base filename for each book
-    file_appendix = '' if unit == 'character' else '_bpw'
-    book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}{file_appendix}' \
+    book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
                           for book_id in selected_book_verses.keys()}
-    # Select the right function
-    if unit == 'character':
-        return {book_id: get_entropies(verses,
-                                        book_base_filename[book_id],
-                                        remove_mismatcher_files,
-                                        char_set) \
-                for book_id, verses in selected_book_verses.items()}
-    else:
-        return {book_id: get_entropies_per_word(verses, book_base_filename[book_id], remove_mismatcher_files) \
-                for book_id, verses in selected_book_verses.items()}
+    return {book_id: get_entropies(verses,
+                                    book_base_filename[book_id],
+                                    remove_mismatcher_files,
+                                    char_set) \
+            for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
     with open('files_list.txt', 'r') as fi:
@@ -237,8 +226,7 @@ if __name__ == '__main__':
                                        lowercase=True,
                                        remove_mismatcher_files=True,
                                        chosen_books=[40, 41, 42, 43, 44, 66],
-                                       truncate_books=True,
-                                       unit='character')
+                                       truncate_books=True)
         except Exception as e:
             print(f'ERROR: {files[ix]}')
             print(e)

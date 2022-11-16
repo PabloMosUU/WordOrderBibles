@@ -49,7 +49,6 @@ class TestCompressionEntropy(unittest.TestCase):
             self.assertEqual(text, f.read())
         os.remove(expected)
 
-
     def test_run_mismatcher(self):
         preprocessed_filename = 'temp.txt'
         with open(preprocessed_filename, 'w') as f:
