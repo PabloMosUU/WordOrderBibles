@@ -108,6 +108,8 @@ def truncate(sequences: list, excedent: int) -> list:
     return output
 
 def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_samples: bool) -> dict:
+    if not chosen_sample_ids:
+        chosen_sample_ids = list(sample_sequences.keys())
     lengths = {sample_id: get_text_length(sample_sequences[sample_id]) \
                for sample_id in chosen_sample_ids \
                if sample_id in sample_sequences}
