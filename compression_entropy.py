@@ -38,17 +38,15 @@ def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
 def replace_words(verse_tokens: list) -> list:
     """
     Replace each word by a single character
-    :param verse_tokens:
-    :return:
+    :param verse_tokens: a list of tokens
+    :return: a list of the same length, where each token is replaced by a single character
     """
     word_char = {}
     verse_chars = []
-    for tokens in verse_tokens:
-        verse_chars.append([])
-        for token in tokens:
-            if token not in word_char:
-                word_char[token] = chr(len(word_char))
-            verse_chars[-1].append(word_char[token])
+    for token in verse_tokens:
+        if token not in word_char:
+            word_char[token] = chr(len(word_char))
+        verse_chars.append(word_char[token])
     return verse_chars
 
 def to_file(text: str, base_filename: str, appendix: str) -> str:
@@ -179,10 +177,8 @@ def get_entropies_per_word(sample_verses: list,
     :param remove_mismatcher_files: whether to delete the mismatcher files after processing
     :return: the entropies for the given sample (e.g., chapter)
     """
-    # Randomize the order of the verses in each sample
-    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
     # Compute the entropy
-    return get_entropy(get_word_mismatches(verse_tokens, base_filename, remove_mismatcher_files))
+    return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files))
 
 def run(filename: str,
         lowercase: bool,

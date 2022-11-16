@@ -116,13 +116,12 @@ class TestCompressionEntropy(unittest.TestCase):
         self.assertEqual({0: [str(el) for el in [0, 1, 2]]}, selected_samples)
 
     def test_replace_words(self):
-        verse_tokens = [['I', 'hate', 'this'], ['I', 'love', 'this']]
+        verse_tokens = ['I', 'hate', 'this', '.', 'I', 'love', 'this']
         characterized = compression_entropy.replace_words(verse_tokens)
-        self.assertTrue(all([len(verse_tokens[i]) == len(el) for i, el in enumerate(characterized)]))
-        self.assertTrue(characterized[0][0] == characterized[1][0] and characterized[0][2] == characterized[1][2])
-        self.assertFalse(characterized[0][1] == characterized[1][1])
-        self.assertEqual(4, len(set([el for lis in characterized for el in lis])))
-        self.assertTrue(all([all([len(ch) == 1 for ch in w]) for w in characterized]))
+        self.assertEqual(len(verse_tokens), len(characterized))
+        self.assertEqual(characterized[0], characterized[4])
+        self.assertEqual(characterized[2], characterized[6])
+        self.assertEqual(5, len(set(characterized)))
 
 if __name__ == "__main__":
     unittest.main()
