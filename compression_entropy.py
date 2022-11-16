@@ -182,23 +182,6 @@ def get_entropies_per_word(sample_verses: list,
     # Compute the entropy
     return {version: get_entropy(mismatches) for version, mismatches in version_mismatches.items()}
 
-def get_mismatches(tokens: list) -> list:
-    raise NotImplementedError()
-
-def get_entropies_per_word_manual(sample_verses: list, base_filename: str, remove_mismatcher_files: bool) -> dict:
-    # Randomize the order of the verses in each sample
-    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
-    # Shuffle words within each verse
-    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
-    # Put them in a dictionary
-    tokens = {'orig': verse_tokens, 'shuffled': shuffled}
-    # Join all verses together
-    joined = {k: [el for lis in v for el in lis] for k, v in tokens.items()}
-    # Compute the mismatches
-    version_mismatches = get_mismatches(joined)
-    # Compute the entropy
-    return {version: get_entropy(mismatches) for version, mismatches in version_mismatches.items()}
-
 def run(filename: str,
         lowercase: bool,
         remove_mismatcher_files: bool,
@@ -249,11 +232,11 @@ if __name__ == '__main__':
     for ix, file_with_path in enumerate(files_with_path):
         try:
             entropies[files[ix]] = run(file_with_path,
-                                        lowercase=True,
-                                        remove_mismatcher_files=True,
-                                        chosen_books=[40, 41, 42, 43, 44, 66],
-                                        truncate_books=True,
-                                      unit='character')
+                                       lowercase=True,
+                                       remove_mismatcher_files=True,
+                                       chosen_books=[40, 41, 42, 43, 44, 66],
+                                       truncate_books=True,
+                                       unit='character')
         except Exception as e:
             print(f'ERROR: {files[ix]}')
             print(e)
