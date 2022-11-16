@@ -156,9 +156,22 @@ def get_entropies(sample_verses: list,
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
 
+def get_word_mismatches(verse_tokens: list,
+                        base_filename: str,
+                        remove_mismatcher_files: bool) -> list:
+    # Replace words by characters
+    characterized = replace_words(verse_tokens)
+    # Join all verses together
+    joined = join_verses(characterized, insert_spaces=False)
+    # Save these to files to run the mismatcher
+    preprocessed_filename = to_file(joined, base_filename, 'orig')
+    # Run the mismatcher
+    mismatches = run_mismatcher(preprocessed_filename, remove_mismatcher_files)
+    return mismatches
+
 def get_entropies_per_word(sample_verses: list,
                            base_filename: str,
-                           remove_mismatcher_files: bool) -> dict:
+                           remove_mismatcher_files: bool) -> float:
     """
     Get three entropies for a given sample of verses
     :param sample_verses: the (ordered) pre-processed verses contained in the original sample
@@ -168,19 +181,8 @@ def get_entropies_per_word(sample_verses: list,
     """
     # Randomize the order of the verses in each sample
     verse_tokens = random.sample(sample_verses, k=len(sample_verses))
-    # Put them in a dictionary
-    tokens = {'orig': verse_tokens}
-    # Replace words by characters
-    characterized = {k: replace_words(v) for k, v in tokens.items()}
-    # Join all verses together
-    joined = {k: join_verses(v, insert_spaces=False) for k, v in characterized.items()}
-    # Save these to files to run the mismatcher
-    filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
-    # Run the mismatcher
-    version_mismatches = {version: run_mismatcher(preprocessed_filename, remove_mismatcher_files) \
-                          for version, preprocessed_filename in filenames.items()}
     # Compute the entropy
-    return {version: get_entropy(mismatches) for version, mismatches in version_mismatches.items()}
+    return get_entropy(get_word_mismatches(verse_tokens, base_filename, remove_mismatcher_files))
 
 def run(filename: str,
         lowercase: bool,
