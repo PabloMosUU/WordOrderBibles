@@ -1,6 +1,6 @@
 import sys
 
-def shortest_unseen_substrings(text: str) -> list:
+def shortest_unseen_substrings(text) -> list:
     # Make the stupidest possible implementation
     l_i_s = []
     for i, ch in enumerate(text):
@@ -20,10 +20,11 @@ def shortest_unseen_substrings(text: str) -> list:
 def read_and_compute(filename: str) -> None:
     with open(filename, 'r') as f:
         text = f.read()
-    shortest_unseen_substring_lengths = shortest_unseen_substrings(text)
+    tokens = text.split(' ')
+    shortest_unseen_substring_lengths = shortest_unseen_substrings(tokens)
     with open(filename.split('/')[-1].split('.')[0] + '_li.txt', 'w') as f:
         for i, l in enumerate(shortest_unseen_substring_lengths):
-            ch = text[i]
+            ch = tokens[i]
             f.write(ch + '\t' + str(l) + '\n')
 
 
