@@ -3,29 +3,7 @@ import numpy as np
 import pandas as pd
 
 import data
-import compression_entropy as ce
-import analysis
-
-def full_entropy_calculation(id_text: dict,
-                             remove_punct: bool,
-                             lc: bool,
-                             base_name: str) -> dict:
-    text_id_entropies = {}
-    for text_id, text in id_text.items():
-        # Tokenize for the unigram entropy computations
-        tokens = data.tokenize(text, remove_punct, lc)
-        # Compute the entropy rate
-        base_filename = f'{base_name}_{text_id}'
-        H = ce.get_entropies_per_word(tokens, base_filename, remove_mismatcher_files=True)
-        # Compute the unigram entropy
-        H_s = analysis.unigram_entropy_direct(tokens)
-        token_log_likelihood = data.log_likelihoods(text,
-                                                    remove_punctuation=remove_punctuation,
-                                                    lowercase=lowercase)
-        H_r = analysis.unigram_entropy_by_counts(tokens, token_log_likelihood)
-        text_id_entropies[text_id] = (H, H_s, H_r)
-    return text_id_entropies
-
+from analysis import full_entropy_calculation_bpw
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
@@ -54,9 +32,9 @@ if __name__ == '__main__':
                   for level_name, id_texts in by_level.items()}
 
     raw_name = output_path + bible_filename
-    level_entropies = {level_name: full_entropy_calculation(id_text,
-                                                            remove_punctuation,
-                                                            lowercase,
+    level_entropies = {level_name: full_entropy_calculation_bpw(id_text,
+                                                                remove_punctuation,
+                                                                lowercase,
                                                             f'{raw_name}_{level_name}') \
                        for level_name, id_text in level_text.items()}
 
