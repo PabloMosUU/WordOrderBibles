@@ -140,3 +140,4 @@ configs
 glove
 slurm-*
 *.sh
+nsb_entropy.py

@@ -2,6 +2,7 @@ import sys
 
 def shortest_unseen_substrings(text) -> list:
     # Make the stupidest possible implementation
+    # "text" is actually any iterable, so a string (iterable of chars) or a list of tokens
     l_i_s = []
     for i, ch in enumerate(text):
         longest_match = 0
