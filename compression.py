@@ -1,15 +1,18 @@
 import sys
 
-def shortest_unseen_substrings(text) -> list:
-    # Make the stupidest possible implementation
-    # "text" is actually any iterable, so a string (iterable of chars) or a list of tokens
+def shortest_unseen_subsequence_lengths(sequence) -> list:
+    """
+    Dumb but straightforward implementation of the computation of the shortest unseen subsequence lengths
+    :param sequence: a sequence (string, list, etc)
+    :return: a list of lengths of shortest subsequences at each element of the sequence
+    """
     l_i_s = []
-    for i, ch in enumerate(text):
+    for i, ch in enumerate(sequence):
         longest_match = 0
-        for l in range(1, len(text) - i + 1):
+        for l in range(1, len(sequence) - i + 1):
             found = False
             for j in range(0, i - l + 1):
-                if text[i:i+l] == text[j:j+l]:
+                if sequence[i:i + l] == sequence[j:j + l]:
                     found = True
                     break
             if not found:
@@ -22,7 +25,7 @@ def read_and_compute(filename: str) -> None:
     with open(filename, 'r') as f:
         text = f.read()
     tokens = text.split(' ')
-    shortest_unseen_substring_lengths = shortest_unseen_substrings(tokens)
+    shortest_unseen_substring_lengths = shortest_unseen_subsequence_lengths(tokens)
     with open(filename.split('/')[-1].split('.')[0] + '_li.txt', 'w') as f:
         for i, l in enumerate(shortest_unseen_substring_lengths):
             ch = tokens[i]
