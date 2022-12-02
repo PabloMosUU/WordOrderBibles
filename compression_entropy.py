@@ -253,7 +253,7 @@ def run_word_pasting(filename: str,
                      truncate_books: bool,
                      n_iter: int,
                      output_file_path: str) -> dict:
-    char_set, selected_book_verses = read_selected_verses(filename,
+    selected_book_verses, char_set = read_selected_verses(filename,
                                                           lowercase,
                                                           chosen_books,
                                                           truncate_books)
@@ -286,7 +286,7 @@ def run(filename: str,
     :param truncate_books: whether longer books should be truncated to the length of the shortest
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
-    char_set, selected_book_verses = read_selected_verses(filename,
+    selected_book_verses, char_set = read_selected_verses(filename,
                                                           lowercase,
                                                           chosen_books,
                                                           truncate_books)

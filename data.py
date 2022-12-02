@@ -1,4 +1,5 @@
 import collections
+import json
 import random
 import sys
 import re
@@ -7,6 +8,7 @@ from collections.abc import MutableMapping
 from typing import Iterator
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
 START_OF_VERSE_TOKEN = '<SOS>'
@@ -335,6 +337,24 @@ def log_likelihoods_smooth(text: str, remove_punctuation: bool, lowercase: bool,
     for token, counts in token_counts.items():
         d[token] = np.log((counts + 1) / (len(tokens) + V))
     return d
+
+def build_dataframe(filename: str) -> pd.DataFrame:
+    with open(filename, 'r') as f:
+        entropies = json.loads(f.read())
+
+    for filename in entropies.keys():
+        for book_id in entropies[filename].keys():
+            row = entropies[filename][book_id]
+            row['filename'] = filename
+            row['book_id'] = book_id
+
+    row_list = []
+    for filename in entropies.keys():
+        for book_id in entropies[filename].keys():
+            row_list.append(entropies[filename][book_id])
+
+    df = pd.DataFrame(row_list)
+    return df
 
 
 if __name__ == '__main__':
