@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import data
 import random
 import os
@@ -180,6 +182,96 @@ def get_entropies_per_word(sample_verses: list,
     # Compute the entropy
     return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files))
 
+def read_selected_verses(filename: str,
+                         lowercase: bool,
+                         chosen_books: list,
+                         truncate_books: bool) -> tuple:
+    # Read the complete bible
+    bible = data.parse_pbc_bible(filename)
+    # Tokenize by splitting on spaces
+    tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
+    # Obtain the repertoire of symbols
+    char_set = ''.join(set(''.join([el for lis in tokenized.verse_tokens.values() for el in lis])))
+    # Split by book
+    _, _, book_verses, _, _ = data.join_by_toc(tokenized.verse_tokens)
+    # Select the books we are interested in
+    selected_book_verses = select_samples(book_verses, chosen_books, truncate_books)
+    return selected_book_verses, char_set
+
+def join_words(verse: list, locations: list) -> list:
+    assert all([locations[i] > locations[i+1] for i in range(len(locations)-1)])
+    location_set = set(locations)
+    assert len(location_set) == len(locations)
+    joined = []
+    i = 0
+    while i < len(verse):
+        if i in location_set:
+            joined.append(verse[i] + ' ' + verse[i + 1])
+            i += 2
+        else:
+            joined.append(verse[i])
+            i += 1
+    return joined
+
+def merge_positions(verses: list, positions: list) -> list:
+    verse_locations = defaultdict(list)
+    for position in positions:
+        verse_locations[position[0]].append(position[1])
+    verse_locations = {verse: sorted(locations, reverse=True) for verse, locations in verse_locations.items()}
+    for verse_ix, locations in verse_locations.items():
+        verses[verse_ix] = join_words(verses[verse_ix], locations)
+    return verses
+
+def replace_top_bigram(verses: list) -> list:
+    bigram_positions = defaultdict(list)
+    for j, verse in enumerate(verses):
+        for i, word in enumerate(verse[:-1]):
+            bigram_positions[word + ' ' + verse[i+1]].append((j, i))
+    # Now the bigram with the longest list of positions is the most frequent bigram
+    top_bigram = ''
+    n_pos = 0
+    for bigram, positions in bigram_positions.items():
+        if len(positions) > n_pos:
+            top_bigram = bigram
+            n_pos = len(positions)
+    #print(top_bigram, n_pos)
+    return merge_positions(verses, bigram_positions[top_bigram])
+
+def create_word_pasted_sets(id_verses: dict, n_iter: int) -> dict:
+    book_id_versions = {}
+    for book_id, tokens in id_verses.items():
+        joined_verses = [tokens]
+        for n_joins in range(n_iter):
+            joined_verses.append(replace_top_bigram(joined_verses[-1]))
+        book_id_versions[book_id] = joined_verses
+    return book_id_versions
+
+def run_word_pasting(filename: str,
+                     lowercase: bool,
+                     remove_mismatcher_files: bool,
+                     chosen_books: list,
+                     truncate_books: bool,
+                     n_iter: int,
+                     output_file_path: str) -> dict:
+    char_set, selected_book_verses = read_selected_verses(filename,
+                                                          lowercase,
+                                                          chosen_books,
+                                                          truncate_books)
+    book_id_versions = create_word_pasted_sets(selected_book_verses, n_iter)
+    book_id_entropies = {}
+    for book_id, n_pairs_verses in book_id_versions.items():
+        print(book_id)
+        n_pairs_entropies = {}
+        for n_pairs, verse_tokens in enumerate(n_pairs_verses):
+            print(n_pairs, end='')
+            base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
+            n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
+                                                       base_filename,
+                                                       remove_mismatcher_files,
+                                                       char_set)
+        book_id_entropies[book_id] = n_pairs_entropies
+    return book_id_entropies
+
 def run(filename: str,
         lowercase: bool,
         remove_mismatcher_files: bool,
@@ -194,16 +286,10 @@ def run(filename: str,
     :param truncate_books: whether longer books should be truncated to the length of the shortest
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
-    # Read the complete bible
-    bible = data.parse_pbc_bible(filename)
-    # Tokenize by splitting on spaces
-    tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
-    # Obtain the repertoire of symbols
-    char_set = ''.join(set(''.join([el for lis in tokenized.verse_tokens.values() for el in lis])))
-    # Split by book
-    _, _, book_verses, _, _ = data.join_by_toc(tokenized.verse_tokens)
-    # Select the books we are interested in
-    selected_book_verses = select_samples(book_verses, chosen_books, truncate_books)
+    char_set, selected_book_verses = read_selected_verses(filename,
+                                                          lowercase,
+                                                          chosen_books,
+                                                          truncate_books)
     # Create a base filename for each book
     book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
                           for book_id in selected_book_verses.keys()}

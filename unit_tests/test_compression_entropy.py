@@ -123,5 +123,47 @@ class TestCompressionEntropy(unittest.TestCase):
         self.assertEqual(characterized[2], characterized[6])
         self.assertEqual(5, len(set(characterized)))
 
+    def test_replace_top_bigram(self):
+        verses = ['Congratulations, you have finished installing TWiki!'.split(),
+                  'Replace this text with a description of your new TWiki site and links to content.'.split(),
+                  'To learn more about TWiki, visit the new TWiki web.'.split()]
+        replaced = compression_entropy.replace_top_bigram(verses)
+        self.assertEqual(verses[0], replaced[0])
+        expected = [verses[0],
+                    ['Replace', 'this', 'text', 'with', 'a', 'description', 'of', 'your', 'new TWiki', 'site', 'and',
+                     'links', 'to', 'content.'],
+                    ['To', 'learn', 'more', 'about', 'TWiki,', 'visit', 'the', 'new TWiki', 'web.']]
+        self.assertEqual(expected, replaced)
+        # Check that a copy was made even when no changes were made
+        expected[0] = []
+        self.assertEqual('Congratulations, you have finished installing TWiki!'.split(), replaced[0])
+
+    def test_merge_positions(self):
+        verses = [['I', 'love', 'the', 'nightlife', 'and', 'I', 'do', 'not', 'make', 'a', 'big', 'fuss', 'about', 'it'],
+                  ['Belgium', 'plays', 'ugly'],
+                  ['No', 'hubo', 'otro', 'como', 'Forlan']]
+        positions = [(0, 4), (0, 7), (2, 1)]
+        merged = compression_entropy.merge_positions(verses, positions)
+        expected = [['I', 'love', 'the', 'nightlife', 'and I', 'do', 'not make', 'a', 'big', 'fuss', 'about', 'it'],
+                    ['Belgium', 'plays', 'ugly'],
+                    ['No', 'hubo otro', 'como', 'Forlan']]
+        self.assertEqual(expected, merged)
+        # Check that a copy was made even when no changes were made
+        expected[1] = []
+        self.assertEqual(['Belgium', 'plays', 'ugly'], merged[1])
+
+    def test_join_words(self):
+        tokens = 'I love the nightlife and I do not make a big fuss about it'.split()
+        joined = compression_entropy.join_words(tokens, [5, 2])
+        expected = ['I', 'love', 'the nightlife', 'and', 'I do', 'not', 'make', 'a', 'big', 'fuss', 'about', 'it']
+        self.assertEqual(expected, joined)
+
+    def test_join_words_copy(self):
+        # Check that a copy was made even of the untouched verses
+        tokens = 'I love the nightlife and I do not make a big fuss about it'.split()
+        joined = compression_entropy.join_words(tokens, [])
+        expected = ['I', 'love', 'the', 'nightlife', 'and', 'I', 'do', 'not', 'make', 'a', 'big', 'fuss', 'about', 'it']
+        self.assertEqual(expected, joined)
+
 if __name__ == "__main__":
     unittest.main()
