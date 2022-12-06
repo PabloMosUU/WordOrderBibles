@@ -228,13 +228,7 @@ def replace_top_bigram(verses: list) -> list:
         for i, word in enumerate(verse[:-1]):
             bigram_positions[word + ' ' + verse[i+1]].append((j, i))
     # Now the bigram with the longest list of positions is the most frequent bigram
-    top_bigram = ''
-    n_pos = 0
-    for bigram, positions in bigram_positions.items():
-        if len(positions) > n_pos:
-            top_bigram = bigram
-            n_pos = len(positions)
-    #print(top_bigram, n_pos)
+    top_bigram = max(bigram_positions, key=lambda x: len(bigram_positions[x]))
     return merge_positions(verses, bigram_positions[top_bigram])
 
 def create_word_pasted_sets(id_verses: dict, max_merges: int, merge_step_size: int) -> dict:
