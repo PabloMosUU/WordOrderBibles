@@ -237,12 +237,16 @@ def replace_top_bigram(verses: list) -> list:
     #print(top_bigram, n_pos)
     return merge_positions(verses, bigram_positions[top_bigram])
 
-def create_word_pasted_sets(id_verses: dict, n_iter: int) -> dict:
+def create_word_pasted_sets(id_verses: dict, max_merges: int, merge_step_size: int) -> dict:
+    steps_to_save = set([i * merge_step_size for i in range(int(max_merges/merge_step_size) + 1)])
     book_id_versions = {}
     for book_id, tokens in id_verses.items():
-        joined_verses = [tokens]
-        for n_joins in range(n_iter):
-            joined_verses.append(replace_top_bigram(joined_verses[-1]))
+        joined_verses = {}
+        last_version = tokens.copy()
+        for n_joins in range(max_merges + 1):
+            last_version = replace_top_bigram(last_version)
+            if n_joins in steps_to_save:
+                joined_verses[n_joins] = last_version.copy()
         book_id_versions[book_id] = joined_verses
     return book_id_versions
 
@@ -251,18 +255,19 @@ def run_word_pasting(filename: str,
                      remove_mismatcher_files: bool,
                      chosen_books: list,
                      truncate_books: bool,
-                     n_iter: int,
+                     max_merges: int,
+                     merge_step_size: int,
                      output_file_path: str) -> dict:
     selected_book_verses, char_set = read_selected_verses(filename,
                                                           lowercase,
                                                           chosen_books,
                                                           truncate_books)
-    book_id_versions = create_word_pasted_sets(selected_book_verses, n_iter)
+    book_id_versions = create_word_pasted_sets(selected_book_verses, max_merges, merge_step_size)
     book_id_entropies = {}
     for book_id, n_pairs_verses in book_id_versions.items():
         print(book_id)
         n_pairs_entropies = {}
-        for n_pairs, verse_tokens in enumerate(n_pairs_verses):
+        for n_pairs, verse_tokens in n_pairs_verses.items():
             print(n_pairs, end='')
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
@@ -311,9 +316,10 @@ if __name__ == '__main__':
             file_book_entropies = run_word_pasting(file_with_path, lowercase=True,
                                                    remove_mismatcher_files=True,
                                                    chosen_books=[bid], truncate_books=False,
-                                                   n_iter=1000,
+                                                   max_merges=10000,
+                                                   merge_step_size=1000,
                                                    output_file_path=f_out)
-            book_entropies[bid] = file_book_entropies
+            book_entropies[bid] = file_book_entropies[bid]
         file_entropies[files[ix]] = book_entropies
     output_filename = f'output/KoplenigEtAl/WordPasting/entropies.json'
     with open(output_filename, 'w') as fp:
