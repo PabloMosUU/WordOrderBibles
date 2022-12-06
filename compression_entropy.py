@@ -300,21 +300,21 @@ def run(filename: str,
             for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
-    with open('files_list.txt', 'r') as fi:
-        files = fi.readlines()
-    files_with_path = ['/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/' + file.strip() for file in files]
-    entropies = {}
+    files = ['xuo-x-bible.txt', 'eng-x-bible-world.txt']
+    files_with_path = ['/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/' + file.strip() \
+                       for file in files]
+    f_out = '/home/pablo/Documents/GitHubRepos/WordOrderBibles/output/KoplenigEtAl/WordPasting/'
+    file_entropies = {}
     for ix, file_with_path in enumerate(files_with_path):
-        try:
-            entropies[files[ix]] = run(file_with_path,
-                                       lowercase=True,
-                                       remove_mismatcher_files=True,
-                                       chosen_books=[40, 41, 42, 43, 44, 66],
-                                       truncate_books=True)
-        except Exception as e:
-            print(f'ERROR: {files[ix]}')
-            print(e)
-            print('--------------------------')
-    output_filename = f'output/KoplenigEtAl/entropies.json'
+        book_entropies = {}
+        for bid in [40, 41, 42, 43, 44, 66]:
+            file_book_entropies = run_word_pasting(file_with_path, lowercase=True,
+                                                   remove_mismatcher_files=True,
+                                                   chosen_books=[bid], truncate_books=False,
+                                                   n_iter=1000,
+                                                   output_file_path=f_out)
+            book_entropies[bid] = file_book_entropies
+        file_entropies[files[ix]] = book_entropies
+    output_filename = f'output/KoplenigEtAl/WordPasting/entropies.json'
     with open(output_filename, 'w') as fp:
-        json.dump(entropies, fp)
+        json.dump(file_entropies, fp)
