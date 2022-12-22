@@ -299,7 +299,7 @@ def run(filename: str,
             for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
-    assert len(sys.argv) == 4, f'Usage: {sys.argv[0]} bible_filename temp_dir output_filename'
+    assert len(sys.argv) == 4, f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename'
     bible_filename = sys.argv[1]    # The bible filename
     temp_dir = sys.argv[2]          # The directory where Mismatcher files are saved
     output_filename = sys.argv[3]   # The filename where entropies will be saved
