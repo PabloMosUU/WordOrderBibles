@@ -138,6 +138,13 @@ class TestCompressionEntropy(unittest.TestCase):
         expected[0] = []
         self.assertEqual('Congratulations, you have finished installing TWiki!'.split(), replaced[0])
 
+    def test_replace_top_bigram_all_merged(self):
+        verses = [['Congratulations, you have finished installing TWiki!'],
+                  ['Replace this text with a description of your new TWiki site and links to content.'],
+                  ['To learn more about TWiki, visit the new TWiki web.']]
+        replaced = compression_entropy.replace_top_bigram(verses)
+        self.assertEqual([], replaced)
+
     def test_merge_positions(self):
         verses = [['I', 'love', 'the', 'nightlife', 'and', 'I', 'do', 'not', 'make', 'a', 'big', 'fuss', 'about', 'it'],
                   ['Belgium', 'plays', 'ugly'],
@@ -164,6 +171,14 @@ class TestCompressionEntropy(unittest.TestCase):
         joined = compression_entropy.join_words(tokens, [])
         expected = ['I', 'love', 'the', 'nightlife', 'and', 'I', 'do', 'not', 'make', 'a', 'big', 'fuss', 'about', 'it']
         self.assertEqual(expected, joined)
+
+    def test_create_word_pasted_sets(self):
+        id_verses = {0: [['I', 'am', 'here', 'I', 'am']], 1: [['I am here']]}
+        steps_to_save = {0, 1}
+        word_pasted_sets = compression_entropy.create_word_pasted_sets(id_verses, steps_to_save)
+        expected = {0: {0: [['I', 'am', 'here', 'I', 'am']], 1: [['I am', 'here', 'I am']]},
+                    1: {0: [['I am here']]}}
+        self.assertEqual(expected, word_pasted_sets)
 
 if __name__ == "__main__":
     unittest.main()
