@@ -7,6 +7,8 @@ import numpy as np
 import json
 import sys
 
+# TODO: add list of requirements for package: numpy, pandas, sklearn
+
 def create_random_word(word: str, char_set: str) -> str:
     return ''.join([random.choice(char_set) for _ in word])
 
@@ -52,6 +54,7 @@ def replace_words(verse_tokens: list) -> list:
         verse_chars.append(word_char[token])
     return verse_chars
 
+# TODO: remove files after running
 def to_file(text: str, base_filename: str, appendix: str) -> str:
     """
     Save a text to a file
