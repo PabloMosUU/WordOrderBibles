@@ -231,8 +231,8 @@ def replace_top_bigram(verses: list) -> list:
     top_bigram = max(bigram_positions, key=lambda x: len(bigram_positions[x]))
     return merge_positions(verses, bigram_positions[top_bigram])
 
-def create_word_pasted_sets(id_verses: dict, max_merges: int, merge_step_size: int) -> dict:
-    steps_to_save = set([i * merge_step_size for i in range(int(max_merges/merge_step_size) + 1)])
+def create_word_pasted_sets(id_verses: dict, steps_to_save: set) -> dict:
+    max_merges = max(steps_to_save)
     book_id_versions = {}
     for book_id, tokens in id_verses.items():
         joined_verses = {}
@@ -249,14 +249,13 @@ def run_word_pasting(filename: str,
                      remove_mismatcher_files: bool,
                      chosen_books: list,
                      truncate_books: bool,
-                     max_merges: int,
-                     merge_step_size: int,
+                     merge_steps_to_save: set,
                      output_file_path: str) -> dict:
     selected_book_verses, char_set = read_selected_verses(filename,
                                                           lowercase,
                                                           chosen_books,
                                                           truncate_books)
-    book_id_versions = create_word_pasted_sets(selected_book_verses, max_merges, merge_step_size)
+    book_id_versions = create_word_pasted_sets(selected_book_verses, merge_steps_to_save)
     book_id_entropies = {}
     for book_id, n_pairs_verses in book_id_versions.items():
         print(book_id)
@@ -304,14 +303,15 @@ if __name__ == '__main__':
                        for file in files]
     f_out = '/home/pablo/Documents/GitHubRepos/WordOrderBibles/output/KoplenigEtAl/WordPasting/'
     file_entropies = {}
+    merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))] \
+                       for ell in lis])
     for ix, file_with_path in enumerate(files_with_path):
         book_entropies = {}
         for bid in [40, 41, 42, 43, 44, 66]:
             file_book_entropies = run_word_pasting(file_with_path, lowercase=True,
                                                    remove_mismatcher_files=True,
                                                    chosen_books=[bid], truncate_books=False,
-                                                   max_merges=10000,
-                                                   merge_step_size=1000,
+                                                   merge_steps_to_save=merge_steps,
                                                    output_file_path=f_out)
             book_entropies[bid] = file_book_entropies[bid]
         file_entropies[files[ix]] = book_entropies
