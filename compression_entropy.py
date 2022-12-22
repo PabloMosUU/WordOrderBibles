@@ -69,11 +69,10 @@ def to_file(text: str, base_filename: str, appendix: str) -> str:
     return new_filename
 
 
-def run_mismatcher(preprocessed_filename: str, remove_file: bool) -> list:
+def run_mismatcher(preprocessed_filename: str, remove_file: bool, executable_path: str) -> list:
     mismatcher_filename = preprocessed_filename + '_mismatcher'
     os.system(f"""java -Xmx3500M -jar \
-    /home/pablo/ownCloud/WordOrderBibles/Literature/ThirdRound/dataverse_files/shortestmismatcher.jar \
-    {preprocessed_filename} {mismatcher_filename}""")
+                {executable_path} {preprocessed_filename} {mismatcher_filename}""")
     with open(mismatcher_filename, 'r') as f:
         lines = f.readlines()
     if remove_file:
@@ -128,13 +127,15 @@ def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_sam
 def get_entropies(sample_verses: list,
                   base_filename: str,
                   remove_mismatcher_files: bool,
-                  char_set: str) -> dict:
+                  char_set: str,
+                  mismatcher_path: str) -> dict:
     """
     Get three entropies for a given sample of verses
     :param sample_verses: the (ordered) pre-processed verses contained in the original sample
     :param base_filename: the base filename to be used for the output
     :param remove_mismatcher_files: whether to delete the mismatcher files after processing
     :param char_set: the alphabet
+    :param mismatcher_path: the path to the mismatcher Java jar file
     :return: the entropies for the given sample (e.g., chapter)
     """
     # Randomize the order of the verses in each sample
@@ -150,7 +151,9 @@ def get_entropies(sample_verses: list,
     # Save these to files to run the mismatcher
     filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
     # Run the mismatcher
-    version_mismatches = {version: run_mismatcher(preprocessed_filename, remove_mismatcher_files) \
+    version_mismatches = {version: run_mismatcher(preprocessed_filename,
+                                                  remove_mismatcher_files,
+                                                  mismatcher_path) \
                           for version, preprocessed_filename in filenames.items()}
     # Compute the entropy
     version_entropy = {version: get_entropy(mismatches) \
@@ -159,7 +162,8 @@ def get_entropies(sample_verses: list,
 
 def get_word_mismatches(verse_tokens: list,
                         base_filename: str,
-                        remove_mismatcher_files: bool) -> list:
+                        remove_mismatcher_files: bool,
+                        mismatcher_path: str) -> list:
     # Replace words by characters
     characterized = replace_words(verse_tokens)
     # Join all verses together
@@ -167,21 +171,24 @@ def get_word_mismatches(verse_tokens: list,
     # Save these to files to run the mismatcher
     preprocessed_filename = to_file(joined, base_filename, 'orig')
     # Run the mismatcher
-    mismatches = run_mismatcher(preprocessed_filename, remove_mismatcher_files)
+    mismatches = run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
     return mismatches
 
+# TODO: get rid of this nearly trivial function
 def get_entropies_per_word(sample_verses: list,
                            base_filename: str,
-                           remove_mismatcher_files: bool) -> float:
+                           remove_mismatcher_files: bool,
+                           mismatcher_path: str) -> float:
     """
     Get three entropies for a given sample of verses
     :param sample_verses: the (ordered) pre-processed verses contained in the original sample
     :param base_filename: the base filename to be used for the output
     :param remove_mismatcher_files: whether to delete the mismatcher files after processing
+    :param mismatcher_path: path to mismatcher jar
     :return: the entropies for the given sample (e.g., chapter)
     """
     # Compute the entropy
-    return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files))
+    return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
 
 def read_selected_verses(filename: str,
                          lowercase: bool,
@@ -257,7 +264,8 @@ def run_word_pasting(filename: str,
                      chosen_books: list,
                      truncate_books: bool,
                      merge_steps_to_save: set,
-                     output_file_path: str) -> dict:
+                     output_file_path: str,
+                     mismatcher_path: str) -> dict:
     selected_book_verses, char_set = read_selected_verses(filename,
                                                           lowercase,
                                                           chosen_books,
@@ -273,7 +281,8 @@ def run_word_pasting(filename: str,
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
                                                        base_filename,
                                                        remove_mismatcher_files,
-                                                       char_set)
+                                                       char_set,
+                                                       mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
 
@@ -281,7 +290,8 @@ def run(filename: str,
         lowercase: bool,
         remove_mismatcher_files: bool,
         chosen_books: list,
-        truncate_books: bool) -> dict:
+        truncate_books: bool,
+        mismatcher_path: str) -> dict:
     """
     Main program to run the entire pipeline on a single bible
     :param filename: the file containing the bible text
@@ -301,14 +311,17 @@ def run(filename: str,
     return {book_id: get_entropies(verses,
                                     book_base_filename[book_id],
                                     remove_mismatcher_files,
-                                    char_set) \
+                                    char_set,
+                                   mismatcher_path) \
             for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
-    assert len(sys.argv) == 4, f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename'
+    assert len(sys.argv) == 5, \
+        f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename mismatcher_filename'
     bible_filename = sys.argv[1]    # The bible filename
     temp_dir = sys.argv[2]          # The directory where Mismatcher files are saved
     output_filename = sys.argv[3]   # The filename where entropies will be saved
+    mismatcher_file = sys.argv[4]   # The filename of the mismatcher jar
     merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))] \
                        for ell in lis])
 
@@ -320,7 +333,8 @@ if __name__ == '__main__':
                                                chosen_books=[bid],
                                                truncate_books=False,
                                                merge_steps_to_save=merge_steps,
-                                               output_file_path=temp_dir)
+                                               output_file_path=temp_dir,
+                                               mismatcher_path=mismatcher_file)
         book_entropies[bid] = file_book_entropies[bid]
 
     with open(output_filename, 'w') as fp:

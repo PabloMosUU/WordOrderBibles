@@ -6,6 +6,9 @@ import unittest
 import os
 import string
 
+# TODO: replace by mocking
+MISMATCHER_PATH = '/home/pablo/ownCloud/WordOrderBibles/Literature/ThirdRound/dataverse_files/shortestmismatcher.jar'
+
 class TestCompressionEntropy(unittest.TestCase):
     def test_mask_word_structure(self):
         verse_tokens = [['I', 'am', 'nice', 'and', 'clean', 'and', 'that', 'matters', '.']]
@@ -53,7 +56,9 @@ class TestCompressionEntropy(unittest.TestCase):
         preprocessed_filename = 'temp.txt'
         with open(preprocessed_filename, 'w') as f:
             f.write('manzanas')
-        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename, True)
+        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename,
+                                                              True,
+                                                              MISMATCHER_PATH)
         self.assertEqual([1, 1, 1, 1, 3, 2, 2, 1], mismatch_lengths)
         os.remove(preprocessed_filename)
 
@@ -61,7 +66,9 @@ class TestCompressionEntropy(unittest.TestCase):
         preprocessed_filename = 'temp.txt'
         with open(preprocessed_filename, 'w') as f:
             f.write('manzanas\nno')
-        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename, True)
+        mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename,
+                                                              True,
+                                                              MISMATCHER_PATH)
         self.assertEqual([1, 1, 1, 1, 3, 2, 2, 1, 1, 2, 1], mismatch_lengths)
         os.remove(preprocessed_filename)
 
