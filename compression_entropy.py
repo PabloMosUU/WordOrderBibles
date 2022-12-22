@@ -5,6 +5,7 @@ import random
 import os
 import numpy as np
 import json
+import sys
 
 def create_random_word(word: str, char_set: str) -> str:
     return ''.join([random.choice(char_set) for _ in word])
@@ -298,23 +299,23 @@ def run(filename: str,
             for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
-    files = ['xuo-x-bible.txt', 'eng-x-bible-world.txt']
-    files_with_path = ['/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/' + file.strip() \
-                       for file in files]
-    f_out = '/home/pablo/Documents/GitHubRepos/WordOrderBibles/output/KoplenigEtAl/WordPasting/'
-    file_entropies = {}
+    assert len(sys.argv) == 4, f'Usage: {sys.argv[0]} bible_filename temp_dir output_filename'
+    bible_filename = sys.argv[1]    # The bible filename
+    temp_dir = sys.argv[2]          # The directory where Mismatcher files are saved
+    output_filename = sys.argv[3]   # The filename where entropies will be saved
     merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))] \
                        for ell in lis])
-    for ix, file_with_path in enumerate(files_with_path):
-        book_entropies = {}
-        for bid in [40, 41, 42, 43, 44, 66]:
-            file_book_entropies = run_word_pasting(file_with_path, lowercase=True,
-                                                   remove_mismatcher_files=True,
-                                                   chosen_books=[bid], truncate_books=False,
-                                                   merge_steps_to_save=merge_steps,
-                                                   output_file_path=f_out)
-            book_entropies[bid] = file_book_entropies[bid]
-        file_entropies[files[ix]] = book_entropies
-    output_filename = f'output/KoplenigEtAl/WordPasting/entropies.json'
+
+    book_entropies = {}
+    for bid in [40, 41, 42, 43, 44, 66]:
+        file_book_entropies = run_word_pasting(bible_filename,
+                                               lowercase=True,
+                                               remove_mismatcher_files=True,
+                                               chosen_books=[bid],
+                                               truncate_books=False,
+                                               merge_steps_to_save=merge_steps,
+                                               output_file_path=temp_dir)
+        book_entropies[bid] = file_book_entropies[bid]
+
     with open(output_filename, 'w') as fp:
-        json.dump(file_entropies, fp)
+        json.dump(book_entropies, fp)
