@@ -142,3 +142,4 @@ slurm-*
 *.sh
 nsb_entropy.py
 WordPasting/*Plots
+WordPasting/BibleEntropies
