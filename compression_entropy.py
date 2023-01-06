@@ -325,6 +325,7 @@ if __name__ == '__main__':
     temp_dir = sys.argv[2]          # The directory where Mismatcher files are saved
     output_filename = sys.argv[3]   # The filename where entropies will be saved
     mismatcher_file = sys.argv[4]   # The filename of the mismatcher jar
+
     merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))] \
                        for ell in lis])
 
@@ -338,6 +339,9 @@ if __name__ == '__main__':
                                                merge_steps_to_save=merge_steps,
                                                output_file_path=temp_dir,
                                                mismatcher_path=mismatcher_file)
+        if bid not in file_book_entropies:
+            print(f'WARNING: skipping book {bid} because it is not in {bible_filename}')
+            continue
         book_entropies[bid] = file_book_entropies[bid]
 
     with open(output_filename, 'w') as fp:
