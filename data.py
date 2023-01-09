@@ -166,6 +166,8 @@ class PbcBible(Bible):
         content, hidden_content = IndelibleDict(), IndelibleDict()
         for key, value, is_commented in content_lines:
             if is_commented:
+                if key in hidden_content:
+                    del hidden_content[key]
                 hidden_content[key] = value
             else:
                 content[key] = value
