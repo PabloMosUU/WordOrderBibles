@@ -223,7 +223,11 @@ def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> Pb
             if content_match:
                 content_lines.append((content_match.group(1), content_match.group(2), line[0] == '#'))
             else:
-                raise Exception(f'{line} does not match an expected format')
+                error_message = f'"{line}" does not match an expected format'
+                if line.strip()[0] == '#':
+                    print(f'WARNING: {error_message}')
+                else:
+                    raise Exception(error_message)
     comments, content, hidden_content = PbcBible.to_dictionaries(comment_lines, content_lines)
     language = comments['closest_ISO_639-3']
     return PbcBible(language, filename, content, hidden_content)
