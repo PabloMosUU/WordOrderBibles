@@ -45,8 +45,8 @@ if __name__ == '__main__':
 
     books = [40, 41, 42, 43, 44, 66]
     entropies = {}
-    for file in files_list:
-        entropies[file] = run(filename=os.path.join(bibles_dir, file),
+    for filename in files_list:
+        entropies[filename] = run(filename=os.path.join(bibles_dir, filename).strip(),
                               lowercase=True,
                               remove_mismatcher_files=True,
                               chosen_books=books,
