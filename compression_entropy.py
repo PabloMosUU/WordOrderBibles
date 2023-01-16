@@ -289,35 +289,6 @@ def run_word_pasting(filename: str,
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
 
-def run(filename: str,
-        lowercase: bool,
-        remove_mismatcher_files: bool,
-        chosen_books: list,
-        truncate_books: bool,
-        mismatcher_path: str) -> dict:
-    """
-    Main program to run the entire pipeline on a single bible
-    :param filename: the file containing the bible text
-    :param lowercase: whether to lowercase the text before processing
-    :param remove_mismatcher_files: whether mismatcher files should be deleted after processing
-    :param chosen_books: the books for which you want to compute the entropy (PBC IDs)
-    :param truncate_books: whether longer books should be truncated to the length of the shortest
-    :param mismatcher_path: full path to the mismatcher executable
-    :return: a dictionary with entropy versions and entropies, keyed by book ID
-    """
-    selected_book_verses, char_set = read_selected_verses(filename,
-                                                          lowercase,
-                                                          chosen_books,
-                                                          truncate_books)
-    # Create a base filename for each book
-    book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
-                          for book_id in selected_book_verses.keys()}
-    return {book_id: get_entropies(verses,
-                                    book_base_filename[book_id],
-                                    remove_mismatcher_files,
-                                    char_set,
-                                   mismatcher_path) \
-            for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':
     assert len(sys.argv) == 5, \
