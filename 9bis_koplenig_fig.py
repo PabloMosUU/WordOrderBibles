@@ -27,9 +27,9 @@ def run(filename: str,
     book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
                           for book_id in selected_book_verses.keys()}
     return {book_id: get_entropies(verses,
-                                    book_base_filename[book_id],
-                                    remove_mismatcher_files,
-                                    char_set,
+                                   book_base_filename[book_id],
+                                   remove_mismatcher_files,
+                                   char_set,
                                    mismatcher_path) \
             for book_id, verses in selected_book_verses.items()}
 
