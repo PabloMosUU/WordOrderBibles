@@ -130,14 +130,14 @@ def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_sam
 def get_entropies(sample_verses: list,
                   base_filename: str,
                   remove_mismatcher_files: bool,
-                  char_set: str,
+                  char_counter: dict,
                   mismatcher_path: str) -> dict:
     """
     Get three entropies for a given sample of verses
     :param sample_verses: the (ordered) pre-processed verses contained in the original sample
     :param base_filename: the base filename to be used for the output
     :param remove_mismatcher_files: whether to delete the mismatcher files after processing
-    :param char_set: the alphabet
+    :param char_counter: the alphabet with the number of times each character is seen
     :param mismatcher_path: the path to the mismatcher Java jar file
     :return: the entropies for the given sample (e.g., chapter)
     """
@@ -146,7 +146,7 @@ def get_entropies(sample_verses: list,
     # Shuffle words within each verse
     shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Mask word structure
-    masked = mask_word_structure(verse_tokens, char_set)
+    masked = mask_word_structure(verse_tokens, ''.join(char_counter.keys()))
     # Put them in a dictionary
     tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
     # Join all verses together
@@ -287,7 +287,7 @@ def run_word_pasting(filename: str,
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
                                                        base_filename,
                                                        remove_mismatcher_files,
-                                                       ''.join(char_counter.keys()),
+                                                       char_counter,
                                                        mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
