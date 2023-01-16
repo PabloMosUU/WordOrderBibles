@@ -9,8 +9,8 @@ import sys
 
 # TODO: add list of requirements for package: numpy, pandas, sklearn
 
-def create_random_word(word: str, char_set: str) -> str:
-    return ''.join([random.choice(char_set) for _ in word])
+def create_random_word(word: str, char_counter: dict) -> str:
+    return ''.join([random.choice(''.join(char_counter.keys())) for _ in word])
 
 
 def mask_word_structure(tokenized: list, char_counter: dict) -> list:
@@ -21,7 +21,7 @@ def mask_word_structure(tokenized: list, char_counter: dict) -> list:
         masked_tokens = []
         for token in tokens:
             if token not in word_map:
-                new_word = create_random_word(token, ''.join(char_counter.keys()))
+                new_word = create_random_word(token, char_counter)
                 if new_word in new_words:
                     raise ValueError('Random word already exists')
                 word_map[token] = new_word

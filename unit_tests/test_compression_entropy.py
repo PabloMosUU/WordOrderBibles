@@ -29,7 +29,7 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_create_random_word(self):
         word = 'something'
-        new_word = compression_entropy.create_random_word(word, string.ascii_letters)
+        new_word = compression_entropy.create_random_word(word, {el: 1 for el in string.ascii_letters})
         self.assertNotEqual(word, new_word)
         self.assertEqual(len(word), len(new_word))
         self.assertTrue(all([ch.strip() != '' for ch in new_word]))
