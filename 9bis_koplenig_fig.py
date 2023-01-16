@@ -19,7 +19,7 @@ def run(filename: str,
     :param mismatcher_path: full path to the mismatcher executable
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
-    selected_book_verses, char_set = read_selected_verses(filename,
+    selected_book_verses, char_counter = read_selected_verses(filename,
                                                           lowercase,
                                                           chosen_books,
                                                           truncate_books)
@@ -29,7 +29,7 @@ def run(filename: str,
     return {book_id: get_entropies(verses,
                                    book_base_filename[book_id],
                                    remove_mismatcher_files,
-                                   char_set,
+                                   char_counter.keys(),
                                    mismatcher_path) \
             for book_id, verses in selected_book_verses.items()}
 

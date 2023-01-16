@@ -187,5 +187,11 @@ class TestCompressionEntropy(unittest.TestCase):
                     1: {0: [['I am here']]}}
         self.assertEqual(expected, word_pasted_sets)
 
+    def test_get_char_distribution(self):
+        text = 'diccionario'
+        distrib = compression_entropy.get_char_distribution(text)
+        expected = {'d': 1, 'i': 3, 'c': 2, 'o': 2, 'n': 1, 'a': 1, 'r': 1}
+        self.assertEqual(expected, distrib)
+
 if __name__ == "__main__":
     unittest.main()

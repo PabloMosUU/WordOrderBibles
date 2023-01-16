@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, Counter
 
 import data
 import random
@@ -193,6 +193,9 @@ def get_entropies_per_word(sample_verses: list,
     # Compute the entropy
     return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
 
+def get_char_distribution(text: str) -> dict:
+    return Counter(text)
+
 def read_selected_verses(filename: str,
                          lowercase: bool,
                          chosen_books: list,
@@ -202,12 +205,12 @@ def read_selected_verses(filename: str,
     # Tokenize by splitting on spaces
     tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
     # Obtain the repertoire of symbols
-    char_set = ''.join(set(''.join([el for lis in tokenized.verse_tokens.values() for el in lis])))
+    char_counter = get_char_distribution(''.join([el for lis in tokenized.verse_tokens.values() for el in lis]))
     # Split by book
     _, _, book_verses, _, _ = data.join_by_toc(tokenized.verse_tokens)
     # Select the books we are interested in
     selected_book_verses = select_samples(book_verses, chosen_books, truncate_books)
-    return selected_book_verses, char_set
+    return selected_book_verses, char_counter
 
 def join_words(verse: list, locations: list) -> list:
     assert all([locations[i] > locations[i+1] for i in range(len(locations)-1)])
@@ -269,10 +272,10 @@ def run_word_pasting(filename: str,
                      merge_steps_to_save: set,
                      output_file_path: str,
                      mismatcher_path: str) -> dict:
-    selected_book_verses, char_set = read_selected_verses(filename,
-                                                          lowercase,
-                                                          chosen_books,
-                                                          truncate_books)
+    selected_book_verses, char_counter = read_selected_verses(filename,
+                                                              lowercase,
+                                                              chosen_books,
+                                                              truncate_books)
     book_id_versions = create_word_pasted_sets(selected_book_verses, merge_steps_to_save)
     book_id_entropies = {}
     for book_id, n_pairs_verses in book_id_versions.items():
@@ -284,7 +287,7 @@ def run_word_pasting(filename: str,
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
                                                        base_filename,
                                                        remove_mismatcher_files,
-                                                       char_set,
+                                                       char_counter.keys(),
                                                        mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
