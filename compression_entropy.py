@@ -302,6 +302,7 @@ def run(filename: str,
     :param remove_mismatcher_files: whether mismatcher files should be deleted after processing
     :param chosen_books: the books for which you want to compute the entropy (PBC IDs)
     :param truncate_books: whether longer books should be truncated to the length of the shortest
+    :param mismatcher_path: full path to the mismatcher executable
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
     selected_book_verses, char_set = read_selected_verses(filename,
