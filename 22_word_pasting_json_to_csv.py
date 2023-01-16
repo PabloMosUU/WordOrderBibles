@@ -39,6 +39,10 @@ def to_csv(json_file: str) -> None:
             csv_row['book_id'] = book_id
             csv_row['iter_id'] = n_iter
             row_list.append(csv_row)
+    if not row_list:
+        empty_df = pd.DataFrame(columns="orig,shuffled,masked,book_id,iter_id,book,D_structure,D_order".split(','))
+        empty_df.to_csv(json_file.replace('.json', '.csv'), index=False)
+        return
     # Create a Pandas dataframe
     df = pd.DataFrame(row_list)
     # Perform a check
