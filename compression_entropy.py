@@ -13,7 +13,7 @@ def create_random_word(word: str, char_set: str) -> str:
     return ''.join([random.choice(char_set) for _ in word])
 
 
-def mask_word_structure(tokenized: list, char_set: str) -> list:
+def mask_word_structure(tokenized: list, char_counter: dict) -> list:
     masked = []
     word_map = {}
     new_words = set([])
@@ -21,7 +21,7 @@ def mask_word_structure(tokenized: list, char_set: str) -> list:
         masked_tokens = []
         for token in tokens:
             if token not in word_map:
-                new_word = create_random_word(token, char_set)
+                new_word = create_random_word(token, ''.join(char_counter.keys()))
                 if new_word in new_words:
                     raise ValueError('Random word already exists')
                 word_map[token] = new_word
@@ -146,7 +146,7 @@ def get_entropies(sample_verses: list,
     # Shuffle words within each verse
     shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Mask word structure
-    masked = mask_word_structure(verse_tokens, ''.join(char_counter.keys()))
+    masked = mask_word_structure(verse_tokens, char_counter)
     # Put them in a dictionary
     tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
     # Join all verses together
