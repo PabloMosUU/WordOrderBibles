@@ -20,9 +20,9 @@ def run(filename: str,
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
     selected_book_verses, char_counter = read_selected_verses(filename,
-                                                          lowercase,
-                                                          chosen_books,
-                                                          truncate_books)
+                                                              lowercase,
+                                                              chosen_books,
+                                                              truncate_books)
     # Create a base filename for each book
     book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}' \
                           for book_id in selected_book_verses.keys()}
