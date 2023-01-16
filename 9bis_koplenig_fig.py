@@ -45,13 +45,13 @@ if __name__ == '__main__':
 
     books = [40, 41, 42, 43, 44, 66]
     entropies = {}
-    for filename in files_list:
-        entropies[filename] = run(filename=os.path.join(bibles_dir, filename).strip(),
-                              lowercase=True,
-                              remove_mismatcher_files=True,
-                              chosen_books=books,
-                              truncate_books=True,
-                              mismatcher_path=mismatcher_file)
+    for bible_filename in files_list:
+        entropies[bible_filename] = run(filename=os.path.join(bibles_dir, bible_filename).strip(),
+                                        lowercase=True,
+                                        remove_mismatcher_files=True,
+                                        chosen_books=books,
+                                        truncate_books=True,
+                                        mismatcher_path=mismatcher_file)
 
     with open(output_filename, 'w') as fp:
         json.dump(entropies, fp)
