@@ -287,7 +287,7 @@ def run_word_pasting(filename: str,
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
                                                        base_filename,
                                                        remove_mismatcher_files,
-                                                       char_counter.keys(),
+                                                       ''.join(char_counter.keys()),
                                                        mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies

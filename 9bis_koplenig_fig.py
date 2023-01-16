@@ -29,7 +29,7 @@ def run(filename: str,
     return {book_id: get_entropies(verses,
                                    book_base_filename[book_id],
                                    remove_mismatcher_files,
-                                   char_counter.keys(),
+                                   ''.join(char_counter.keys()),
                                    mismatcher_path) \
             for book_id, verses in selected_book_verses.items()}
 
