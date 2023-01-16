@@ -12,7 +12,9 @@ MISMATCHER_PATH = '/home/pablo/ownCloud/WordOrderBibles/Literature/ThirdRound/da
 class TestCompressionEntropy(unittest.TestCase):
     def test_mask_word_structure(self):
         verse_tokens = [['I', 'am', 'nice', 'and', 'clean', 'and', 'that', 'matters', '.']]
-        shuffled = compression_entropy.mask_word_structure(verse_tokens, {el: 1 for el in string.ascii_letters})
+        shuffled = compression_entropy.mask_word_structure(verse_tokens,
+                                                           string.ascii_letters,
+                                                           [1] * len(string.ascii_letters))
         self.assertEqual(1, len(shuffled))
         self.assertEqual(len(verse_tokens[0]), len(shuffled[0]))
         self.assertTrue(all([verse_tokens[0][i] != shuffled[0][i] for i in range(len(shuffled[0]))]))
@@ -22,14 +24,18 @@ class TestCompressionEntropy(unittest.TestCase):
 
     def test_mask_word_structure_across_verses(self):
         verse_tokens = [['This', 'is', 'it'], ['It', 'is', 'good']]
-        shuffled = compression_entropy.mask_word_structure(verse_tokens, {el: 1 for el in string.ascii_letters})
+        shuffled = compression_entropy.mask_word_structure(verse_tokens,
+                                                           string.ascii_letters,
+                                                           [1] * len(string.ascii_letters))
         self.assertEqual(2, len(shuffled))
         self.assertEqual(shuffled[0][1], shuffled[1][1])
 
 
     def test_create_random_word(self):
         word = 'something'
-        new_word = compression_entropy.create_random_word(word, {el: 1 for el in string.ascii_letters})
+        new_word = compression_entropy.create_random_word(len(word),
+                                                          string.ascii_letters,
+                                                          [1] * len(string.ascii_letters))
         self.assertNotEqual(word, new_word)
         self.assertEqual(len(word), len(new_word))
         self.assertTrue(all([ch.strip() != '' for ch in new_word]))

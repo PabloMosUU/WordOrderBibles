@@ -9,11 +9,12 @@ import sys
 
 # TODO: add list of requirements for package: numpy, pandas, sklearn
 
-def create_random_word(word: str, char_counter: dict) -> str:
-    return ''.join([random.choice(''.join(char_counter.keys())) for _ in word])
+def create_random_word(word_length: int, char_repertoire: str, weights: list) -> str:
+    assert len(char_repertoire) == len(weights)
+    return ''.join(random.choices(char_repertoire, weights=weights, k=word_length))
 
 
-def mask_word_structure(tokenized: list, char_counter: dict) -> list:
+def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
     masked = []
     word_map = {}
     new_words = set([])
@@ -21,7 +22,7 @@ def mask_word_structure(tokenized: list, char_counter: dict) -> list:
         masked_tokens = []
         for token in tokens:
             if token not in word_map:
-                new_word = create_random_word(token, char_counter)
+                new_word = create_random_word(len(token), char_str, char_weights)
                 if new_word in new_words:
                     raise ValueError('Random word already exists')
                 word_map[token] = new_word
@@ -146,7 +147,9 @@ def get_entropies(sample_verses: list,
     # Shuffle words within each verse
     shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Mask word structure
-    masked = mask_word_structure(verse_tokens, char_counter)
+    char_str = ''.join(char_counter.keys())
+    char_weights = [char_counter[el] for el in char_str]
+    masked = mask_word_structure(verse_tokens, char_str, char_weights)
     # Put them in a dictionary
     tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
     # Join all verses together
