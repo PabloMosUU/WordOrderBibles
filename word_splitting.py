@@ -1,6 +1,5 @@
 import sys
 import json
-import os
 from compression_entropy import read_selected_verses, get_entropies
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
@@ -78,15 +77,22 @@ def run_word_splitting(filename: str,
 
 
 if __name__ == '__main__':
-    test_steps = {-2000, -1000, -300, -100, -30, 0, 30, 100, 300, 1000, 2000}
-    short_bible = "/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt"
+    """
+    # test_steps = {-2000, -1000, -300, -100, -30, 0, 30, 100, 300, 1000, 2000}
+    test_steps = {-300, -100, -30, 0, 30, 100, 300}
+    short_bible = "/home/pablo/ownCloud/WordOrderBibles/GitHub/eng-x-bible-world.txt"
     book_verses, _ = read_selected_verses(short_bible,
-                                                     lowercase=True,
-                                                     chosen_books=[40],
-                                                     truncate_books=False)
+                                          lowercase=True,
+                                          chosen_books=[40],
+                                          truncate_books=False)
     book_versions = create_word_split_sets(book_verses, test_steps)
     print({version: len(set([el for lis in book_versions[40][version] for el in lis])) \
            for version in sorted(book_versions[40].keys())})
+    for version in sorted(book_versions[40].keys()):
+        print(version, ' '.join(book_versions[40][version][7]))
+    print([w for w in set([el for lis in book_versions[40][-300] for el in lis]) \
+           if w not in set([el for lis in book_versions[40][0] for el in lis])][:3])
+    print('done')
     """
     assert len(sys.argv) == 5, \
         f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename mismatcher_filename'
@@ -115,4 +121,3 @@ if __name__ == '__main__':
 
     with open(output_filename, 'w') as fp:
         json.dump(book_entropies, fp)
-    """
