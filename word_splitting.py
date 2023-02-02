@@ -8,11 +8,11 @@ from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
 
 
-def train_tokenizer(text_file: str, vocab_size: int) -> Tokenizer:
+def train_tokenizer(verses: list, vocab_size: int) -> Tokenizer:
     tokenizer = Tokenizer(BPE())
     tokenizer.pre_tokenizer = Whitespace()
     trainer = BpeTrainer(vocab_size=vocab_size)
-    tokenizer.train(files=[text_file], trainer=trainer)
+    tokenizer.train_from_iterator([' '.join(verse) for verse in verses], trainer)
     return tokenizer
 
 
@@ -28,26 +28,21 @@ def create_word_split_sets(id_verses: dict, steps_to_save: set) -> dict:
     :return: dictionary mapping book IDs to (dictionary mapping vocabulary size increase to list of tokens)
     """
     book_id_versions = {}
-    pure_text_file = 'pure_text.txt'
     for book_id, verses in id_verses.items():
         vocab_size_decreases = sorted(steps_to_save)
         tokens = [el for lis in verses for el in lis]
         n_unique_words = len(set(tokens))
-        text = ' '.join(tokens)
-        alphabet_size = len(set(list(text)))
-        with open(pure_text_file, 'w') as f:
-            f.write(text)
+        alphabet_size = len(set(list(' '.join(tokens))))
         increase_tokens = {}
         if 0 in steps_to_save:
             increase_tokens[0] = verses.copy()
             vocab_size_decreases.remove(0)
         for vocab_size_decrease in vocab_size_decreases:
             vocab_size = alphabet_size + n_unique_words - vocab_size_decrease
-            tokenizer = train_tokenizer(pure_text_file, vocab_size)
+            tokenizer = train_tokenizer(verses, vocab_size)
             output_tokens = encode_verses(verses, tokenizer)
             increase_tokens[vocab_size_decrease] = output_tokens
         book_id_versions[book_id] = increase_tokens
-    os.remove(pure_text_file)
     return book_id_versions
 
 
@@ -83,13 +78,13 @@ def run_word_splitting(filename: str,
 
 
 if __name__ == '__main__':
-    steps_to_save = {-2000, -1000, -300, -100, -30, 0, 30, 100, 300, 1000, 2000}
-    filename = "/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt"
-    book_verses, char_counter = read_selected_verses(filename,
+    test_steps = {-2000, -1000, -300, -100, -30, 0, 30, 100, 300, 1000, 2000}
+    short_bible = "/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt"
+    book_verses, _ = read_selected_verses(short_bible,
                                                      lowercase=True,
                                                      chosen_books=[40],
                                                      truncate_books=False)
-    book_versions = create_word_split_sets(book_verses, steps_to_save)
+    book_versions = create_word_split_sets(book_verses, test_steps)
     print({version: len(set([el for lis in book_versions[40][version] for el in lis])) \
            for version in sorted(book_versions[40].keys())})
     """
