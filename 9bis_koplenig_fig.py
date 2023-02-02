@@ -30,7 +30,8 @@ def run(filename: str,
                                    book_base_filename[book_id],
                                    remove_mismatcher_files,
                                    char_counter,
-                                   mismatcher_path) \
+                                   mismatcher_path,
+                                   randomize_verses=True) \
             for book_id, verses in selected_book_verses.items()}
 
 if __name__ == '__main__':

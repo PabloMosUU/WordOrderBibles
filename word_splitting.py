@@ -1,4 +1,3 @@
-from collections import defaultdict, Counter
 import sys
 import json
 import os
@@ -8,17 +7,31 @@ from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
 
+
+def train_tokenizer(text_file: str, vocab_size: int) -> Tokenizer:
+    tokenizer = Tokenizer(BPE())
+    tokenizer.pre_tokenizer = Whitespace()
+    trainer = BpeTrainer(vocab_size=vocab_size)
+    tokenizer.train(files=[text_file], trainer=trainer)
+    return tokenizer
+
+
+def encode_verses(verse_list: list, tokenizer: Tokenizer) -> list:
+    return [tokenizer.encode(' '.join(verse)).tokens.copy() for verse in verse_list]
+
+
 def create_word_split_sets(id_verses: dict, steps_to_save: set) -> dict:
     """
     Given text from a bible, split it using BPE
-    :param id_verses: dictionary mapping book IDs to a (ordered) list of tokens in the book
+    :param id_verses: map book IDs to a (ordered) list of verses in the book, each verse being a list of tokens
     :param steps_to_save: the desired vocabulary size increases to be saved
     :return: dictionary mapping book IDs to (dictionary mapping vocabulary size increase to list of tokens)
     """
     book_id_versions = {}
-    vocab_size_decreases = sorted(steps_to_save)
     pure_text_file = 'pure_text.txt'
-    for book_id, tokens in id_verses.items():
+    for book_id, verses in id_verses.items():
+        vocab_size_decreases = sorted(steps_to_save)
+        tokens = [el for lis in verses for el in lis]
         n_unique_words = len(set(tokens))
         text = ' '.join(tokens)
         alphabet_size = len(set(list(text)))
@@ -26,16 +39,12 @@ def create_word_split_sets(id_verses: dict, steps_to_save: set) -> dict:
             f.write(text)
         increase_tokens = {}
         if 0 in steps_to_save:
-            increase_tokens[0] = tokens.copy()
+            increase_tokens[0] = verses.copy()
             vocab_size_decreases.remove(0)
         for vocab_size_decrease in vocab_size_decreases:
             vocab_size = alphabet_size + n_unique_words - vocab_size_decrease
-            tokenizer = Tokenizer(BPE())
-            tokenizer.pre_tokenizer = Whitespace()
-            trainer = BpeTrainer(vocab_size=vocab_size)
-            tokenizer.train(files=[pure_text_file], trainer=trainer)
-            output = tokenizer.encode(text)
-            output_tokens = output.tokens
+            tokenizer = train_tokenizer(pure_text_file, vocab_size)
+            output_tokens = encode_verses(verses, tokenizer)
             increase_tokens[vocab_size_decrease] = output_tokens
         book_id_versions[book_id] = increase_tokens
     os.remove(pure_text_file)
@@ -74,6 +83,16 @@ def run_word_splitting(filename: str,
 
 
 if __name__ == '__main__':
+    steps_to_save = {-2000, -1000, -300, -100, -30, 0, 30, 100, 300, 1000, 2000}
+    filename = "/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/eng-x-bible-world.txt"
+    book_verses, char_counter = read_selected_verses(filename,
+                                                     lowercase=True,
+                                                     chosen_books=[40],
+                                                     truncate_books=False)
+    book_versions = create_word_split_sets(book_verses, steps_to_save)
+    print({version: len(set([el for lis in book_versions[40][version] for el in lis])) \
+           for version in sorted(book_versions[40].keys())})
+    """
     assert len(sys.argv) == 5, \
         f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename mismatcher_filename'
     bible_filename = sys.argv[1]    # The bible filename
@@ -101,3 +120,4 @@ if __name__ == '__main__':
 
     with open(output_filename, 'w') as fp:
         json.dump(book_entropies, fp)
+    """
