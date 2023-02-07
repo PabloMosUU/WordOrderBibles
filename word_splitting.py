@@ -38,6 +38,9 @@ def create_word_split_sets(id_verses: dict, steps_to_save: set) -> dict:
             vocab_size_decreases.remove(0)
         for vocab_size_decrease in vocab_size_decreases:
             vocab_size = alphabet_size + n_unique_words - vocab_size_decrease
+            if vocab_size <= 0:
+                print(f'Warning: ignoring vocab_size_decrease={vocab_size_decrease} as it leads to negative vocab size')
+                continue
             tokenizer = train_tokenizer(verses, vocab_size)
             output_tokens = encode_verses(verses, tokenizer)
             increase_tokens[vocab_size_decrease] = output_tokens
