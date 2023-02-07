@@ -71,10 +71,10 @@ def run_word_splitting(filename: str,
             print(n_pairs, end='')
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
             n_pairs_entropies[n_pairs] = (get_entropies(verse_tokens,
-                                                       base_filename,
-                                                       remove_mismatcher_files,
-                                                       char_counter,
-                                                       mismatcher_path),
+                                                        base_filename,
+                                                        remove_mismatcher_files,
+                                                        char_counter,
+                                                        mismatcher_path),
                                           len(set([el for lis in verse_tokens for el in lis])))
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
