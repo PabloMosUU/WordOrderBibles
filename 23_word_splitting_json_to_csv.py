@@ -1,6 +1,7 @@
 import sys
 import pandas as pd
 import json
+import os
 
 BOOK_ID_NAME = {'40': 'Matthew',
                 '41': 'Mark',
@@ -59,6 +60,18 @@ def to_csv(json_file: str) -> None:
     return
 
 if __name__ == '__main__':
-    assert len(sys.argv) == 2, f'USAGE: python3 {sys.argv[0]} json_file_name'
-    filename = sys.argv[1]
-    to_csv(filename)
+    assert len(sys.argv) == 2, f'USAGE: python3 {sys.argv[0]} json_file_dir'
+    filedir = os.path.join(os.getcwd(), sys.argv[1])
+    print('filedir:', filedir)
+    files = os.listdir(filedir)
+    print(files)
+    json_files = [el for el in files if el.endswith('json')]
+    print(json_files)
+    csv_files = set([el for el in files if el.endswith('csv')])
+    print(csv_files)
+    for json_file in json_files:
+        if json_file.replace('json', 'csv') in csv_files:
+            print('skip', json_file)
+        else:
+            print('convert', json_file)
+            to_csv(os.path.join(filedir, json_file))
