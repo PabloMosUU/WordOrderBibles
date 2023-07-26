@@ -138,3 +138,6 @@ fig
 configs
 ???-*bible*.txt
 glove
+slurm-*
+*.sh
+nsb_entropy.py
