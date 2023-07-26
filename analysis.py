@@ -6,9 +6,10 @@ import transformers
 from tqdm import tqdm
 import numpy as np
 
+import compression_entropy as ce
 from util import log_factorial
 import data
-
+import nsb_entropy as ne
 
 def unigram_entropy_direct(tokens: list) -> float:
     n = len(tokens)
@@ -107,4 +108,42 @@ def full_entropy_calculation(id_text: dict, model: torch.nn.Module,
         H_s = unigram_entropy_direct(tokens)
         H_r = unigram_entropy_by_counts(tokens, token_log_probas)
         text_id_entropies[text_id] = (H, H_s, H_r)
+    return text_id_entropies
+
+
+def full_entropy_calculation_bpw(id_text: dict,
+                                 remove_punct: bool,
+                                 lc: bool,
+                                 base_name: str) -> dict:
+    text_id_entropies = {}
+    for text_id, text in id_text.items():
+        # Tokenize for the unigram entropy computations
+        tokens = data.tokenize(text, remove_punct, lc)
+        # Compute the entropy rate
+        base_filename = f'{base_name}_{text_id}'
+        H = ce.get_entropies_per_word(tokens, base_filename, remove_mismatcher_files=True)
+        # Compute the unigram entropy
+        H_s = unigram_entropy_direct(tokens)
+        token_log_likelihood = data.log_likelihoods(text,
+                                                    remove_punctuation=remove_punct,
+                                                    lowercase=lc)
+        H_r = unigram_entropy_by_counts(tokens, token_log_likelihood)
+        text_id_entropies[text_id] = (H, H_s, H_r)
+    return text_id_entropies
+
+def get_nsb_entropy(tokens: list) -> float:
+    c = Counter(tokens)
+    input_histogram = np.array(list(c.values()))
+    nsb_entropy = ne.S(ne.make_nxkx(input_histogram, len(c.keys())), input_histogram.sum(),
+                       len(c.keys()))
+    return float(nsb_entropy)
+
+def nsb_unigram_entropy(id_text: dict,
+                        remove_punct: bool,
+                        lc: bool) -> dict:
+    text_id_entropies = {}
+    for text_id, text in id_text.items():
+        tokens = data.tokenize(text, remove_punct, lc)
+        H_unigram = get_nsb_entropy(tokens)
+        text_id_entropies[text_id] = H_unigram
     return text_id_entropies
