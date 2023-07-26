@@ -1,10 +1,14 @@
+import collections
+import json
 import random
 import sys
 import re
+from collections import defaultdict
 from collections.abc import MutableMapping
 from typing import Iterator
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 
 START_OF_VERSE_TOKEN = '<SOS>'
@@ -162,10 +166,46 @@ class PbcBible(Bible):
         content, hidden_content = IndelibleDict(), IndelibleDict()
         for key, value, is_commented in content_lines:
             if is_commented:
+                if key in hidden_content:
+                    del hidden_content[key]
                 hidden_content[key] = value
             else:
                 content[key] = value
         return comments, content, hidden_content
+
+    @staticmethod
+    def get_testament(book_id: int) -> str:
+        if 1 <= book_id <= 39:
+            return 'old'
+        elif 40 <= book_id <= 66:
+            return 'new'
+        elif 67 <= book_id <= 86:
+            return 'apocryphal'
+        else:
+            raise ValueError(f'{book_id} does not belong to any known testament')
+
+
+    def join_by_toc(self):
+        return join_by_toc(self.content)
+
+
+def join_by_toc(pbc_id_verse: MutableMapping) -> tuple:
+    by_bible = {'bible': []}
+    by_testament, by_book, by_chapter = defaultdict(list), defaultdict(list), defaultdict(list)
+    by_verse = {verse_id: [verse] for verse_id, verse in pbc_id_verse.items()}
+    last_code = "00000000"
+    for code, verse in pbc_id_verse.items():
+        assert code >= last_code, f'The verses are not ordered by verse ID: ({last_code}, {code})'
+        last_code = code
+        chapter = int(code[:5])
+        by_chapter[chapter].append(verse)
+        book = int(code[:2])
+        by_book[book].append(verse)
+        testament = PbcBible.get_testament(book)
+        by_testament[testament].append(verse)
+        by_bible['bible'].append(verse)
+    return by_bible, by_testament, by_book, by_chapter, by_verse
+
 
 def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
     if lowercase:
@@ -202,7 +242,11 @@ def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> Pb
             if content_match:
                 content_lines.append((content_match.group(1), content_match.group(2), line[0] == '#'))
             else:
-                raise Exception(f'{line} does not match an expected format')
+                error_message = f'"{line}" does not match an expected format'
+                if line.strip()[0] == '#':
+                    print(f'WARNING: {error_message}')
+                else:
+                    raise Exception(error_message)
     comments, content, hidden_content = PbcBible.to_dictionaries(comment_lines, content_lines)
     language = comments['closest_ISO_639-3']
     return PbcBible(language, filename, content, hidden_content)
@@ -232,17 +276,6 @@ def preprocess(bible: Bible) -> TokenizedBible:
 def process_bible(filename: str, corpus: str) -> TokenizedBible:
     structured_bible = parse_file(filename, corpus)
     return preprocess(structured_bible)
-
-
-if __name__ == '__main__':
-    if len(sys.argv) != 4:
-        print(f'USAGE: {sys.argv[0]} <corpus> <bible_filename> <output_filename>')
-        exit(-1)
-    bible_corpus = sys.argv[1]
-    bible_filename = sys.argv[2]
-    output_filename = sys.argv[3]
-    pre_processed_bible = process_bible(bible_filename, bible_corpus)
-    pre_processed_bible.save(output_filename)
 
 
 def to_indices(seq: list, to_ix: dict) -> list:
@@ -290,3 +323,56 @@ def pad_batch(sequences: list) -> list:
     max_length = max([len(el) for el in sequences])
     padded = [seq + [PAD_TOKEN] * (max_length - len(seq)) for seq in sequences]
     return padded
+
+
+def join_texts(texts: list, prompt: str, eot_token: str, separator: str) -> str:
+    return prompt + separator.join(texts) + separator + eot_token
+
+
+def join_texts_in_dict(id_texts: dict, prompt: str, eot_token: str, separator: str) -> dict:
+    return {k: join_texts(v, prompt, eot_token, separator) for k,v in id_texts.items()}
+
+
+def log_likelihoods(text: str, remove_punctuation: bool, lowercase: bool) -> dict:
+    tokens = tokenize(text, remove_punctuation, lowercase)
+    token_counts = collections.Counter(tokens)
+    return {token: np.log(counts / len(tokens)) for token, counts in token_counts.items()}
+
+
+def log_likelihoods_smooth(text: str, remove_punctuation: bool, lowercase: bool, V: int) -> dict:
+    # V is the vocabulary size and it must include all words in the test set too
+    tokens = tokenize(text, remove_punctuation, lowercase)
+    token_counts = collections.Counter(tokens)
+    d = defaultdict(lambda: np.log(1 / (len(tokens) + V)))
+    for token, counts in token_counts.items():
+        d[token] = np.log((counts + 1) / (len(tokens) + V))
+    return d
+
+def build_dataframe(filename: str) -> pd.DataFrame:
+    with open(filename, 'r') as f:
+        entropies = json.loads(f.read())
+
+    for filename in entropies.keys():
+        for book_id in entropies[filename].keys():
+            row = entropies[filename][book_id]
+            row['filename'] = filename
+            row['book_id'] = book_id
+
+    row_list = []
+    for filename in entropies.keys():
+        for book_id in entropies[filename].keys():
+            row_list.append(entropies[filename][book_id])
+
+    df = pd.DataFrame(row_list)
+    return df
+
+
+if __name__ == '__main__':
+    if len(sys.argv) != 4:
+        print(f'USAGE: {sys.argv[0]} <corpus> <bible_filename> <output_filename>')
+        exit(-1)
+    bible_corpus = sys.argv[1]
+    bible_filename = sys.argv[2]
+    output_filename = sys.argv[3]
+    pre_processed_bible = process_bible(bible_filename, bible_corpus)
+    pre_processed_bible.save(output_filename)
