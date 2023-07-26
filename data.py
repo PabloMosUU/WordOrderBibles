@@ -197,7 +197,7 @@ def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
         tokens = text.split(' ')
     return tokens
 
-def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> PbcBible:
+def split_pbc_bible_lines(lines: list, parse_content: bool) -> tuple:
     # Assume that the file starts with comments, and then it moves on to content
     # The comments have alpha keys that start with a hash and end in colon
     # The content can optionally be commented out
@@ -206,7 +206,7 @@ def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> Pb
     content_pattern = '#? ?(\\d{1,8}) ?\t(.*)\\s*'
     for line in lines:
         if in_comments:
-            comment_match = re.fullmatch('# ([\\w\\d-]+):\\s+(.*)\\s*', line)
+            comment_match = re.fullmatch("# ([\\w\\d-]+):\\s+(.*)\\s*", line)
             if comment_match:
                 comment_lines.append((comment_match.group(1), comment_match.group(2)))
             else:
@@ -229,6 +229,10 @@ def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> Pb
                 else:
                     raise Exception(error_message)
     comments, content, hidden_content = PbcBible.to_dictionaries(comment_lines, content_lines)
+    return comments, content, hidden_content
+
+def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> PbcBible:
+    comments, content, hidden_content = split_pbc_bible_lines(lines, parse_content)
     language = comments['closest_ISO_639-3']
     return PbcBible(language, filename, content, hidden_content)
 
