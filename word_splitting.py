@@ -80,13 +80,26 @@ def run_word_splitting(filename: str,
     return book_id_entropies
 
 
+def has_completed_merges(orig_verse_tokens: list, trained_bpe_tokenizer: Tokenizer) -> bool:
+    orig_verses = [' '.join(el) for el in orig_verse_tokens]
+    pre_tokenizer = Whitespace()
+    orig_verses_pre_tokenized = [[ell[0] for ell in pre_tokenizer.pre_tokenize_str(el)] for el in orig_verses]
+    encoded_verse_tokens = encode_verses(orig_verses_pre_tokenized, trained_bpe_tokenizer)
+    for verse_ix, verse_tokens in enumerate(encoded_verse_tokens):
+        for token_ix, token in enumerate(verse_tokens):
+            if orig_verses_pre_tokenized[verse_ix][token_ix] != token:
+                print('DEBUG: Different', orig_verses_pre_tokenized[verse_ix][token_ix], token)
+                return False
+    return True
+
+
 if __name__ == '__main__':
     assert len(sys.argv) == 5, \
         f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename mismatcher_filename'
-    bible_filename = sys.argv[1]    # The bible filename
-    temp_dir = sys.argv[2]          # The directory where Mismatcher files are saved
-    output_filename = sys.argv[3]   # The filename where entropies will be saved
-    mismatcher_file = sys.argv[4]   # The filename of the mismatcher jar
+    bible_filename = sys.argv[1]  # The bible filename
+    temp_dir = sys.argv[2]  # The directory where Mismatcher files are saved
+    output_filename = sys.argv[3]  # The filename where entropies will be saved
+    mismatcher_file = sys.argv[4]  # The filename of the mismatcher jar
 
     split_steps = set([ell for lis in [list(el) for el in (range(-900, 1000, 100), range(-10000, 11000, 1000))] \
                        for ell in lis])
@@ -94,13 +107,13 @@ if __name__ == '__main__':
     book_entropies = {}
     for bid in [40, 41, 42, 43, 44, 66]:
         file_book_entropies = run_word_splitting(bible_filename,
-                                                    lowercase=True,
-                                                    remove_mismatcher_files=True,
-                                                    chosen_books=[bid],
-                                                    truncate_books=False,
-                                                    split_steps_to_save=split_steps,
-                                                    output_file_path=temp_dir,
-                                                    mismatcher_path=mismatcher_file)
+                                                 lowercase=True,
+                                                 remove_mismatcher_files=True,
+                                                 chosen_books=[bid],
+                                                 truncate_books=False,
+                                                 split_steps_to_save=split_steps,
+                                                 output_file_path=temp_dir,
+                                                 mismatcher_path=mismatcher_file)
         if bid not in file_book_entropies:
             print(f'WARNING: skipping book {bid} because it is not in {bible_filename}')
             continue
