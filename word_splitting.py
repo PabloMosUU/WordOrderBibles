@@ -99,10 +99,7 @@ if __name__ == '__main__':
     temp_dir = sys.argv[2]  # The directory where Mismatcher files are saved
     output_filename = sys.argv[3]  # The filename where entropies will be saved
     mismatcher_file = sys.argv[4]  # The filename of the mismatcher jar
-    n_merges = int(sys.argv[5])    # The number of merges to attempt to reconstruct the entire merge history
-
-    split_steps = set([ell for lis in [list(el) for el in (range(-900, 1000, 100), range(-10000, 11000, 1000))] \
-                       for ell in lis])
+    n_merges_full = int(sys.argv[5])    # The number of merges to attempt to reconstruct the entire merge history
 
     book_entropies = {}
     for bid in [40, 41, 42, 43, 44, 66]:
@@ -111,7 +108,7 @@ if __name__ == '__main__':
                                                  remove_mismatcher_files=True,
                                                  chosen_books=[bid],
                                                  truncate_books=False,
-                                                 n_merges=n_merges,
+                                                 n_merges=n_merges_full,
                                                  output_file_path=temp_dir,
                                                  mismatcher_path=mismatcher_file)
         if bid not in file_book_entropies:
