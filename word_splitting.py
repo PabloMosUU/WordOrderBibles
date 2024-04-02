@@ -1,3 +1,5 @@
+import copy
+import os
 import sys
 import json
 from compression_entropy import read_selected_verses, get_entropies
@@ -21,8 +23,67 @@ def encode_verses(verse_list: list, tokenizer: Tokenizer) -> list:
     return [tokenizer.encode(' '.join(verse)).tokens.copy() for verse in verse_list]
 
 
-def build_merge_history(seq_tokens: list, tokenizer: Tokenizer) -> dict:
-    raise NotImplementedError()
+def get_merge_steps(merge_list_file: str) -> list:
+    with open(merge_list_file) as f:
+        lines = f.readlines()
+    assert lines[0].startswith('#') and not lines[1].startswith('#')
+    merge_steps = [line.strip().split(' ') for line in lines[1:]]
+    for i, line in enumerate(merge_steps):
+        if len(line) != 2 or line[0] != line[0].strip() or line[1] != line[1].strip():
+            print(i, line, type(line))
+            raise ValueError()
+    return merge_steps
+
+
+def split_chars(verse_tokens: list) -> list:
+    return [[list(token) for token in tokens] for tokens in verse_tokens]
+
+
+def apply_merge(seq_token_sub_tokens: list, merge_step: list) -> list:
+    for i, verse in enumerate(seq_token_sub_tokens):
+        for j in range(len(verse)):
+            token = verse[j]
+            parts = []
+            k = 0
+            while k < len(token):
+                if k == len(token) - 1:
+                    parts.append(token[k])
+                    k += 1
+                elif token[k] == merge_step[0] and token[k+1] == merge_step[1]:
+                    parts.append(token[k] + token[k+1])
+                    k += 2
+                else:
+                    parts.append(token[k])
+                    k += 1
+            verse[j] = parts
+    return seq_token_sub_tokens
+
+
+def build_merge_history(seq_tokens: list, merge_steps: list) -> dict:
+    seq_token_sub_tokens = split_chars(seq_tokens)
+    merge_history = {len(merge_steps): copy.deepcopy(seq_token_sub_tokens)}
+    save_step = int(len(merge_steps)/10+0.5)
+    for i, merge_step in enumerate(merge_steps):
+        seq_token_sub_tokens = apply_merge(seq_token_sub_tokens, merge_step)
+        n_merges_so_far = i + 1
+        n_splits_so_far = len(merge_steps) - n_merges_so_far
+        if len(merge_steps) < 10 or n_splits_so_far == 0 or n_splits_so_far % save_step == 0:
+            merge_history[n_splits_so_far] = copy.deepcopy(seq_token_sub_tokens)
+    return merge_history
+
+
+def get_merge_history(seq_tokens: list, tokenizer: Tokenizer) -> dict:
+    # Save the tokenizer to a file
+    tokenizer_files = tokenizer.model.save('.', 'merge_history_tokenizer')
+    merges_filename = tokenizer_files[1]
+    # Use get_merge_steps to retrieve the list of merge steps
+    merge_steps = get_merge_steps(merges_filename)
+    # Delete the temporary file
+    for file in tokenizer_files:
+        os.remove(file)
+    # For each n_merges/10, use apply_merge iteratively to construct a stage of reconstruction
+    merge_history = build_merge_history(seq_tokens, merge_steps)
+    return merge_history
 
 
 def create_word_split_sets(id_verses: dict, n_all_merges: int) -> dict:
@@ -42,7 +103,7 @@ def create_word_split_sets(id_verses: dict, n_all_merges: int) -> dict:
         if not has_completed_merges(verses, full_tokenizer):
             raise NotImplementedError('merge history incomplete')
         # Iteratively use merge history up to a point to encode verses
-        increase_tokens = build_merge_history(verses, full_tokenizer)
+        increase_tokens = get_merge_history(verses, full_tokenizer)
         book_id_versions[book_id] = increase_tokens
     return book_id_versions
 
