@@ -84,6 +84,15 @@ class TestBpe(unittest.TestCase):
                     [['"'], ["'"], ['A', 'p'], ['u', 'n', 'u', 's', 'u', 'k'], ['f', 'u', 'g'], [',']]]
         self.assertEqual(expected, merged)
 
+    def test_flatten_sequences(self):
+        splits_seq_token_sub_tokens = {10: [[['I'], ['a', 'm'], ['o', 'n', 'e']],
+                                            [['T', 'h', 'e'], ['p', 'u', 'n', 'k'], ['a', 'n', 'd'],
+                                             ['t', 'h', 'e'], ['g', 'o', 'd', 'f', 'a', 't', 'h', 'e', 'r']]]}
+        flattened = {10: [['I', 'a', 'm', 'o', 'n', 'e'],
+                          ['T', 'h', 'e', 'p', 'u', 'n', 'k', 'a', 'n', 'd',
+                           't', 'h', 'e', 'g', 'o', 'd', 'f', 'a', 't', 'h', 'e', 'r']]}
+        self.assertEqual(flattened, word_splitting.flatten_sequences(splits_seq_token_sub_tokens))
+
 
 if __name__ == "__main__":
     unittest.main()
