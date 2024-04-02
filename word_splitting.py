@@ -72,6 +72,11 @@ def build_merge_history(seq_tokens: list, merge_steps: list) -> dict:
     return merge_history
 
 
+def flatten_sequences(splits_sequences: dict) -> dict:
+    return {splits: [[el for lis in seq for el in lis] for seq in sequences]
+            for splits, sequences in splits_sequences.items()}
+
+
 def get_merge_history(seq_tokens: list, tokenizer: Tokenizer) -> dict:
     # Save the tokenizer to a file
     tokenizer_files = tokenizer.model.save('.', 'merge_history_tokenizer')
@@ -83,7 +88,9 @@ def get_merge_history(seq_tokens: list, tokenizer: Tokenizer) -> dict:
         os.remove(file)
     # For each n_merges/10, use apply_merge iteratively to construct a stage of reconstruction
     merge_history = build_merge_history(seq_tokens, merge_steps)
-    return merge_history
+    # Flatten the sequences
+    splits_tokens = flatten_sequences(merge_history)
+    return splits_tokens
 
 
 def create_word_split_sets(id_verses: dict, n_all_merges: int) -> dict:
