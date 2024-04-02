@@ -2,11 +2,32 @@ import copy
 import os
 import sys
 import json
-from compression_entropy import read_selected_verses, get_entropies
+import random
+from compression_entropy import read_selected_verses, run_mismatcher, get_entropy, to_file, create_random_word
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.trainers import BpeTrainer
+
+from util import Token
+
+
+def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
+    masked = []
+    word_map = {}
+    new_words = set([])
+    for tokens in tokenized:
+        masked_tokens = []
+        for token_obj in tokens:
+            token = token_obj.token
+            if token not in word_map:
+                new_word = create_random_word(len(token), char_str, char_weights)
+                if new_word in new_words:
+                    raise ValueError('Random word already exists')
+                word_map[token] = new_word
+            masked_tokens.append(Token(word_map[token], token_obj.is_start_of_word))
+        masked.append(masked_tokens)
+    return masked
 
 
 def train_tokenizer(verses: list, vocab_size: int) -> Tokenizer:
@@ -49,8 +70,8 @@ def apply_merge(seq_token_sub_tokens: list, merge_step: list) -> list:
                 if k == len(token) - 1:
                     parts.append(token[k])
                     k += 1
-                elif token[k] == merge_step[0] and token[k+1] == merge_step[1]:
-                    parts.append(token[k] + token[k+1])
+                elif token[k] == merge_step[0] and token[k + 1] == merge_step[1]:
+                    parts.append(token[k] + token[k + 1])
                     k += 2
                 else:
                     parts.append(token[k])
@@ -62,7 +83,7 @@ def apply_merge(seq_token_sub_tokens: list, merge_step: list) -> list:
 def build_merge_history(seq_tokens: list, merge_steps: list) -> dict:
     seq_token_sub_tokens = split_chars(seq_tokens)
     merge_history = {len(merge_steps): copy.deepcopy(seq_token_sub_tokens)}
-    save_step = int(len(merge_steps)/10+0.5)
+    save_step = int(len(merge_steps) / 10 + 0.5)
     for i, merge_step in enumerate(merge_steps):
         seq_token_sub_tokens = apply_merge(seq_token_sub_tokens, merge_step)
         n_merges_so_far = i + 1
@@ -73,8 +94,18 @@ def build_merge_history(seq_tokens: list, merge_steps: list) -> dict:
 
 
 def flatten_sequences(splits_sequences: dict) -> dict:
-    return {splits: [[el for lis in seq for el in lis] for seq in sequences]
-            for splits, sequences in splits_sequences.items()}
+    flattened = {}
+    for splits, sequences in splits_sequences.items():
+        flattened_sequences = []
+        for seq in sequences:
+            flattened_tokens = []
+            for token in seq:
+                flattened_tokens.append(Token(token[0], True))
+                for sub_token in token[1:]:
+                    flattened_tokens.append(Token(sub_token, False))
+            flattened_sequences.append(flattened_tokens)
+        flattened[splits] = flattened_sequences
+    return flattened
 
 
 def get_merge_history(seq_tokens: list, tokenizer: Tokenizer) -> dict:
@@ -115,6 +146,65 @@ def create_word_split_sets(id_verses: dict, n_all_merges: int) -> dict:
     return book_id_versions
 
 
+def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
+    """
+    Join the verses contained in a list of lists of tokens
+    :param verse_tokens: the list of verses, each of which is a list of tokens; order matters
+    :param insert_spaces: whether we want to insert spaces between the tokens
+    :return: the concatenated string consisting of all the tokens in the original order
+    """
+    sep = ' ' if insert_spaces else ''
+    verses = []
+    for verse in verse_tokens:
+        verse_text = ''
+        for j, token in enumerate(verse):
+            if j != 0 and token.is_start_of_word:
+                verse_text += sep
+            verse_text += token.token
+        verses.append(verse_text)
+    return sep.join(verses)
+
+
+# TODO: deduplicate this function and compression_entropy.get_entropies by de-duplicating join_verses
+def get_entropies(sample_verses: list,
+                  base_filename: str,
+                  remove_mismatcher_files: bool,
+                  char_counter: dict,
+                  mismatcher_path: str) -> dict:
+    """
+    Get three entropies for a given sample of verses
+    :param sample_verses: the (ordered) pre-processed verses contained in the original sample
+    :param base_filename: the base filename to be used for the output
+    :param remove_mismatcher_files: whether to delete the mismatcher files after processing
+    :param char_counter: the alphabet with the number of times each character is seen
+    :param mismatcher_path: the path to the mismatcher Java jar file
+    :return: the entropies for the given sample (e.g., chapter)
+    """
+    # Randomize the order of the verses in each sample
+    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
+    # Shuffle words within each verse
+    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
+    # Mask word structure
+    char_str = ''.join(char_counter.keys())
+    char_weights = [char_counter[el] for el in char_str]
+    masked = mask_word_structure(verse_tokens, char_str, char_weights)
+    # Put them in a dictionary
+    tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
+    # Join all verses together
+    joined = {k: join_verses(v, insert_spaces=True) for k, v in tokens.items()}
+    # Save these to files to run the mismatcher
+    filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
+    # Run the mismatcher
+    version_mismatches = {version: run_mismatcher(preprocessed_filename,
+                                                  remove_mismatcher_files,
+                                                  mismatcher_path) \
+                          for version, preprocessed_filename in filenames.items()}
+    # Compute the entropy
+    version_entropy = {version: get_entropy(mismatches) \
+                       for version, mismatches in version_mismatches.items()}
+    return version_entropy
+
+
 def run_word_splitting(filename: str,
                        lowercase: bool,
                        remove_mismatcher_files: bool,
@@ -137,12 +227,11 @@ def run_word_splitting(filename: str,
         for n_pairs, verse_tokens in n_pairs_verses.items():
             print(n_pairs, end='')
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
-            n_pairs_entropies[n_pairs] = (get_entropies(verse_tokens,
-                                                        base_filename,
-                                                        remove_mismatcher_files,
-                                                        char_counter,
-                                                        mismatcher_path),
-                                          len(set([el for lis in verse_tokens for el in lis])))
+            n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
+                                                       base_filename,
+                                                       remove_mismatcher_files,
+                                                       char_counter,
+                                                       mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
 
@@ -167,7 +256,7 @@ if __name__ == '__main__':
     temp_dir = sys.argv[2]  # The directory where Mismatcher files are saved
     output_filename = sys.argv[3]  # The filename where entropies will be saved
     mismatcher_file = sys.argv[4]  # The filename of the mismatcher jar
-    n_merges_full = int(sys.argv[5])    # The number of merges to attempt to reconstruct the entire merge history
+    n_merges_full = int(sys.argv[5])  # The number of merges to attempt to reconstruct the entire merge history
 
     book_entropies = {}
     for bid in [40, 41, 42, 43, 44, 66]:

@@ -1,5 +1,6 @@
 import unittest
 import word_splitting
+from util import Token
 
 
 class TestBpe(unittest.TestCase):
@@ -85,13 +86,35 @@ class TestBpe(unittest.TestCase):
         self.assertEqual(expected, merged)
 
     def test_flatten_sequences(self):
-        splits_seq_token_sub_tokens = {10: [[['I'], ['a', 'm'], ['o', 'n', 'e']],
-                                            [['T', 'h', 'e'], ['p', 'u', 'n', 'k'], ['a', 'n', 'd'],
-                                             ['t', 'h', 'e'], ['g', 'o', 'd', 'f', 'a', 't', 'h', 'e', 'r']]]}
-        flattened = {10: [['I', 'a', 'm', 'o', 'n', 'e'],
-                          ['T', 'h', 'e', 'p', 'u', 'n', 'k', 'a', 'n', 'd',
-                           't', 'h', 'e', 'g', 'o', 'd', 'f', 'a', 't', 'h', 'e', 'r']]}
+        splits_seq_token_sub_tokens = {10: [[['I'], ['a', 'm']],
+                                            [['T', 'h', 'e'], ['p', 'u', 'n', 'k']]]}
+        flattened = {10: [[Token('I', True),
+                           Token('a', True), Token('m', False)],
+                          [Token('T', True), Token('h', False),
+                          Token('e', False),
+                          Token('p', True), Token('u', False),
+                          Token('n', False), Token('k', False)]]}
         self.assertEqual(flattened, word_splitting.flatten_sequences(splits_seq_token_sub_tokens))
+
+    def test_join_verses(self):
+        verse_tokens = [['I', 'hate', 'this'], ['I', 'love', 'this']]
+        verse_tokens = [[Token(el, True) for el in seq] for seq in verse_tokens]
+        text = word_splitting.join_verses(verse_tokens, insert_spaces=True)
+        self.assertEqual('I hate this I love this', text)
+
+    def test_join_verses_with_sub_tokens(self):
+        verse_tokens = [['I', 'hat', 'e', 'this'], ['I', 'love', 'this']]
+        verse_tokens = [[Token(el, True) for el in seq] for seq in verse_tokens]
+        verse_tokens[0][2] = Token('e', False)
+        text = word_splitting.join_verses(verse_tokens, insert_spaces=True)
+        self.assertEqual('I hate this I love this', text)
+
+    def test_join_verses_with_sub_tokens_no_space(self):
+        verse_tokens = [['I', 'hat', 'e', 'this'], ['I', 'love', 'this']]
+        verse_tokens = [[Token(el, True) for el in seq] for seq in verse_tokens]
+        verse_tokens[0][2] = Token('e', False)
+        text = word_splitting.join_verses(verse_tokens, insert_spaces=False)
+        self.assertEqual('IhatethisIlovethis', text)
 
 
 if __name__ == "__main__":

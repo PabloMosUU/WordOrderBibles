@@ -10,15 +10,16 @@ BOOK_ID_NAME = {'40': 'Matthew',
                 '44': 'Acts',
                 '66': 'Revelation'}
 
+
 def rel_error(a):
     assert len(a) == 2
     return abs(a[0] - a[1]) / (a[0] + a[1])
 
+
 def assert_valid(df: pd.DataFrame) -> None:
     for book_id in df.book_id.unique():
         for iter_id in df.iter_id.unique():
-            selection = df[df.apply(lambda row: row['book_id'] == book_id and \
-                                                row['iter_id'] == iter_id,
+            selection = df[df.apply(lambda row: row['book_id'] == book_id and row['iter_id'] == iter_id,
                                     1)]
             if len(selection) == 0:
                 continue
@@ -28,6 +29,7 @@ def assert_valid(df: pd.DataFrame) -> None:
                     assert rel_error(selection[col].tolist()) * 100 < 0.5
     return
 
+
 def to_csv(json_file: str) -> None:
     # Read the JSON file
     with open(json_file, 'r') as f:
@@ -36,12 +38,10 @@ def to_csv(json_file: str) -> None:
     row_list = []
     for book_id, version_entropies in book_entropies.items():
         for n_iter, entropies_types in version_entropies.items():
-            level_entropies = entropies_types[0]
-            n_types = entropies_types[1]
+            level_entropies = entropies_types
             csv_row = level_entropies.copy()
             csv_row['book_id'] = book_id
             csv_row['iter_id'] = n_iter
-            csv_row['n_types'] = n_types
             row_list.append(csv_row)
     if not row_list:
         empty_df = pd.DataFrame(columns="orig,shuffled,masked,book_id,iter_id,book,D_structure,D_order".split(','))
@@ -53,11 +53,12 @@ def to_csv(json_file: str) -> None:
     assert_valid(df)
     # Map book IDs to their names
     df['book'] = df['book_id'].map(BOOK_ID_NAME)
-    # Compute the quantities that are plotted by Koplenig et al
+    # Compute the quantities that are plotted by Koplenig et al.
     df['D_structure'] = df.apply(lambda row: row['masked'] - row['orig'], 1)
     df['D_order'] = df.apply(lambda row: row['shuffled'] - row['orig'], 1)
     df.to_csv(json_file.replace('.json', '.csv'), index=False)
     return
+
 
 if __name__ == '__main__':
     assert len(sys.argv) == 2, f'USAGE: python3 {sys.argv[0]} json_file_dir'
@@ -69,9 +70,9 @@ if __name__ == '__main__':
     print(json_files)
     csv_files = set([el for el in files if el.endswith('csv')])
     print(csv_files)
-    for json_file in json_files:
-        if json_file.replace('json', 'csv') in csv_files:
-            print('skip', json_file)
+    for a_json_file in json_files:
+        if a_json_file.replace('json', 'csv') in csv_files:
+            print('skip', a_json_file)
         else:
-            print('convert', json_file)
-            to_csv(os.path.join(filedir, json_file))
+            print('convert', a_json_file)
+            to_csv(os.path.join(filedir, a_json_file))
