@@ -207,6 +207,16 @@ def get_entropies(sample_verses: list,
     return version_entropy
 
 
+def get_output_file_dir(output_file_path: str, filename: str) -> str:
+    output_file_dir = os.path.join(
+        output_file_path,
+        os.path.splitext(os.path.basename(filename))[0].replace('.', '_')
+    )
+    if not os.path.exists(output_file_dir):
+        os.mkdir(output_file_dir)
+    return output_file_dir
+
+
 def run_word_splitting(filename: str,
                        lowercase: bool,
                        remove_mismatcher_files: bool,
@@ -228,7 +238,8 @@ def run_word_splitting(filename: str,
         n_pairs_entropies = {}
         for n_pairs, verse_tokens in n_pairs_verses.items():
             print(n_pairs, end='')
-            base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
+            base_dir = get_output_file_dir(output_file_path, filename)
+            base_filename = os.path.join(base_dir, f'{os.path.basename(filename)}_{book_id}_v{n_pairs}')
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
                                                        base_filename,
                                                        remove_mismatcher_files,
