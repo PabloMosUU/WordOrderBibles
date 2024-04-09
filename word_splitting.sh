@@ -4,11 +4,16 @@
 #SBATCH --mail-user=p.mosteiro@uu.nl
 
 BIBLE_FILENAME="$1"
-TEMP_DIR=/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/KoplenigEtAl/WordSplitting/temp
+BIBLE_ENTROPIES_FILE="entropies_${BIBLE_FILENAME}.json"
+HPC_HOME=/hpc/uu_ics_ads/pmosteiro
+MAIN_DIR=${HPC_HOME}/WordOrderBibles/
+BIBLE_DIR=${HPC_HOME}/paralleltext/bibles/corpus
+JAR_FILE=${HPC_HOME}/KoplenigEtAl/shortestmismatcher.jar
+OUTPUT_DIR=${MAIN_DIR}/output/KoplenigEtAl/WordSplitting
+TEMP_DIR=${OUTPUT_DIR}/temp
 
 source /hpc/uu_ics_ads/anaconda3/etc/profile.d/conda.sh
 conda activate word_order_bibles
-MAIN_DIR=/hpc/uu_ics_ads/pmosteiro/WordOrderBibles/
 cd ${MAIN_DIR}
-echo "./30_run_word_splitting.sh ${BIBLE_FILENAME} /hpc/uu_ics_ads/pmosteiro/paralleltext/bibles/corpus /hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/KoplenigEtAl/WordSplitting/temp /hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/KoplenigEtAl/WordSplitting /hpc/uu_ics_ads/pmosteiro/KoplenigEtAl/shortestmismatcher.jar"
-./30_run_word_splitting.sh ${BIBLE_FILENAME} /hpc/uu_ics_ads/pmosteiro/paralleltext/bibles/corpus /hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/KoplenigEtAl/WordSplitting/temp /hpc/uu_ics_ads/pmosteiro/WordOrderBibles/output/KoplenigEtAl/WordSplitting /hpc/uu_ics_ads/pmosteiro/KoplenigEtAl/shortestmismatcher.jar
+echo "python word_splitting.py ${BIBLE_DIR}/${BIBLE_FILENAME} ${TEMP_DIR} ${OUTPUT_DIR}/${BIBLE_ENTROPIES_FILE} ${JAR_FILE} 10000"
+python word_splitting.py ${BIBLE_DIR}/${BIBLE_FILENAME} ${TEMP_DIR} ${OUTPUT_DIR}/${BIBLE_ENTROPIES_FILE} ${JAR_FILE} 10000
