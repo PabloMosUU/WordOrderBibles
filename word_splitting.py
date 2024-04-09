@@ -108,9 +108,9 @@ def flatten_sequences(splits_sequences: dict) -> dict:
     return flattened
 
 
-def get_merge_history(seq_tokens: list, tokenizer: Tokenizer) -> dict:
+def get_merge_history(seq_tokens: list, tokenizer: Tokenizer, temp_path: str, unique_file_id: str) -> dict:
     # Save the tokenizer to a file
-    tokenizer_files = tokenizer.model.save('.', 'merge_history_tokenizer')
+    tokenizer_files = tokenizer.model.save(temp_path, f'merge_history_tokenizer_{unique_file_id}')
     merges_filename = tokenizer_files[1]
     # Use get_merge_steps to retrieve the list of merge steps
     merge_steps = get_merge_steps(merges_filename)
@@ -124,11 +124,13 @@ def get_merge_history(seq_tokens: list, tokenizer: Tokenizer) -> dict:
     return splits_tokens
 
 
-def create_word_split_sets(id_verses: dict, n_all_merges: int) -> dict:
+def create_word_split_sets(id_verses: dict, n_all_merges: int, temp_path: str, unique_file_id: str) -> dict:
     """
     Given text from a bible, split it using BPE
     :param id_verses: map book IDs to a (ordered) list of verses in the book, each verse being a list of tokens
     :param n_all_merges: number of merges to train the tokenizer aiming to build the entire merge history
+    :param temp_path: a path to a directory where temporary files can be saved
+    :param unique_file_id: a unique identifier for the file from which id_verses was created
     :return: dictionary mapping book IDs to (dictionary mapping number of splits to list of tokens)
     """
     book_id_versions = {}
@@ -141,7 +143,7 @@ def create_word_split_sets(id_verses: dict, n_all_merges: int) -> dict:
         if not has_completed_merges(verses, full_tokenizer):
             raise NotImplementedError('merge history incomplete')
         # Iteratively use merge history up to a point to encode verses
-        increase_tokens = get_merge_history(verses, full_tokenizer)
+        increase_tokens = get_merge_history(verses, full_tokenizer, temp_path, unique_file_id)
         book_id_versions[book_id] = increase_tokens
     return book_id_versions
 
@@ -218,7 +220,7 @@ def run_word_splitting(filename: str,
                                                               chosen_books,
                                                               truncate_books)
     # Create the split versions using BPE
-    book_id_versions = create_word_split_sets(selected_book_verses, n_merges)
+    book_id_versions = create_word_split_sets(selected_book_verses, n_merges, output_file_path, filename.split('/')[-1])
 
     book_id_entropies = {}
     for book_id, n_pairs_verses in book_id_versions.items():
