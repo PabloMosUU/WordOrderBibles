@@ -197,10 +197,10 @@ def get_entropies(sample_verses: list,
     # Run the mismatcher
     version_mismatches = {version: run_mismatcher(preprocessed_filename,
                                                   remove_mismatcher_files,
-                                                  mismatcher_path) \
+                                                  mismatcher_path)
                           for version, preprocessed_filename in filenames.items()}
     # Compute the entropy
-    version_entropy = {version: get_entropy(mismatches) \
+    version_entropy = {version: get_entropy(mismatches)
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
 

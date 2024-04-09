@@ -9,15 +9,16 @@ BOOK_ID_NAME = {'40': 'Matthew',
                 '44': 'Acts',
                 '66': 'Revelation'}
 
+
 def rel_error(a):
     assert len(a) == 2
     return abs(a[0] - a[1]) / (a[0] + a[1])
 
+
 def assert_valid(df: pd.DataFrame) -> None:
     for book_id in df.book_id.unique():
         for iter_id in df.iter_id.unique():
-            selection = df[df.apply(lambda row: row['book_id'] == book_id and \
-                                                row['iter_id'] == iter_id,
+            selection = df[df.apply(lambda row: row['book_id'] == book_id and row['iter_id'] == iter_id,
                                     1)]
             if len(selection) == 0:
                 continue
@@ -26,6 +27,7 @@ def assert_valid(df: pd.DataFrame) -> None:
                 for col in ('orig', 'shuffled', 'masked'):
                     assert rel_error(selection[col].tolist()) * 100 < 0.5
     return
+
 
 def to_csv(json_file: str) -> None:
     # Read the JSON file
@@ -54,6 +56,7 @@ def to_csv(json_file: str) -> None:
     df['D_order'] = df.apply(lambda row: row['shuffled'] - row['orig'], 1)
     df.to_csv(json_file.replace('.json', '.csv'), index=False)
     return
+
 
 if __name__ == '__main__':
     assert len(sys.argv) == 2, f'USAGE: python3 {sys.argv[0]} json_file_name'
