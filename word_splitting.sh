@@ -1,6 +1,6 @@
 #!/bin/sh
 #SBATCH --time=05:00:00
-#SBATCH --mail-type=FAIL
+#SBATCH --mail-type=FAIL,END
 #SBATCH --mail-user=p.mosteiro@uu.nl
 
 BIBLE_FILENAME="$1"
