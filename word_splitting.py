@@ -6,7 +6,7 @@ import random
 from compression_entropy import read_selected_verses, run_mismatcher, get_entropy, to_file, create_random_word
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
-from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.pre_tokenizers import WhitespaceSplit
 from tokenizers.trainers import BpeTrainer
 
 from util import Token
@@ -33,7 +33,7 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
 def train_tokenizer(verses: list, vocab_size: int) -> Tokenizer:
     tokenizer = Tokenizer(BPE())
     # noinspection PyPropertyAccess
-    tokenizer.pre_tokenizer = Whitespace()
+    tokenizer.pre_tokenizer = WhitespaceSplit()
     # noinspection PyArgumentList
     trainer = BpeTrainer(vocab_size=vocab_size)
     tokenizer.train_from_iterator([' '.join(verse) for verse in verses], trainer)
@@ -251,7 +251,7 @@ def run_word_splitting(filename: str,
 
 def has_completed_merges(orig_verse_tokens: list, trained_bpe_tokenizer: Tokenizer) -> bool:
     orig_verses = [' '.join(el) for el in orig_verse_tokens]
-    pre_tokenizer = Whitespace()
+    pre_tokenizer = WhitespaceSplit()
     orig_verses_pre_tokenized = [[ell[0] for ell in pre_tokenizer.pre_tokenize_str(el)] for el in orig_verses]
     encoded_verse_tokens = encode_verses(orig_verses_pre_tokenized, trained_bpe_tokenizer)
     for verse_ix, verse_tokens in enumerate(encoded_verse_tokens):
