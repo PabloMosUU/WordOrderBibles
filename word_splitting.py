@@ -291,3 +291,4 @@ if __name__ == '__main__':
 
     with open(output_filename, 'w') as fp:
         json.dump(book_entropies, fp)
+    print('INFO: completed successfully')
