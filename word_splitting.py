@@ -100,6 +100,9 @@ def flatten_sequences(splits_sequences: dict) -> dict:
         for seq in sequences:
             flattened_tokens = []
             for token in seq:
+                # TODO: this should really be done at the level of reading the bibles
+                if len(token) == 0:
+                    continue
                 flattened_tokens.append(Token(token[0], True))
                 for sub_token in token[1:]:
                     flattened_tokens.append(Token(sub_token, False))
