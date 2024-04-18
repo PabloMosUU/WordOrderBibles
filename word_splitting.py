@@ -79,16 +79,26 @@ def apply_merge(seq_token_sub_tokens: list, merge_step: list) -> list:
             verse[j] = parts
     return seq_token_sub_tokens
 
+# TODO: we could try logarithmic steps
+def get_merge_step_points(n: int) -> list:
+    save_step = int(n / 10 + 0.5)
+    n_sub_steps = 10
+    sub_save_step = save_step / n_sub_steps
+    save_steps = sorted(set([n * save_step for n in range(11)] +
+                            [int(9 * save_step + n * sub_save_step + 0.5) for n in range(1, n_sub_steps)] +
+                            [n]))
+    return save_steps
+
 
 def build_merge_history(seq_tokens: list, merge_steps: list) -> dict:
     seq_token_sub_tokens = split_chars(seq_tokens)
     merge_history = {len(merge_steps): copy.deepcopy(seq_token_sub_tokens)}
-    save_step = int(len(merge_steps) / 10 + 0.5)
+    save_steps = get_merge_step_points(len(merge_steps))
     for i, merge_step in enumerate(merge_steps):
         seq_token_sub_tokens = apply_merge(seq_token_sub_tokens, merge_step)
         n_merges_so_far = i + 1
         n_splits_so_far = len(merge_steps) - n_merges_so_far
-        if len(merge_steps) < 10 or n_splits_so_far == 0 or n_splits_so_far % save_step == 0:
+        if len(merge_steps) < 10 or n_splits_so_far in save_steps:
             merge_history[n_splits_so_far] = copy.deepcopy(seq_token_sub_tokens)
     return merge_history
 

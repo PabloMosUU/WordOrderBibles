@@ -73,8 +73,14 @@ class TestBpe(unittest.TestCase):
                       ['Yii', 'a', 'katiigii', 'pyi', ',', 'lire', 'sí', 'li', 'cyêe', 'na', 'yii', "zòompil'à"]]
         merge_steps = [[el, el] for el in list('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz')]
         merge_history = word_splitting.build_merge_history(seq_tokens, merge_steps)
-        self.assertEqual(12, len(merge_history))
-        self.assertEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 52], sorted(list(merge_history.keys())))
+        self.assertEqual(16, len(merge_history))
+        self.assertEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 46, 47, 48, 49, 50, 52],
+                         sorted(list(merge_history.keys())))
+
+    def test_get_merge_step_points(self):
+        merge_step_points = word_splitting.get_merge_step_points(531)
+        expected = [0, 53, 106, 159, 212, 265, 318, 371, 424, 477, 482, 488, 493, 498, 504, 509, 514, 519, 525, 530, 531]
+        self.assertEqual(expected, merge_step_points)
 
     def test_apply_merge(self):
         seq_token_sub_tokens = [[['M', 'u', 's', 'a'], ['w', 'e', 'n', 'e'], ['o', 'n', 'o', 'l', 'u', 'k']],
