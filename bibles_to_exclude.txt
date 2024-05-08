@@ -1,4 +1,4 @@
-hak-x-bible-hant.txt
-lzh-x-bible-wenli-easy.txt
-lzh-x-bible-wenli-high.txt
-zho-x-bible-orthodox.txt
+hak-x-bible-hant.txt		# unknown character
+lzh-x-bible-wenli-easy.txt	# unknown character
+lzh-x-bible-wenli-high.txt	# unknown character
+zho-x-bible-orthodox.txt	# unknown character
