@@ -29,7 +29,7 @@ def make_plot(entropies_dir: str, bible_filename: str, output_dir: str) -> None:
             ax.annotate(txt, (xs[i], ys[i]), rotation=45)
         for i, txt in enumerate(labels_pasting):
             ax.annotate(txt, (xp[i], yp[i]), rotation=45)
-        plt.savefig(f'{output_dir}/{bible_filename.replace('.txt', '')}_{lbl}.png')
+        plt.savefig(f"{output_dir}/{bible_filename.replace('.txt', '')}_{lbl}.png")
 
 
 if __name__ == '__main__':
