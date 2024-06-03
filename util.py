@@ -1,8 +1,10 @@
 import json
 import math
 
+import matplotlib.axes as axes
 import numpy as np
 import pandas as pd
+from matplotlib import pyplot as plt
 
 BOOK_ID_NAME = {'40': 'Matthew',
                 '41': 'Mark',
@@ -82,3 +84,33 @@ def assert_valid(df: pd.DataFrame) -> None:
 def rel_error(a):
     assert len(a) == 2
     return abs(a[0] - a[1]) / (a[0] + a[1])
+
+
+def make_book_plot(grp: pd.DataFrame, book: str, bible: str) -> tuple:
+    df = grp[grp['book'] == book]
+    # Return ax instead of saving, so don't take an output dir as a parameter
+    xs = df[df['experiment'] == 'splitting']['D_order'].tolist()
+    ys = df[df['experiment'] == 'splitting']['D_structure'].tolist()
+    xp = df[df['experiment'] == 'pasting']['D_order'].tolist()
+    yp = df[df['experiment'] == 'pasting']['D_structure'].tolist()
+    labels_splitting = df[df['experiment'] == 'splitting']['iter_id'].tolist()
+    labels_pasting = df[df['experiment'] == 'pasting']['iter_id'].tolist()
+    fig, ax = plt.subplots()
+    ax.scatter(xs, ys, label='splitting')
+    ax.scatter(xp, yp, label='pasting')
+    plt.xlabel('Word order information')
+    plt.ylabel('Word structure information')
+    plt.title(f'{book} ({bible})')
+    plt.legend()
+    for i, txt in enumerate(labels_splitting):
+        ax.annotate(txt, (xs[i], ys[i]), rotation=45)
+    for i, txt in enumerate(labels_pasting):
+        ax.annotate(txt, (xp[i], yp[i]), rotation=45)
+    return fig, ax
+
+
+def make_plot_(df: pd.DataFrame, bible_filename: str, output_dir: str) -> None:
+    for lbl, grp in df.groupby('book'):
+        fig, ax = make_book_plot(grp, str(lbl), bible_filename)
+        if output_dir != '':
+            fig.savefig(f"{output_dir}/{bible_filename.replace('.txt', '')}_{lbl}.png")

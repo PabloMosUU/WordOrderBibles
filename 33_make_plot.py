@@ -1,7 +1,8 @@
-import matplotlib.pyplot as plt
 import os
 import pandas as pd
 import sys
+
+from util import make_plot_
 
 
 def make_plot(entropies_dir: str, bible_filename: str, output_dir: str) -> None:
@@ -12,24 +13,7 @@ def make_plot(entropies_dir: str, bible_filename: str, output_dir: str) -> None:
     ws_df['experiment'] = 'splitting'
     ws_df['iter_id'] = ws_df['iter_id'].apply(lambda x: -x)
     df = pd.concat([wp_df, ws_df])
-    for lbl, grp in df.groupby('book'):
-        xs = grp[grp['experiment'] == 'splitting']['D_order'].tolist()
-        ys = grp[grp['experiment'] == 'splitting']['D_structure'].tolist()
-        xp = grp[grp['experiment'] == 'pasting']['D_order'].tolist()
-        yp = grp[grp['experiment'] == 'pasting']['D_structure'].tolist()
-        labels_splitting = grp[grp['experiment'] == 'splitting']['iter_id'].tolist()
-        labels_pasting = grp[grp['experiment'] == 'pasting']['iter_id'].tolist()
-        fig, ax = plt.subplots()
-        ax.scatter(xs, ys)
-        ax.scatter(xp, yp)
-        plt.xlabel('Word order information')
-        plt.ylabel('Word structure information')
-        plt.title(f'{lbl}')
-        for i, txt in enumerate(labels_splitting):
-            ax.annotate(txt, (xs[i], ys[i]), rotation=45)
-        for i, txt in enumerate(labels_pasting):
-            ax.annotate(txt, (xp[i], yp[i]), rotation=45)
-        plt.savefig(f"{output_dir}/{bible_filename.replace('.txt', '')}_{lbl}.png")
+    make_plot_(df, bible_filename, output_dir)
 
 
 if __name__ == '__main__':
