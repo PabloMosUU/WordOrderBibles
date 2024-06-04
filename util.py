@@ -87,6 +87,13 @@ def rel_error(a):
 
 
 def make_book_plot(grp: pd.DataFrame, book: str, bible: str) -> tuple:
+    """
+    Make a correlation plot of word-order and word-structure information for a specific bible and book
+    :param grp: a dataframe containing only the single bible for which you want to make the plot
+    :param book: the book that you wish to select
+    :param bible: the name of the bible, for printing purposes
+    :return: figure and axes for the plot
+    """
     df = grp[grp['book'] == book]
     # Return ax instead of saving, so don't take an output dir as a parameter
     xs = df[df['experiment'] == 'splitting']['D_order'].tolist()
