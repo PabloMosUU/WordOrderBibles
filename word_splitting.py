@@ -79,6 +79,7 @@ def apply_merge(seq_token_sub_tokens: list, merge_step: list) -> list:
             verse[j] = parts
     return seq_token_sub_tokens
 
+
 # TODO: we could try logarithmic steps
 def get_merge_step_points(n: int) -> list:
     save_step = int(n / 10 + 0.5)
@@ -243,6 +244,7 @@ def run_word_splitting(filename: str,
                                                               chosen_books,
                                                               truncate_books)
     # Create the split versions using BPE
+    # TODO: use file manipulations instead of split
     book_id_versions = create_word_split_sets(selected_book_verses, n_merges, output_file_path, filename.split('/')[-1])
 
     book_id_entropies = {}
