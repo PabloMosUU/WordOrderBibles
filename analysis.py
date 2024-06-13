@@ -2,6 +2,7 @@
 Full entropy calculations for PyTorch models
 """
 from collections import Counter
+from typing import Tuple, Any
 
 import torch.nn as nn
 import torch
@@ -12,7 +13,10 @@ import numpy as np
 import compression_entropy as ce
 from util import log_factorial
 import data
-import nsb_entropy as ne
+#import nsb_entropy as ne
+import pandas as pd
+from scipy.stats import spearmanr
+from util import rel_error
 
 def unigram_entropy_direct(tokens: list) -> float:
     n = len(tokens)
@@ -134,12 +138,16 @@ def full_entropy_calculation_bpw(id_text: dict,
         text_id_entropies[text_id] = (H, H_s, H_r)
     return text_id_entropies
 
+
+# Todo: reactivate this by installing this package: https://nsb-entropy.sourceforge.net
+"""
 def get_nsb_entropy(tokens: list) -> float:
     c = Counter(tokens)
     input_histogram = np.array(list(c.values()))
     nsb_entropy = ne.S(ne.make_nxkx(input_histogram, len(c.keys())), input_histogram.sum(),
                        len(c.keys()))
     return float(nsb_entropy)
+
 
 def nsb_unigram_entropy(id_text: dict,
                         remove_punct: bool,
@@ -150,3 +158,28 @@ def nsb_unigram_entropy(id_text: dict,
         H_unigram = get_nsb_entropy(tokens)
         text_id_entropies[text_id] = H_unigram
     return text_id_entropies
+"""
+
+
+def get_spearman(grp: pd.DataFrame) -> tuple[Any, Any, Any]:
+    """
+    Calculate Spearman correlation coefficients for a given bible translation and book
+    The dataframe should contain a column n_splits which is equal to iter_id for splitting and -iter_id for pasting
+    :param grp: a dataframe containing only the single bible for which you want to make the plot, and the specific book
+    :return: correlation coefficients between order and structure, and each of them and splits
+    """
+    d_order = grp['D_order'].tolist()
+    d_structure = grp['D_structure'].tolist()
+    n_splits = grp['n_splits'].tolist()
+    structure_order = spearmanr(d_order, d_structure).correlation
+    structure_splits = spearmanr(n_splits, d_structure).correlation
+    order_splits = spearmanr(n_splits, d_order).correlation
+    return order_splits, structure_splits, structure_order
+
+
+def get_transition_errors(grp: pd.DataFrame) -> dict:
+    # Check whether the transition point at n_splits = 0 makes sense
+    assert len(grp) == grp['n_splits'].nunique() + 1
+    assert 0 in grp['n_splits'].unique()
+    assert len(grp[grp['n_splits'] == 0]) == 2
+    return {col: rel_error(grp[grp['n_splits'] == 0][col].tolist()) for col in ('orig', 'shuffled', 'masked')}
