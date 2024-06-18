@@ -197,8 +197,7 @@ def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
     if remove_punctuation:
         tokens = re.findall('(\\S*\\w\\S*) ?', text)
     else:
-        # Todo: consider changing for split()
-        tokens = text.split(' ')
+        tokens = text.split()
     return tokens
 
 
