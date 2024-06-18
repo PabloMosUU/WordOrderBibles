@@ -7,6 +7,7 @@ import numpy as np
 import json
 import sys
 
+
 # TODO: add list of requirements for package: numpy, pandas, sklearn
 
 def create_random_word(word_length: int, char_repertoire: str, weights: list) -> str:
@@ -41,6 +42,7 @@ def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
     sep = ' ' if insert_spaces else ''
     return sep.join([sep.join(ell) for ell in verse_tokens])
 
+
 def replace_words(verse_tokens: list) -> list:
     """
     Replace each word by a single character
@@ -54,6 +56,7 @@ def replace_words(verse_tokens: list) -> list:
             word_char[token] = chr(len(word_char))
         verse_chars.append(word_char[token])
     return verse_chars
+
 
 # TODO: remove files after running
 def to_file(text: str, base_filename: str, appendix: str) -> str:
@@ -87,12 +90,15 @@ def run_mismatcher(preprocessed_filename: str, remove_file: bool, executable_pat
 def parse_mismatcher_lines(lines: list) -> list:
     return [int(line.split('\t')[-1].strip()) for line in lines if line != '\n']
 
+
 def get_entropy(mismatches: list) -> float:
-    return 1 / (sum([el/np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
+    return 1 / (sum([el / np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
+
 
 def get_text_length(sequences: list) -> int:
     text = join_verses(sequences, insert_spaces=True)
     return len(text)
+
 
 def truncate(sequences: list, excedent: int) -> list:
     """
@@ -111,6 +117,7 @@ def truncate(sequences: list, excedent: int) -> list:
             output.pop()
     return output
 
+
 def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_samples: bool) -> dict:
     if not chosen_sample_ids:
         chosen_sample_ids = list(sample_sequences.keys())
@@ -127,6 +134,7 @@ def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_sam
     if truncate_samples:
         return {sample_id: truncate(sequences, differences[sample_id]) for sample_id, sequences in full_samples.items()}
     return full_samples
+
 
 def get_entropies(sample_verses: list,
                   base_filename: str,
@@ -166,6 +174,7 @@ def get_entropies(sample_verses: list,
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
 
+
 def get_word_mismatches(verse_tokens: list,
                         base_filename: str,
                         remove_mismatcher_files: bool,
@@ -179,6 +188,7 @@ def get_word_mismatches(verse_tokens: list,
     # Run the mismatcher
     mismatches = run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
     return mismatches
+
 
 # TODO: get rid of this nearly trivial function
 def get_entropies_per_word(sample_verses: list,
@@ -196,8 +206,10 @@ def get_entropies_per_word(sample_verses: list,
     # Compute the entropy
     return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
 
+
 def get_char_distribution(text: str) -> dict:
     return Counter(text)
+
 
 def read_selected_verses(filename: str,
                          lowercase: bool,
@@ -215,8 +227,9 @@ def read_selected_verses(filename: str,
     selected_book_verses = select_samples(book_verses, chosen_books, truncate_books)
     return selected_book_verses, char_counter
 
+
 def join_words(verse: list, locations: list) -> list:
-    assert all([locations[i] > locations[i+1] for i in range(len(locations)-1)])
+    assert all([locations[i] > locations[i + 1] for i in range(len(locations) - 1)])
     location_set = set(locations)
     assert len(location_set) == len(locations)
     joined = []
@@ -230,6 +243,7 @@ def join_words(verse: list, locations: list) -> list:
             i += 1
     return joined
 
+
 def merge_positions(verses: list, positions: list) -> list:
     verse_locations = defaultdict(list)
     for position in positions:
@@ -239,16 +253,18 @@ def merge_positions(verses: list, positions: list) -> list:
         verses[verse_ix] = join_words(verses[verse_ix], locations)
     return verses
 
+
 def replace_top_bigram(verses: list) -> list:
     bigram_positions = defaultdict(list)
     for j, verse in enumerate(verses):
         for i, word in enumerate(verse[:-1]):
-            bigram_positions[word + ' ' + verse[i+1]].append((j, i))
+            bigram_positions[word + ' ' + verse[i + 1]].append((j, i))
     # Now the bigram with the longest list of positions is the most frequent bigram
     if not bigram_positions:
         return []
     top_bigram = max(bigram_positions, key=lambda x: len(bigram_positions[x]))
     return merge_positions(verses, bigram_positions[top_bigram])
+
 
 def create_word_pasted_sets(id_verses: dict, steps_to_save: set) -> dict:
     max_merges = max(steps_to_save)
@@ -266,6 +282,7 @@ def create_word_pasted_sets(id_verses: dict, steps_to_save: set) -> dict:
                 joined_verses[n_joins] = last_version.copy()
         book_id_versions[book_id] = joined_verses
     return book_id_versions
+
 
 def run_word_pasting(filename: str,
                      lowercase: bool,
@@ -299,10 +316,10 @@ def run_word_pasting(filename: str,
 if __name__ == '__main__':
     assert len(sys.argv) == 5, \
         f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename mismatcher_filename'
-    bible_filename = sys.argv[1]    # The bible filename
-    temp_dir = sys.argv[2]          # The directory where Mismatcher files are saved
-    output_filename = sys.argv[3]   # The filename where entropies will be saved
-    mismatcher_file = sys.argv[4]   # The filename of the mismatcher jar
+    bible_filename = sys.argv[1]  # The bible filename
+    temp_dir = sys.argv[2]  # The directory where Mismatcher files are saved
+    output_filename = sys.argv[3]  # The filename where entropies will be saved
+    mismatcher_file = sys.argv[4]  # The filename of the mismatcher jar
 
     merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))] \
                        for ell in lis])

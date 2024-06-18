@@ -16,6 +16,7 @@ PAD_TOKEN = '<PAD>'
 UNKNOWN_TOKEN = '<UNK>'
 CHUNK_END_TOKEN = '<END>'
 
+
 class IndelibleDict(MutableMapping):
     def __init__(self):
         self.store = dict()
@@ -44,7 +45,7 @@ class SplitData:
         self.hold_out_data = hold_out_data
         self.test_data = test_data
         self.train_word_to_ix = self._word_to_ix()
-        self.train_ix_to_word = {v:k for k,v in self.train_word_to_ix.items()}
+        self.train_ix_to_word = {v: k for k, v in self.train_word_to_ix.items()}
 
     def get(self, partition: str) -> list:
         if partition == 'train':
@@ -68,7 +69,7 @@ class SplitData:
         verses = [el + [END_OF_VERSE_TOKEN] for el in verses]
         flattened = [el for lis in verses for el in lis]
         flattened += ((sequence_length - (len(flattened) % sequence_length)) * [PAD_TOKEN])
-        chunks = [flattened[i:i+sequence_length] for i in range(0, len(flattened), sequence_length)]
+        chunks = [flattened[i:i + sequence_length] for i in range(0, len(flattened), sequence_length)]
         chunks = [chunk for chunk in chunks if PAD_TOKEN not in chunk]
         return chunks
 
@@ -83,6 +84,7 @@ class SplitData:
             if special_token not in word_to_ix:
                 word_to_ix[special_token] = len(word_to_ix)
         return word_to_ix
+
 
 class TokenizedBible:
     def __init__(self, language: str, filename: str, verse_tokens: dict):
@@ -118,12 +120,14 @@ class Bible:
     """
     This class is mutable because I don't want to consume too much memory
     """
+
     def __init__(self, language: str, filename: str):
         self.language = language
         self.filename = filename
 
     def tokenize(self, remove_punctuation: bool, lowercase: bool) -> TokenizedBible:
         raise NotImplementedError()
+
 
 class PbcBible(Bible):
     def __init__(self, language: str, filename: str, content: IndelibleDict, hidden_content: IndelibleDict):
@@ -165,7 +169,6 @@ class PbcBible(Bible):
         else:
             raise ValueError(f'{book_id} does not belong to any known testament')
 
-
     def join_by_toc(self):
         return join_by_toc(self.content)
 
@@ -197,6 +200,7 @@ def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
         # Todo: consider changing for split()
         tokens = text.split(' ')
     return tokens
+
 
 def split_pbc_bible_lines(lines: list, parse_content: bool) -> tuple:
     # Assume that the file starts with comments, and then it moves on to content
@@ -232,10 +236,12 @@ def split_pbc_bible_lines(lines: list, parse_content: bool) -> tuple:
     comments, content, hidden_content = PbcBible.to_dictionaries(comment_lines, content_lines)
     return comments, content, hidden_content
 
+
 def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> PbcBible:
     comments, content, hidden_content = split_pbc_bible_lines(lines, parse_content)
     language = comments['closest_ISO_639-3']
     return PbcBible(language, filename, content, hidden_content)
+
 
 def parse_pbc_bible(filename: str) -> PbcBible:
     with open(filename) as f:
@@ -259,6 +265,7 @@ def preprocess(bible: Bible) -> TokenizedBible:
     # See lowercasing caveats in Bentz et al Appendix A.1
     return bible.tokenize(remove_punctuation=True, lowercase=True)
 
+
 def process_bible(filename: str, corpus: str) -> TokenizedBible:
     structured_bible = parse_file(filename, corpus)
     return preprocess(structured_bible)
@@ -277,7 +284,7 @@ def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     :return: a tensor containing the entire dataset separated into batches, with appropriate padding
     """
     # Break up into batches
-    batches = [dataset[batch_size*i:batch_size*(i+1)] for i in range(int(np.ceil(len(dataset)/batch_size)))]
+    batches = [dataset[batch_size * i:batch_size * (i + 1)] for i in range(int(np.ceil(len(dataset) / batch_size)))]
 
     # Sort sequences in each batch from longest to shortest
     sorted_batches = [sorted(b, key=lambda seq: -len(seq)) for b in batches]
@@ -312,7 +319,7 @@ def join_texts(texts: list, prompt: str, eot_token: str, separator: str) -> str:
 
 
 def join_texts_in_dict(id_texts: dict, prompt: str, eot_token: str, separator: str) -> dict:
-    return {k: join_texts(v, prompt, eot_token, separator) for k,v in id_texts.items()}
+    return {k: join_texts(v, prompt, eot_token, separator) for k, v in id_texts.items()}
 
 
 def log_likelihoods(text: str, remove_punctuation: bool, lowercase: bool) -> dict:
@@ -329,6 +336,7 @@ def log_likelihoods_smooth(text: str, remove_punctuation: bool, lowercase: bool,
     for token, counts in token_counts.items():
         d[token] = np.log((counts + 1) / (len(tokens) + V))
     return d
+
 
 def build_dataframe(filename: str) -> pd.DataFrame:
     with open(filename, 'r') as f:
