@@ -30,7 +30,9 @@ def get_df(file: str, adir: str) -> pd.DataFrame:
     df_s = pd.read_csv(os.path.join(adir, 'WordSplitting', f'entropies_{file}.csv'))
     df_p['experiment'] = 'pasting'
     df_s['experiment'] = 'splitting'
-    return pd.concat([df_p, df_s])
+    joined = pd.concat([df_p, df_s])
+    joined['bible'] = file
+    return joined
 
 
 def get_df_from_split(file: str) -> pd.DataFrame:
