@@ -10,7 +10,7 @@ HPC_HOME=/hpc/uu_ics_ads/pmosteiro
 MAIN_DIR=${HPC_HOME}/WordOrderBibles/
 BIBLE_DIR=${HPC_HOME}/paralleltext/bibles/corpus
 JAR_FILE=${HPC_HOME}/KoplenigEtAl/shortestmismatcher.jar
-OUTPUT_DIR=${MAIN_DIR}/output/KoplenigEtAlSpace/WordSplitting
+OUTPUT_DIR=${MAIN_DIR}/output/KoplenigEtAl/WordSplitting
 TEMP_DIR=${OUTPUT_DIR}/temp
 
 source /hpc/uu_ics_ads/anaconda3/etc/profile.d/conda.sh
@@ -18,3 +18,4 @@ conda activate word_order_bibles
 cd ${MAIN_DIR}
 echo "python word_splitting.py ${BIBLE_DIR}/${BIBLE_FILENAME} ${TEMP_DIR} ${OUTPUT_DIR}/${BIBLE_ENTROPIES_FILE} ${JAR_FILE} ${MAX_MERGES}"
 python word_splitting.py ${BIBLE_DIR}/${BIBLE_FILENAME} ${TEMP_DIR} ${OUTPUT_DIR}/${BIBLE_ENTROPIES_FILE} ${JAR_FILE} ${MAX_MERGES}
+
