@@ -214,13 +214,11 @@ def get_char_distribution(text: str) -> dict:
 def read_selected_verses(filename: str,
                          lowercase: bool,
                          chosen_books: list,
-                         truncate_books: bool,
-                         split_on_explicit_space=True) -> tuple:
+                         truncate_books: bool) -> tuple:
     # Read the complete bible
     bible = data.parse_pbc_bible(filename)
     # Tokenize by splitting on spaces
-    tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase,
-                               split_on_explicit_space=split_on_explicit_space)
+    tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
     # Obtain the repertoire of symbols
     char_counter = get_char_distribution(''.join([el for lis in tokenized.verse_tokens.values() for el in lis]))
     # Split by book
@@ -297,8 +295,7 @@ def run_word_pasting(filename: str,
     selected_book_verses, char_counter = read_selected_verses(filename,
                                                               lowercase,
                                                               chosen_books,
-                                                              truncate_books,
-                                                              split_on_explicit_space=False)
+                                                              truncate_books)
     book_id_versions = create_word_pasted_sets(selected_book_verses, merge_steps_to_save)
     book_id_entropies = {}
     for book_id, n_pairs_verses in book_id_versions.items():

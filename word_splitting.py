@@ -242,8 +242,7 @@ def run_word_splitting(filename: str,
     selected_book_verses, char_counter = read_selected_verses(filename,
                                                               lowercase,
                                                               chosen_books,
-                                                              truncate_books,
-                                                              split_on_explicit_space=False)
+                                                              truncate_books)
     # Create the split versions using BPE
     # TODO: use file manipulations instead of split
     book_id_versions = create_word_split_sets(selected_book_verses, n_merges, output_file_path, filename.split('/')[-1])

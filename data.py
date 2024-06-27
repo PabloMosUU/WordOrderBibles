@@ -135,13 +135,12 @@ class PbcBible(Bible):
         self.content = content
         self.hidden_content = hidden_content
 
-    def tokenize(self, remove_punctuation: bool, lowercase: bool, split_on_explicit_space=True) -> TokenizedBible:
+    def tokenize(self, remove_punctuation: bool, lowercase: bool) -> TokenizedBible:
         verse_tokens = {}
         for verse, text in self.content.items():
             if text.strip() == '':
                 continue
-            verse_tokens[verse] = tokenize(text, remove_punctuation, lowercase,
-                                           split_on_explicit_space=split_on_explicit_space)
+            verse_tokens[verse] = tokenize(text, remove_punctuation, lowercase)
         return TokenizedBible(self.language, self.filename, verse_tokens)
 
     @staticmethod
@@ -192,16 +191,13 @@ def join_by_toc(pbc_id_verse: MutableMapping) -> tuple:
     return by_bible, by_testament, by_book, by_chapter, by_verse
 
 
-def tokenize(text: str, remove_punctuation: bool, lowercase: bool, split_on_explicit_space=True) -> list:
+def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
     if lowercase:
         text = text.lower()
     if remove_punctuation:
         tokens = re.findall('(\\S*\\w\\S*) ?', text)
     else:
-        if split_on_explicit_space:
-            tokens = text.split(' ')
-        else:
-            tokens = text.split()
+        tokens = text.split()
     return tokens
 
 
