@@ -1,10 +1,10 @@
 import pandas as pd
 import os
 
-PASTING_DIR = 'output/KoplenigEtAlSpace/WordPasting/'
-SPLITTING_DIR = 'output/KoplenigEtAlSpace/WordSplitting/'
+PASTING_DIR = 'output/KoplenigEtAl/WordPasting/'
+SPLITTING_DIR = 'output/KoplenigEtAl/WordSplitting/'
 EXTENSION = '.csv'
-OUTPUT_FILENAME = 'output/KoplenigEtAlSpace/merged.csv'
+OUTPUT_FILENAME = 'output/KoplenigEtAl/merged.csv'
 
 
 def get_files(the_dir: str, ext: str) -> list:
