@@ -47,7 +47,7 @@ if __name__ == '__main__':
     by_level = {'bible': by_bible, 'testament': by_testament, 'book': by_book, 'chapter': by_chapter, 'verse': by_verse}
 
     eos_token = ' ' + tokenizer.eos_token if add_eos_token else ''
-    level_text = {level_name: data.join_texts_in_dict(id_texts, prompt, eos_token, separator) \
+    level_text = {level_name: data.join_texts_in_dict(id_texts, prompt, eos_token, separator)
                   for level_name, id_texts in by_level.items()}
 
     token_log_likelihood = data.log_likelihoods(level_text['bible']['bible'],
@@ -62,11 +62,11 @@ if __name__ == '__main__':
                                                                      n_prompt_tokens,
                                                                      token_log_likelihood,
                                                                      remove_punctuation,
-                                                                     lowercase) \
+                                                                     lowercase)
                        for level_name, id_text in level_text.items()}
 
-    level_avg_text_len = {level_name: np.mean([len(data.tokenize(text, remove_punctuation, lowercase)) \
-                                               for text in id_text.values()]) \
+    level_avg_text_len = {level_name: np.mean([len(data.tokenize(text, remove_punctuation, lowercase))
+                                               for text in id_text.values()])
                           for level_name, id_text in level_text.items()}
 
     # Save all these values to a Pandas dataframe that we can use to make histograms and compute statistics

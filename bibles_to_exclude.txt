@@ -1,0 +1,6 @@
+hak-x-bible-hant.txt		# unknown character
+lzh-x-bible-wenli-easy.txt	# unknown character
+lzh-x-bible-wenli-high.txt	# unknown character
+zho-x-bible-orthodox.txt	# unknown character
+ita-x-bible-vita1997.txt	# Repeated text in a verse
+kss-x-bible.txt			# Repeated text in a verse
