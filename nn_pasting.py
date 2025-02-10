@@ -1,13 +1,11 @@
-from collections import defaultdict, Counter
+from collections import defaultdict
 
 import spacy
 
 import data
-import random
-import os
-import numpy as np
 import json
 import sys
+import compression_entropy as wp
 
 
 class TaggedWord:
@@ -20,114 +18,6 @@ class TaggedWord:
 
     def __repr__(self):
         return f'({self.word}, {self.pos})'
-
-
-def create_random_word(word_length: int, char_repertoire: str, weights: list) -> str:
-    assert len(char_repertoire) == len(weights)
-    return ''.join(random.choices(char_repertoire, weights=weights, k=word_length))
-
-
-def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
-    masked = []
-    word_map = {}
-    new_words = set([])
-    for tokens in tokenized:
-        masked_tokens = []
-        for token in tokens:
-            if token not in word_map:
-                new_word = create_random_word(len(token), char_str, char_weights)
-                if new_word in new_words:
-                    raise ValueError('Random word already exists')
-                word_map[token] = new_word
-            masked_tokens.append(word_map[token])
-        masked.append(masked_tokens)
-    return masked
-
-
-def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
-    """
-    Join the verses contained in a list of lists of tokens
-    :param verse_tokens: the list of verses, each of which is a list of tokens; order matters
-    :param insert_spaces: whether we want to insert spaces between the tokens
-    :return: the concatenated string consisting of all the tokens in the original order
-    """
-    sep = ' ' if insert_spaces else ''
-    return sep.join([sep.join(ell) for ell in verse_tokens])
-
-
-def replace_words(verse_tokens: list) -> list:
-    """
-    Replace each word by a single character
-    :param verse_tokens: a list of tokens
-    :return: a list of the same length, where each token is replaced by a single character
-    """
-    word_char = {}
-    verse_chars = []
-    for token in verse_tokens:
-        if token not in word_char:
-            word_char[token] = chr(len(word_char))
-        verse_chars.append(word_char[token])
-    return verse_chars
-
-
-# TODO: remove files after running
-def to_file(text: str, base_filename: str, appendix: str) -> str:
-    """
-    Save a text to a file
-    :param text: the text to be saved
-    :param base_filename: base filename to be used
-    :param appendix: appendix to be added to this filename
-    :return: the new filename created
-    """
-    dot_parts = base_filename.split('.')
-    extension = dot_parts[-1]
-    prefix = '.'.join(dot_parts[:-1])
-    new_filename = prefix + '_' + appendix + '.' + extension
-    with open(new_filename, 'w') as f:
-        f.write(text)
-    return new_filename
-
-
-def run_mismatcher(preprocessed_filename: str, remove_file: bool, executable_path: str) -> list:
-    mismatcher_filename = preprocessed_filename + '_mismatcher'
-    os.system(f"""java -Xmx3500M -jar \
-                {executable_path} {preprocessed_filename} {mismatcher_filename}""")
-    with open(mismatcher_filename, 'r') as f:
-        lines = f.readlines()
-    if remove_file:
-        os.remove(mismatcher_filename)
-    return parse_mismatcher_lines(lines)
-
-
-def parse_mismatcher_lines(lines: list) -> list:
-    return [int(line.split('\t')[-1].strip()) for line in lines if line != '\n']
-
-
-def get_entropy(mismatches: list) -> float:
-    return 1 / (sum([el / np.log2(i + 2) for i, el in enumerate(mismatches[1:])]) / len(mismatches))
-
-
-def get_text_length(sequences: list) -> int:
-    text = join_verses(sequences, insert_spaces=True)
-    return len(text)
-
-
-def truncate(sequences: list, surplus: int) -> list:
-    """
-    Truncate a sample by removing the number of characters in the surplus
-    :param sequences: a sample represented as a list of sequences, each of which is a list of tokens
-    :param surplus: the surplus that should be removed
-    :return: a new list of sequences, the length of which is reduced by the surplus
-    """
-    orig_len = get_text_length(sequences)
-    desired_length = orig_len - surplus
-    output = [seq.copy() for seq in sequences]
-    while get_text_length(output) > desired_length:
-        if len(output[-1]) > 1:
-            output[-1].pop()
-        else:
-            output.pop()
-    return output
 
 
 def select_samples(bible: data.PbcBible, chosen_sample_ids: list[int]) -> dict[int, list[str]]:
@@ -147,86 +37,11 @@ def select_samples(bible: data.PbcBible, chosen_sample_ids: list[int]) -> dict[i
             continue
         by_book[book].append(text)
     # Check that at least one book has verses
-    lengths = {sample_id: get_text_length(verses)
+    lengths = {sample_id: wp.get_text_length(verses)
                for sample_id, verses in by_book.items()}
     if len(lengths) == 0:
         return {}
     return by_book
-
-
-def get_entropies(sample_verses: list,
-                  base_filename: str,
-                  remove_mismatcher_files: bool,
-                  char_counter: dict,
-                  mismatcher_path: str) -> dict:
-    """
-    Get three entropies for a given sample of verses
-    :param sample_verses: the (ordered) pre-processed verses contained in the original sample
-    :param base_filename: the base filename to be used for the output
-    :param remove_mismatcher_files: whether to delete the mismatcher files after processing
-    :param char_counter: the alphabet with the number of times each character is seen
-    :param mismatcher_path: the path to the mismatcher Java jar file
-    :return: the entropies for the given sample (e.g., chapter)
-    """
-    # Randomize the order of the verses in each sample
-    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
-    # Shuffle words within each verse
-    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
-    # Mask word structure
-    char_str = ''.join(char_counter.keys())
-    char_weights = [char_counter[el] for el in char_str]
-    masked = mask_word_structure(verse_tokens, char_str, char_weights)
-    # Put them in a dictionary
-    tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
-    # Join all verses together
-    joined = {k: join_verses(v, insert_spaces=True) for k, v in tokens.items()}
-    # Save these to files to run the mismatcher
-    filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
-    # Run the mismatcher
-    version_mismatches = {version: run_mismatcher(preprocessed_filename,
-                                                  remove_mismatcher_files,
-                                                  mismatcher_path)
-                          for version, preprocessed_filename in filenames.items()}
-    # Compute the entropy
-    version_entropy = {version: get_entropy(mismatches)
-                       for version, mismatches in version_mismatches.items()}
-    return version_entropy
-
-
-def get_word_mismatches(verse_tokens: list,
-                        base_filename: str,
-                        remove_mismatcher_files: bool,
-                        mismatcher_path: str) -> list:
-    # Replace words by characters
-    characterized = replace_words(verse_tokens)
-    # Join all verses together
-    joined = join_verses(characterized, insert_spaces=False)
-    # Save these to files to run the mismatcher
-    preprocessed_filename = to_file(joined, base_filename, 'orig')
-    # Run the mismatcher
-    mismatches = run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
-    return mismatches
-
-
-# TODO: get rid of this nearly trivial function
-def get_entropies_per_word(sample_verses: list,
-                           base_filename: str,
-                           remove_mismatcher_files: bool,
-                           mismatcher_path: str) -> float:
-    """
-    Get three entropies for a given sample of verses
-    :param sample_verses: the (ordered) pre-processed verses contained in the original sample
-    :param base_filename: the base filename to be used for the output
-    :param remove_mismatcher_files: whether to delete the mismatcher files after processing
-    :param mismatcher_path: path to mismatcher jar
-    :return: the entropies for the given sample (e.g., chapter)
-    """
-    # Compute the entropy
-    return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
-
-
-def get_char_distribution(text: str) -> dict:
-    return Counter(text)
 
 
 def tokenize_and_tag(bible: dict[int, list[str]], tokenizer, lowercase: bool) -> dict[int, list[list[TaggedWord]]]:
@@ -257,7 +72,8 @@ def read_selected_verses(filename: str,
     book_chars = {book_id: ''.join([tagged_word.word for verse in verses for tagged_word in verse])
                   for book_id, verses in tokenized.items()}
     # Obtain the repertoire of symbols
-    book_char_counter = {book_id: get_char_distribution(chars_in_book) for book_id, chars_in_book in book_chars.items()}
+    book_char_counter = {book_id: wp.get_char_distribution(chars_in_book) for book_id, chars_in_book in
+                         book_chars.items()}
     return tokenized, book_char_counter
 
 
@@ -360,11 +176,11 @@ def run_word_pasting(filename: str,
         for n_pairs, verse_tokens in n_pairs_verses.items():
             print(n_pairs, end='')
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
-            n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
-                                                       base_filename,
-                                                       remove_mismatcher_files,
-                                                       book_char_counter[book_id],
-                                                       mismatcher_path)
+            n_pairs_entropies[n_pairs] = wp.get_entropies(verse_tokens,
+                                                          base_filename,
+                                                          remove_mismatcher_files,
+                                                          book_char_counter[book_id],
+                                                          mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
 
