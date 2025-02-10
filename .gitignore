@@ -145,3 +145,5 @@ WordPasting/*Plots
 WordPasting/BibleEntropies
 .DS_Store
 temp
+NounNounCompounds/2_entropies_char_distribution.json
+NounNounCompounds/4_temp_output
