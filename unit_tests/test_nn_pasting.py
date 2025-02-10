@@ -1,6 +1,11 @@
+from unittest.mock import Mock
+
+from spacy import Vocab
+
 import nn_pasting as wp
 import unittest
 from nn_pasting import TaggedWord
+from spacy.tokens import Doc
 
 
 class TestWordPasting(unittest.TestCase):
@@ -16,7 +21,7 @@ class TestWordPasting(unittest.TestCase):
                    TaggedWord("This", "PRON"), TaggedWord("is", "AUX"), TaggedWord("not", "PART"),
                    TaggedWord("a", "DET"), TaggedWord("TWiki", "PROPN"), TaggedWord("site", "NOUN"),
                    TaggedWord(".", "PUNCT")]]
-        expected = [[TaggedWord("Description", "NOUN"), TaggedWord("of", "ADP"), TaggedWord("your", "PRON"),
+        expected = ([[TaggedWord("Description", "NOUN"), TaggedWord("of", "ADP"), TaggedWord("your", "PRON"),
                      TaggedWord("new", "ADJ"), TaggedWord("TWiki site", "NOUN"),
                      TaggedWord(".", "PUNCT")],
                     [TaggedWord("To", "PART"), TaggedWord("learn", "VERB"), TaggedWord("more", "ADJ"),
@@ -25,7 +30,8 @@ class TestWordPasting(unittest.TestCase):
                      TaggedWord("new", "ADJ"), TaggedWord("TWiki", "PROPN"),
                      TaggedWord("web", "NOUN"), TaggedWord(".", "PUNCT"), TaggedWord("This", "PRON"),
                      TaggedWord("is", "AUX"), TaggedWord("not", "PART"), TaggedWord("a", "DET"),
-                     TaggedWord("TWiki site", "NOUN"), TaggedWord(".", "PUNCT")]]
+                     TaggedWord("TWiki site", "NOUN"), TaggedWord(".", "PUNCT")]],
+                    'TWiki site')
         replaced = wp.replace_top_nnc(verses, ['NOUN', 'PROPN'])
         self.assertEqual(expected, replaced)
 
@@ -38,7 +44,7 @@ class TestWordPasting(unittest.TestCase):
                    TaggedWord("TWikiweb", "NOUN"), TaggedWord(".", "PUNCT"), TaggedWord("This", "PRON"),
                    TaggedWord("is", "AUX"), TaggedWord("not", "PART"), TaggedWord("a", "DET"),
                    TaggedWord("TWikisite", "NOUN"), TaggedWord(".", "PUNCT")]]
-        expected = []
+        expected = ([], '')
         replaced = wp.replace_top_nnc(verses, ['NOUN', 'PROPN'])
         self.assertEqual(expected, replaced)
 
@@ -97,10 +103,29 @@ class TestWordPasting(unittest.TestCase):
                           TaggedWord('I', 'NOUN'), TaggedWord('am', 'VERB')]],
                      1: [[TaggedWord('I am here', 'VERB')]]}
         steps_to_save = {0, 1}
-        expected = {0: {0: [['I', 'am', 'here', 'I', 'am']], 1: [['I am', 'here', 'I', 'am']]},
-                    1: {0: [['I am here']]}}
+        expected = {0: {0: ([['I', 'am', 'here', 'I', 'am']], ''), 1: ([['I am', 'here', 'I', 'am']], 'I am')},
+                    1: {0: ([['I am here']], '')}}
         word_pasted_sets = wp.create_word_pasted_sets(id_verses, steps_to_save, ['NOUN', 'PROPN'])
         self.assertEqual(expected, word_pasted_sets)
+
+    def test_tokenize_and_tag_uc(self):
+        bible = {40: ['My first verse']}
+
+        def mocked_tokenizer(input_sequence: str) -> Doc:
+            words = input_sequence.split()
+            poss = ['NOUN' for _ in words]
+            return Doc(vocab=Vocab(), words=words, pos=poss)
+
+        tokenizer = Mock(side_effect=mocked_tokenizer)
+        lowercase = False
+        expected_uc = {40: [[TaggedWord('My', 'NOUN'), TaggedWord('first', 'NOUN'), TaggedWord('verse', 'NOUN')]]}
+        book_verse_tagged_words = wp.tokenize_and_tag(bible, tokenizer, lowercase)
+        self.assertEqual(expected_uc, book_verse_tagged_words)
+
+        lowercase = True
+        expected_lc = {40: [[TaggedWord('my', 'NOUN'), TaggedWord('first', 'NOUN'), TaggedWord('verse', 'NOUN')]]}
+        book_verse_tagged_words = wp.tokenize_and_tag(bible, tokenizer, lowercase)
+        self.assertEqual(expected_lc, book_verse_tagged_words)
 
 
 if __name__ == "__main__":
