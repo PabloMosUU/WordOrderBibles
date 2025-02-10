@@ -1,9 +1,9 @@
 from collections import defaultdict
 
+import pandas as pd
 import spacy
 
 import data
-import json
 import sys
 import compression_entropy as wp
 
@@ -45,15 +45,20 @@ def select_samples(bible: data.PbcBible, chosen_sample_ids: list[int]) -> dict[i
 
 
 def tokenize_and_tag(bible: dict[int, list[str]], tokenizer, lowercase: bool) -> dict[int, list[list[TaggedWord]]]:
+    """
+    Apply the tokenizer pipeline to this bible, including part-of-speech tagging
+    :param bible: the entire content of a bible, in the form of a dictionary mapping book IDs to lists of verses
+    :param tokenizer: a Spacy tokenizer
+    :param lowercase: whether we want the final result in lowercase
+    :returns a dictionary mapping book IDs to a list of lists of POS-tagged words
+    """
     by_book = defaultdict(list)
     for book_id, verses in bible.items():
         for verse in verses:
             if not verse.strip():
                 continue
-            if lowercase:
-                verse = verse.lower()
             doc = tokenizer(verse)
-            tagged_words = [TaggedWord(el.text, el.pos_) for el in doc]
+            tagged_words = [TaggedWord(el.text.lower() if lowercase else el.text, el.pos_) for el in doc]
             by_book[book_id].append(tagged_words)
     return by_book
 
@@ -68,6 +73,7 @@ def read_selected_verses(filename: str,
     selected_book_verses = select_samples(bible, chosen_books)
     # Tokenize and get POS tags
     tokenized = tokenize_and_tag(selected_book_verses, tokenizer, lowercase=lowercase)
+    # TODO: the bit below is completely independent and should be in a separate function
     # Flatten all characters
     book_chars = {book_id: ''.join([tagged_word.word for verse in verses for tagged_word in verse])
                   for book_id, verses in tokenized.items()}
@@ -117,7 +123,8 @@ def merge_positions(verses: list[list[TaggedWord]], positions: list[tuple[int, i
     return verses
 
 
-def replace_top_nnc(verses: list[list[TaggedWord]], pos_tags: list[str]) -> list[list[TaggedWord]]:
+def replace_top_nnc(verses: list[list[TaggedWord]],
+                    pos_tags: list[str]) -> tuple[list[list[TaggedWord]], str]:
     """
     Find the most commonly occurring disjoint noun-noun pair and merge it
     :param verses: the list of POS-tagged verses in the corpus
@@ -131,26 +138,27 @@ def replace_top_nnc(verses: list[list[TaggedWord]], pos_tags: list[str]) -> list
                 nn_positions[tagged_word.word + ' ' + verse[i + 1].word].append((j, i))
     # Now the noun-noun bigram with the longest list of positions is the most frequent noun-noun bigram
     if not nn_positions:
-        return []
+        return [], ''
     top_nn = max(nn_positions, key=lambda x: len(nn_positions[x]))
-    return merge_positions(verses, nn_positions[top_nn])
+    return merge_positions(verses, nn_positions[top_nn]), top_nn
 
 
 def create_word_pasted_sets(id_verses: dict[int, list[list[TaggedWord]]], steps_to_save: set,
-                            pos_tags_to_merge: list[str]) -> dict[int, dict[int, list[list[str]]]]:
+                            pos_tags_to_merge: list[str]) -> dict[int, dict[int, tuple[list[list[str]], str]]]:
     max_merges = max(steps_to_save)
     book_id_versions = {}
     for book_id, tokens in id_verses.items():
         joined_verses = {}
         last_version = tokens.copy()
         if 0 in steps_to_save:
-            joined_verses[0] = [[tagged_word.word for tagged_word in verse] for verse in tokens]
+            joined_verses[0] = ([[tagged_word.word for tagged_word in verse] for verse in tokens], '')
         for n_joins in range(1, max_merges + 1):
-            last_version = replace_top_nnc(last_version, pos_tags_to_merge)
+            last_version, merged_pair = replace_top_nnc(last_version, pos_tags_to_merge)
             if not last_version:
                 break
             if n_joins in steps_to_save:
-                joined_verses[n_joins] = [[tagged_word.word for tagged_word in verse] for verse in last_version]
+                joined_verses[n_joins] = ([[tagged_word.word for tagged_word in verse] for verse in last_version],
+                                          merged_pair)
         book_id_versions[book_id] = joined_verses
     return book_id_versions
 
@@ -163,26 +171,29 @@ def run_word_pasting(filename: str,
                      output_file_path: str,
                      mismatcher_path: str,
                      pos_tags_to_merge: list[str],
-                     tokenizer) -> dict:
+                     tokenizer) -> dict[int, dict[int, tuple[dict, str]]]:
     selected_book_verses, book_char_counter = read_selected_verses(filename,
                                                                    lowercase,
                                                                    chosen_books,
                                                                    tokenizer)
     book_id_versions = create_word_pasted_sets(selected_book_verses, merge_steps_to_save, pos_tags_to_merge)
-    book_id_entropies = {}
+    book_id_entropies_and_merge_pairs = {}
     for book_id, n_pairs_verses in book_id_versions.items():
         print(book_id)
-        n_pairs_entropies = {}
-        for n_pairs, verse_tokens in n_pairs_verses.items():
+        n_pairs_entropies_and_merge_pair = {}
+        for n_pairs, verse_tokens_and_merge_pairs in n_pairs_verses.items():
+            verse_tokens = verse_tokens_and_merge_pairs[0]
+            merge_pair = verse_tokens_and_merge_pairs[1]
             print(n_pairs, end='')
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
-            n_pairs_entropies[n_pairs] = wp.get_entropies(verse_tokens,
-                                                          base_filename,
-                                                          remove_mismatcher_files,
-                                                          book_char_counter[book_id],
-                                                          mismatcher_path)
-        book_id_entropies[book_id] = n_pairs_entropies
-    return book_id_entropies
+            n_pairs_entropies_and_merge_pair[n_pairs] = (wp.get_entropies(verse_tokens,
+                                                                          base_filename,
+                                                                          remove_mismatcher_files,
+                                                                          book_char_counter[book_id],
+                                                                          mismatcher_path),
+                                                         merge_pair)
+        book_id_entropies_and_merge_pairs[book_id] = n_pairs_entropies_and_merge_pair
+    return book_id_entropies_and_merge_pairs
 
 
 if __name__ == '__main__':
@@ -195,7 +206,7 @@ if __name__ == '__main__':
     spacy_model = sys.argv[5]  # The name of the Spacy model for tokenization and POS tagging
 
     merge_steps = set(list(range(1000)))
-    noun_pos_tags = ['NOUN', 'PROPN']
+    noun_pos_tags = ['NOUN']
     spacy_tokenizer = spacy.load(spacy_model)
     koplenig_et_al_books = [40, 41, 42, 43, 44, 66]
 
@@ -204,5 +215,21 @@ if __name__ == '__main__':
                                       output_file_path=temp_dir, mismatcher_path=mismatcher_file,
                                       pos_tags_to_merge=noun_pos_tags, tokenizer=spacy_tokenizer)
 
-    with open(output_filename, 'w') as fp:
-        json.dump(book_entropies, fp)
+    book_ids = []
+    n_merges = []
+    text_versions = []
+    entropies = []
+    merged_pairs = []
+    for bid, n_merges_entropies_and_merged_pairs in book_entropies.items():
+        for nm, entropies_and_merged_pairs in n_merges_entropies_and_merged_pairs.items():
+            ee = entropies_and_merged_pairs[0]
+            mp = entropies_and_merged_pairs[1]
+            for version, entropy in ee.items():
+                book_ids.append(bid)
+                n_merges.append(nm)
+                text_versions.append(version)
+                entropies.append(entropy)
+                merged_pairs.append(mp)
+    df = pd.DataFrame({'book_id': book_ids, 'n_merges': n_merges, 'text_version': text_versions, 'entropy': entropies,
+                       'merged_pair': merged_pairs, 'filename': bible_filename})
+    df.to_csv(output_filename)
