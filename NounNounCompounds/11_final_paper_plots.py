@@ -130,13 +130,14 @@ for book_name in old_data['book'].unique():
         (book_name, str(len(book_df)), str(book_df['bible_id'].nunique()))
     fig, ax = plt.subplots()
     for lang, point_color in lang_color.items():
-        lang_df = book_df[book_df['bible'].apply(lambda x: x.startswith(lang))].reset_index(drop=True)
+        lang_df = book_df[book_df['language'] == lang].reset_index(drop=True)
         x = lang_df['D_order'].tolist()
         y = lang_df['D_structure'].tolist()
         mean_x, mean_y = [[np.mean(el)] for el in (x, y)]
-        # Add diagonal labels for each datapoint
         ax.scatter(x=mean_x, y=mean_y, c=point_color, label=lang)
+        # Add diagonal labels for each datapoint
         ax.annotate(lang, (mean_x[0], mean_y[0]), rotation=45)
+
     # Plot the fit line from Koplenig et al
     min_D_order = book_df['D_order'].min()
     max_D_order = book_df['D_order'].max()
@@ -161,8 +162,7 @@ for book_name in old_data['book'].unique():
     plt.xlabel('Word order information')
     plt.ylabel('Word structure information')
     plt.title(book_name)
-    # plt.savefig(f'10_figs/all_pastes_{book_name}.png')
-    plt.show()
+    plt.savefig(f'10_figs/all_pastes_{book_name}.png')
 
 # Plot new pastes
 for book_name in old_data['book'].unique():
@@ -170,18 +170,14 @@ for book_name in old_data['book'].unique():
     assert len(book_df) == book_df['bible_id'].nunique(), \
         (book_name, str(len(book_df)), str(book_df['bible_id'].nunique()))
     fig, ax = plt.subplots()
-    x_data, y_data = [], []
     for lang, point_color in lang_color.items():
-        lang_df = book_df[book_df['bible'].apply(lambda x: x.startswith(lang))].reset_index(drop=True)
+        lang_df = book_df[book_df['language'] == lang].reset_index(drop=True)
         x = lang_df['D_order'].tolist()
         y = lang_df['D_structure'].tolist()
-        x_data.append(np.mean(x))
-        y_data.append(np.mean(y))
         mean_x, mean_y = [[np.mean(el)] for el in (x, y)]
-        # 95% confidence interval should be at 2std
-        error_x, error_y = [[np.std(el) * 2] for el in (x, y)]
         ax.scatter(x=mean_x, y=mean_y, c=point_color, label=lang)
         ax.annotate(lang, (mean_x[0], mean_y[0]), rotation=45)
+
     # Plot the new pastes
     columns = ['n_merges', 'D_order', 'D_structure']
     n_merge_quantities = new_data_long[new_data_long['book'] == book_name][columns].groupby(
@@ -190,8 +186,8 @@ for book_name in old_data['book'].unique():
     n_merge_quantities = n_merge_quantities[n_merge_quantities['n_merges'].apply(lambda x: x % 10 == 0)].reset_index()
     x = n_merge_quantities['D_order'].tolist()
     y = n_merge_quantities['D_structure'].tolist()
-    ax.scatter(x, y)
     labels = n_merge_quantities['n_merges'].tolist()
+    ax.scatter(x, y)
     for i, txt in enumerate(labels):
         ax.annotate(txt, (x[i], y[i]), rotation=45)
 
@@ -206,8 +202,7 @@ for book_name in old_data['book'].unique():
     plt.xlabel('Word order information')
     plt.ylabel('Word structure information')
     plt.title(book_name)
-    # plt.savefig()
-    plt.show()
+    plt.savefig(f'10_figs/nn_pastes_{book_name}.png')
 
 # # Paper support
 # 
@@ -221,5 +216,3 @@ for bible in [el for el in old_data['bible'].unique() if el not in excluded_bibl
 print('Bible counts:', {key: len(val) for key, val in language_bibles.items()})
 
 sum([len(v) for v in language_bibles.values()])
-
-print(old_data[old_data['bible'].apply(lambda x: x not in excluded_bibles)])
