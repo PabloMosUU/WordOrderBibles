@@ -211,7 +211,6 @@ for book_name in old_data['book'].unique():
     book_df = book_df.merge(filename_max_n_merges, on='filename', how='left')
     book_df['merged'] = book_df.apply(lambda row: 1 if row['n_merges'] == row['max_n_merges'] else (0 if row['n_merges'] == 0 else -1), 1)
     book_df = book_df[book_df['merged'] != -1].reset_index(drop=True)
-    book_df.to_csv('check.csv', sep=';')
     n_merge_quantities = book_df[['merged', 'D_order', 'D_structure']].groupby('merged').mean().reset_index(drop=False)
     x = n_merge_quantities['D_order'].tolist()
     y = n_merge_quantities['D_structure'].tolist()
