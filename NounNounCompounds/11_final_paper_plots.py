@@ -11,6 +11,7 @@ BIBLE_LOCATION = '1_relevant_bibles'
 BOOKS = [40, 41, 42, 43, 44, 66]
 lang_color = {'eng': 'b', 'nld': 'r', 'deu': 'g'}
 
+
 # ### Old data: select data points with 0 pastes in the chosen languages only. Also pastes in English
 df = pd.read_csv(ENTROPIES_FILENAME)
 df['language'] = df['bible'].apply(lambda x: x[:3])
@@ -214,5 +215,3 @@ for bible in [el for el in old_data['bible'].unique() if el not in excluded_bibl
     language_bibles[bible[:3]].append(bible)
 
 print('Bible counts:', {key: len(val) for key, val in language_bibles.items()})
-
-sum([len(v) for v in language_bibles.values()])
