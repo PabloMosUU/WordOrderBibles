@@ -246,3 +246,12 @@ for book, filename_n_merges in new_data_long[['filename', 'book', 'n_merges']].g
     assert all([len(grp) == grp['n_merges'].nunique() for lbl, grp in filename_n_merges.groupby('filename')])
     max_n_merges = [n_merges['n_merges'].max() for _, n_merges in filename_n_merges.groupby('filename')]
     print(f'{book} & {book_max_verses[book]} & {np.mean(max_n_merges):.1f} \\\\')
+
+# List of bibles used
+new_bibles = new_data_long[new_data_long['filename'].apply(lambda x: x not in excluded_bibles)]['filename'].unique()
+old_bibles = sorted(old_data[old_data['bible'].apply(lambda x: x not in excluded_bibles)]['bible'].unique())
+assert len([el for el in new_bibles if el not in old_bibles]) == 0
+assert all([not el.startswith('eng') for el in old_bibles if el not in new_bibles])
+assert len(old_bibles) == sum([len(el) for el in language_bibles.values()])
+for i in range(int(len(old_bibles) / 2)):
+    print(" & ".join(f'\\texttt{"{"}{el}{"}"}' for el in (old_bibles[2*i], old_bibles[2*i+1])) + ' \\\\')
