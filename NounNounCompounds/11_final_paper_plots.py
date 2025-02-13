@@ -3,6 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import sys
+sys.path.append('..')
+import data
 
 ENTROPIES_FILENAME = '../output/KoplenigEtAl/merged.csv'
 SEL_LANGS = ('eng', 'deu', 'nld')
@@ -10,6 +13,28 @@ NEW_FILES_DIR = '5_output'
 BIBLE_LOCATION = '1_relevant_bibles'
 BOOKS = [40, 41, 42, 43, 44, 66]
 lang_color = {'eng': 'b', 'nld': 'r', 'deu': 'g'}
+
+
+def get_short_bibles(lang: str, previously_excluded: list, cutoff: float, book_id_name: pd.DataFrame) -> list:
+    files, books, verses = [], [], []
+    for file in os.listdir(BIBLE_LOCATION):
+        if not file.startswith(lang):
+            continue
+        if file in previously_excluded:
+            continue
+        # noinspection PyUnresolvedReferences
+        bible = data.parse_file(os.path.join(BIBLE_LOCATION, file), 'pbc').join_by_toc()
+        for book_id in BOOKS:
+            book = book_id_name[book_id_name['book_id'] == book_id]['book'].tolist()[0]
+            n_verses = len(bible[2][book_id])
+            files.append(file)
+            books.append(book)
+            verses.append(n_verses)
+    verse_df = pd.DataFrame({'file': files, 'book': books, 'n_verses': verses})
+    book_max_verses = verse_df[['book', 'n_verses']].groupby('book').max().reset_index(drop=False)
+    book_max_verses.rename(columns={'n_verses': 'max_verses'}, inplace=True)
+    verse_df = verse_df.merge(book_max_verses, on='book', how='left').reset_index(drop=True)
+    return verse_df[verse_df['n_verses'] < verse_df['max_verses'] * cutoff]['file'].drop_duplicates().tolist()
 
 
 # ### Old data: select data points with 0 pastes in the chosen languages only. Also pastes in English
@@ -27,7 +52,6 @@ all_df = []
 for i, file in enumerate(new_files):
     df = pd.read_csv(os.path.join(NEW_FILES_DIR, file))
     if len(df) == 0:
-        print(f'Skipping {file} because it is empty')
         continue
     df.fillna({'merged_pair': ''}, inplace=True)
     df['filename'] = file
@@ -99,9 +123,18 @@ excluded_bibles += ['nld-x-bible-statenvertaling.txt']
 excluded_bibles += ['eng-x-bible-kingjames.txt']
 
 # Exclude all bibles that contain fewer than 90% of the maximum number of verses for at least one book.
-# TODO: do this for German and Dutch too
+# TODO: do this programmatically
 excluded_bibles += ['eng-x-bible-books.txt', 'eng-x-bible-contemporary.txt', 'eng-x-bible-interconfessional.txt',
                     'eng-x-bible-scriptures.txt', 'eng-x-bible-standard.txt']
+
+# Do the same for Dutch and German
+# TODO: remove the magic number 0.9 when I do the English exclusion programmatically too
+book_id_map = df_sel_langs[['book_id', 'book']].drop_duplicates()
+for lang in lang_color.keys():
+    if lang == 'eng':
+        continue
+    to_remove = get_short_bibles(lang, excluded_bibles, 0.9, book_id_map)
+    excluded_bibles += to_remove
 
 # remove the excluded_bibles from the datasets
 old_data = df_sel_langs[df_sel_langs['bible'].apply(lambda x: x not in excluded_bibles)].reset_index(drop=True)
@@ -117,7 +150,6 @@ fit_params['beta_1'] = fit_params['beta_1'].apply(lambda x: float(x.replace(',',
 # Add book name to new dataset
 for lbl, grp in new_data.groupby(['book_id', 'n_merges']):
     assert len(grp) == grp['filename'].nunique()
-book_id_map = old_data[['book_id', 'book']].drop_duplicates()
 new_data_book = new_data.merge(book_id_map, on='book_id', how='left')
 assert len(new_data_book) == len(new_data)
 new_data_long = new_data_book[new_data_book['filename'].apply(lambda x: x not in excluded_bibles)].reset_index(
@@ -202,13 +234,15 @@ for book_name in old_data['book'].unique():
     plt.title(book_name)
     plt.savefig(f'10_figs/nn_pastes_{book_name}.png')
 
-# # Paper support
-# 
-# In this section we obtain some data necessary for the paper
-print('Excluded bibles:', excluded_bibles)
-
 language_bibles = defaultdict(list)
 for bible in [el for el in old_data['bible'].unique() if el not in excluded_bibles]:
     language_bibles[bible[:3]].append(bible)
-
 print('Bible counts:', {key: len(val) for key, val in language_bibles.items()})
+
+# Check the maximum number of merges for each translation
+# TODO: read this programmatically
+book_max_verses = {'Acts': 1007, 'John': 879, 'Luke': 1151, 'Mark': 678, 'Matthew': 1071, 'Revelation': 404}
+for book, filename_n_merges in new_data_long[['filename', 'book', 'n_merges']].groupby('book'):
+    assert all([len(grp) == grp['n_merges'].nunique() for lbl, grp in filename_n_merges.groupby('filename')])
+    max_n_merges = [n_merges['n_merges'].max() for _, n_merges in filename_n_merges.groupby('filename')]
+    print(f'{book} & {book_max_verses[book]} & {np.mean(max_n_merges):.1f} \\\\')
