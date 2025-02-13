@@ -144,49 +144,6 @@ new_data_long = new_data_long[new_data_long.apply(lambda row: any([row['book'] =
                                                   1)].reset_index(drop=True)
 """
 
-# Plot old pastes
-for book_name in old_data['book'].unique():
-    book_df = old_data[(old_data['book'] == book_name) & (old_data['iter_id'] == 0)].reset_index(drop=True)
-    assert len(book_df) == book_df['bible_id'].nunique(), \
-        (book_name, str(len(book_df)), str(book_df['bible_id'].nunique()))
-    fig, ax = plt.subplots()
-    for lang, point_color in lang_color.items():
-        if lang == 'eng':
-            continue
-        lang_df = book_df[book_df['language'] == lang].reset_index(drop=True)
-        x = lang_df['D_order'].tolist()
-        y = lang_df['D_structure'].tolist()
-        mean_x, mean_y = [[np.mean(el)] for el in (x, y)]
-        ax.scatter(x=mean_x, y=mean_y, c=point_color, label=lang)
-        # Add diagonal labels for each datapoint
-        ax.annotate(lang, (mean_x[0], mean_y[0]), rotation=45)
-
-    # Plot the fit line from Koplenig et al
-    min_D_order = book_df['D_order'].min()
-    max_D_order = book_df['D_order'].max()
-    fit_x = np.arange(min_D_order, max_D_order, (max_D_order - min_D_order) / 100)
-    beta_0 = fit_params[fit_params['book'] == book_name]['beta_0'].tolist()[0]
-    beta_1 = fit_params[fit_params['book'] == book_name]['beta_1'].tolist()[0]
-    fit_y = [beta_0 + beta_1 / el for el in fit_x]
-    ax.plot(fit_x, fit_y, linestyle='dashed', label='Koplenig et al fit line')
-
-    # Plot the old pastes data
-    select_eng_pastes = lambda row: row['book'] == book_name and row['iter_id'] <= 200 and row['language'] == 'eng'
-    n_merge_quantities = old_data[old_data.apply(select_eng_pastes, 1)][['iter_id', 'D_order', 'D_structure']].groupby(
-        'iter_id'
-    ).mean().reset_index(drop=False)
-    x = n_merge_quantities['D_order'].tolist()
-    y = n_merge_quantities['D_structure'].tolist()
-    ax.scatter(x, y, label='any word pair pastes')
-    labels = n_merge_quantities['iter_id'].tolist()
-    for i, txt in enumerate(labels):
-        ax.annotate(txt, (x[i], y[i]), rotation=45)
-
-    plt.xlabel('Word order information')
-    plt.ylabel('Word structure information')
-    plt.title(book_name)
-    plt.savefig(f'10_figs/all_pastes_{book_name}.png')
-
 # Plot new pastes
 for book_name in old_data['book'].unique():
     book_df = old_data[(old_data['book'] == book_name) & (old_data['iter_id'] == 0)].reset_index(drop=True)
@@ -255,12 +212,3 @@ for bible in [el for el in old_data['bible'].unique() if el not in excluded_bibl
     language_bibles[bible[:3]].append(bible)
 
 print('Bible counts:', {key: len(val) for key, val in language_bibles.items()})
-
-# Check the maximum number of merges for each translation
-for book, filename_n_merges in new_data_long[['filename', 'book', 'n_merges']].groupby('book'):
-    assert all([len(grp) == grp['n_merges'].nunique() for lbl, grp in filename_n_merges.groupby('filename')])
-    max_n_merges = [n_merges['n_merges'].max() for _, n_merges in filename_n_merges.groupby('filename')]
-    fig, ax = plt.subplots()
-    ax.hist(max_n_merges)
-    plt.title(book)
-    plt.show()
