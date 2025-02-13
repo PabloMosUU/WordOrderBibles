@@ -124,6 +124,26 @@ new_data_long = new_data_book[new_data_book['filename'].apply(lambda x: x not in
     drop=True
 )
 
+"""
+# Drop book-translations that contain fewer than some fraction of the maximum number of noun-noun pairs for that book
+book_max_merges = {lbl: grp['n_merges'].max() * 0.95
+                   for lbl, grp in new_data_long[['book', 'n_merges']].groupby('book')}
+excluded_book_translations = []
+for lbl, grp in new_data_long.groupby('book'):
+    for translation, n_merges_df in grp.groupby('filename'):
+        if n_merges_df['n_merges'].max() < book_max_merges[lbl]:
+            excluded_book_translations.append((lbl, translation))
+new_data_long = new_data_long[new_data_long.apply(lambda row: not any([row['book'] == el[0]
+                                                                       and row['filename'] == el[1]
+                                                                       for el in excluded_book_translations]),
+                                                  1)].reset_index(drop=True)
+# Drop all merges that are above some fraction of the maximum number of noun-noun merges for that book
+new_data_long = new_data_long[new_data_long.apply(lambda row: any([row['book'] == book
+                                                                   and row['n_merges'] <= max_nn_merges
+                                                                   for book, max_nn_merges in book_max_merges.items()]),
+                                                  1)].reset_index(drop=True)
+"""
+
 # Plot old pastes
 for book_name in old_data['book'].unique():
     book_df = old_data[(old_data['book'] == book_name) & (old_data['iter_id'] == 0)].reset_index(drop=True)
@@ -131,6 +151,8 @@ for book_name in old_data['book'].unique():
         (book_name, str(len(book_df)), str(book_df['bible_id'].nunique()))
     fig, ax = plt.subplots()
     for lang, point_color in lang_color.items():
+        if lang == 'eng':
+            continue
         lang_df = book_df[book_df['language'] == lang].reset_index(drop=True)
         x = lang_df['D_order'].tolist()
         y = lang_df['D_structure'].tolist()
@@ -149,7 +171,7 @@ for book_name in old_data['book'].unique():
     ax.plot(fit_x, fit_y, linestyle='dashed', label='Koplenig et al fit line')
 
     # Plot the old pastes data
-    select_eng_pastes = lambda row: row['book'] == book_name and 0 < row['iter_id'] <= 200 and row['language'] == 'eng'
+    select_eng_pastes = lambda row: row['book'] == book_name and row['iter_id'] <= 200 and row['language'] == 'eng'
     n_merge_quantities = old_data[old_data.apply(select_eng_pastes, 1)][['iter_id', 'D_order', 'D_structure']].groupby(
         'iter_id'
     ).mean().reset_index(drop=False)
@@ -172,6 +194,8 @@ for book_name in old_data['book'].unique():
         (book_name, str(len(book_df)), str(book_df['bible_id'].nunique()))
     fig, ax = plt.subplots()
     for lang, point_color in lang_color.items():
+        if lang == 'eng':
+            continue
         lang_df = book_df[book_df['language'] == lang].reset_index(drop=True)
         x = lang_df['D_order'].tolist()
         y = lang_df['D_structure'].tolist()
@@ -180,15 +204,32 @@ for book_name in old_data['book'].unique():
         ax.annotate(lang, (mean_x[0], mean_y[0]), rotation=45)
 
     # Plot the new pastes
-    columns = ['n_merges', 'D_order', 'D_structure']
-    n_merge_quantities = new_data_long[new_data_long['book'] == book_name][columns].groupby(
-        'n_merges'
-    ).mean().reset_index(drop=False)
-    n_merge_quantities = n_merge_quantities[n_merge_quantities['n_merges'].apply(lambda x: x % 10 == 0)].reset_index()
+    book_df = new_data_long[new_data_long['book'] == book_name].reset_index(drop=True)
+    book_df_grouped = book_df[['n_merges', 'filename']].groupby('filename')
+    assert all([len(grp) == grp['n_merges'].nunique() for _, grp in book_df_grouped])
+    filename_max_n_merges = book_df_grouped.max().reset_index().rename(columns={'n_merges': 'max_n_merges'})
+    book_df = book_df.merge(filename_max_n_merges, on='filename', how='left')
+    book_df['merged'] = book_df.apply(lambda row: 1 if row['n_merges'] == row['max_n_merges'] else (0 if row['n_merges'] == 0 else -1), 1)
+    book_df = book_df[book_df['merged'] != -1].reset_index(drop=True)
+    book_df.to_csv('check.csv', sep=';')
+    n_merge_quantities = book_df[['merged', 'D_order', 'D_structure']].groupby('merged').mean().reset_index(drop=False)
     x = n_merge_quantities['D_order'].tolist()
     y = n_merge_quantities['D_structure'].tolist()
-    labels = n_merge_quantities['n_merges'].tolist()
-    ax.scatter(x, y)
+    n_merge_quantities['label'] = n_merge_quantities['merged'].map({0: 'eng-orig', 1:'eng-nn-pasted'})
+    labels = n_merge_quantities['label'].tolist()
+    ax.scatter(x, y, c='blue')
+    for i, txt in enumerate(labels):
+        ax.annotate(txt, (x[i], y[i]), rotation=45)
+
+    # Plot the old pastes data
+    select_eng_pastes = lambda row: row['book'] == book_name and 0 < row['iter_id'] <= 200 and row['language'] == 'eng'
+    n_merge_quantities = old_data[old_data.apply(select_eng_pastes, 1)][['iter_id', 'D_order', 'D_structure']].groupby(
+        'iter_id'
+    ).mean().reset_index(drop=False)
+    x = n_merge_quantities['D_order'].tolist()
+    y = n_merge_quantities['D_structure'].tolist()
+    ax.scatter(x, y, label='any word pair pastes', c='cyan')
+    labels = n_merge_quantities['iter_id'].tolist()
     for i, txt in enumerate(labels):
         ax.annotate(txt, (x[i], y[i]), rotation=45)
 
@@ -215,3 +256,12 @@ for bible in [el for el in old_data['bible'].unique() if el not in excluded_bibl
     language_bibles[bible[:3]].append(bible)
 
 print('Bible counts:', {key: len(val) for key, val in language_bibles.items()})
+
+# Check the maximum number of merges for each translation
+for book, filename_n_merges in new_data_long[['filename', 'book', 'n_merges']].groupby('book'):
+    assert all([len(grp) == grp['n_merges'].nunique() for lbl, grp in filename_n_merges.groupby('filename')])
+    max_n_merges = [n_merges['n_merges'].max() for _, n_merges in filename_n_merges.groupby('filename')]
+    fig, ax = plt.subplots()
+    ax.hist(max_n_merges)
+    plt.title(book)
+    plt.show()
