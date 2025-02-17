@@ -19,7 +19,8 @@ class TrainedModel(nn.Module):
         # n_layers = 1 Following the tutorial linked above; others used 2
         self.hidden2pred = nn.Linear(hidden_dim, vocab_size)
 
-    # TODO: propagate hidden state between sentences? See: https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html
+    # TODO: propagate hidden state between sentences?
+    # See: https://www.kdnuggets.com/2020/07/pytorch-lstm-text-generation-tutorial.html
     def forward(self, sentence):
         embeds = self.word_embeddings(sentence)
         lstm_out, _ = self.lstm(embeds.view(len(sentence), 1, -1))
@@ -41,6 +42,7 @@ def next_word_target(seq: list) -> list:
     :return: the same sequence shifted by one slot and with a pad token at the end
     """
     return seq[1:] + [data.CHUNK_END_TOKEN]
+
 
 def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> TrainedModel:
     word_to_ix = split_data.train_word_to_ix

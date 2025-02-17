@@ -82,10 +82,10 @@ if __name__ == '__main__':
     df['D_s'] = df['H_s'] - df['H']
 
     # Average over all texts at each level
-    col_aggs = {col: ['mean', 'std'] for col in df.columns if col != 'level'}
+    col_agg = {col: ['mean', 'std'] for col in df.columns if col != 'level'}
     # Add one more column that is the number of texts for that level
-    col_aggs[list(col_aggs.keys())[0]].append('count')
-    stats = df.groupby('level').agg(col_aggs)
+    col_agg[list(col_agg.keys())[0]].append('count')
+    stats = df.groupby('level').agg(col_agg)
 
     df.to_csv(output_path + bible_filename.replace('.txt', '_entropies.csv'), index=False)
     stats.to_csv(output_path + bible_filename.replace('.txt', '_stats.csv'))

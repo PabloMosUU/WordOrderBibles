@@ -11,7 +11,7 @@ from torch.nn.functional import log_softmax
 import data
 import util
 from data import to_indices
-from train import LSTMLanguageModel
+from util import LSTMLanguageModel
 
 
 def _get_next_words(scores: torch.Tensor, ix_next_word: dict) -> np.ndarray:
@@ -132,5 +132,8 @@ if __name__ == '__main__':
     old_model = LSTMLanguageModel.load(f'output/{model_name}.pth')
     print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 3, 10))
     print(beam_search_decoder(old_model, [data.START_OF_VERSE_TOKEN], 1, 10))
-    print(pred(old_model, [[data.START_OF_VERSE_TOKEN] * 11], old_model.word_index, util.invert_dict(old_model.word_index)))
+    print(pred(old_model,
+               [[data.START_OF_VERSE_TOKEN] * 11],
+               old_model.word_index,
+               util.invert_dict(old_model.word_index)))
     print(generate_sentences(old_model, 10, 5, 20))
