@@ -8,8 +8,6 @@ import json
 import sys
 
 
-# TODO: add list of requirements for package: numpy, pandas, sklearn
-
 def create_random_word(word_length: int, char_repertoire: str, weights: list) -> str:
     assert len(char_repertoire) == len(weights)
     return ''.join(random.choices(char_repertoire, weights=weights, k=word_length))
