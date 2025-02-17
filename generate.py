@@ -11,7 +11,7 @@ from torch.nn.functional import log_softmax
 import data
 import util
 from data import to_indices
-from util import LSTMLanguageModel
+from train import LSTMLanguageModel
 
 
 def _get_next_words(scores: torch.Tensor, ix_next_word: dict) -> np.ndarray:

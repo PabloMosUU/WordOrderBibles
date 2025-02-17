@@ -3,12 +3,8 @@ import math
 
 import pandas as pd
 from matplotlib import pyplot as plt
-import data
-import torch.nn as nn
-import torch
 import numpy as np
 
-from data import batch
 import configparser
 
 BOOK_ID_NAME = {'40': 'Matthew',
@@ -80,118 +76,6 @@ class TrainConfig:
         config['DEFAULT'] = {k: str(v) for k, v in self.to_dict().items()}
         with open(filename, 'w') as f:
             config.write(f)
-
-
-class LSTMLanguageModel(nn.Module):
-
-    def __init__(
-            self,
-            embedding_dim,
-            hidden_dim,
-            word_index: dict,
-            n_layers: int,
-            loss_function: nn.Module,
-            avg_loss_per_token: bool,
-            dropout: float,
-            log_gradients: bool
-    ):
-        super(LSTMLanguageModel, self).__init__()
-        self.word_index = word_index
-        vocab_size = len(self.word_index)
-        self.word_embeddings = nn.Embedding(vocab_size, embedding_dim, padding_idx=self.word_index[data.PAD_TOKEN])
-
-        # The LSTM takes word embeddings as inputs, and outputs hidden states
-        # with dimensionality hidden_dim.
-        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=n_layers, batch_first=True, dropout=dropout)
-        self.loss_function = loss_function
-        self.avg_loss_per_token = avg_loss_per_token
-        self.perplexity_loss_function = torch.nn.CrossEntropyLoss(
-            ignore_index=word_index[data.PAD_TOKEN],
-            reduction='sum'
-        )
-
-        # The linear layer that maps from hidden state space to next-word space
-        self.hidden2word = nn.Linear(hidden_dim, vocab_size)
-
-        # Variables to store the number of training and validation data points and the number of epochs
-        self.train_size = None
-        self.validation_size = None
-        self.n_epochs = None
-        self.gradient_logging = log_gradients
-        self.big_gradients = []
-        self.epoch = -1
-
-    def forward(self, sequences, original_sequence_lengths: torch.Tensor):
-        embeds = self.word_embeddings(sequences)
-
-        # pack_padded_sequence so that padded items in the sequence won't be shown to the LSTM
-        packed_embeddings = torch.nn.utils.rnn.pack_padded_sequence(embeds, original_sequence_lengths, batch_first=True)
-
-        lstm_out, _ = self.lstm(packed_embeddings)
-
-        # undo the packing operation
-        padded_lstm_outputs, _ = torch.nn.utils.rnn.pad_packed_sequence(lstm_out, batch_first=True)
-
-        return self.hidden2word(padded_lstm_outputs)
-
-    def loss(self, y_true, y_pred):
-        return self.loss_function(y_pred, y_true)
-
-    def perplexity(self, y_true: torch.Tensor, y_pred: torch.Tensor, concatenate: bool) -> float:
-        with torch.no_grad():
-            if concatenate:
-                raise NotImplementedError()
-            total_loss = self.perplexity_loss_function(y_pred, y_true).item()
-            # The additional len(Y_true) accounts for START_OF_VERSE_TOKEN
-            n_tokens = torch.sum(y_true != self.word_index[data.PAD_TOKEN]).item() + len(y_true)
-            return np.exp(total_loss / n_tokens)
-
-    def save(self, filename: str) -> None:
-        torch.save(self, filename)
-        if self.gradient_logging:
-            with open(f'{filename}.log', 'w') as logfile:
-                logfile.write('\n'.join([', '.join([str(el) for el in t]) for t in self.big_gradients]))
-
-    @staticmethod
-    def load(filename: str):
-        return torch.load(filename)
-
-    def log_gradients(self, batch_ix: int):
-        if self.gradient_logging:
-            for k, v in {'embed': self.word_embeddings, 'lstm': self.lstm, 'hidden2word': self.hidden2word}.items():
-                for i, p in enumerate(v.parameters()):
-                    gradients = abs(p.grad.flatten())
-                    if any(gradients > 0.5):
-                        self.big_gradients.append(
-                            (self.epoch, batch_ix, k, i, np.array2string(gradients.detach().numpy()))
-                        )
-
-    def get_perplexity(self, corpus: list, concatenate: bool) -> float:
-        """
-        Compute the perplexity for an entire corpus
-        :param corpus: a corpus represented as a list of sequences, each of which is a list of tokens
-        :param concatenate: whether we want to concatenate the entire corpus together for perplexity computations
-        :return: the perplexity on the entire corpus
-        """
-        dataset, original_sequence_lengths = batch(corpus, len(corpus), self.word_index)
-        x = truncate(dataset[0], True)
-        y = truncate(dataset[0], False)
-        y_pred = self.forward(x, torch.tensor([seq_len - 1 for seq_len in original_sequence_lengths[0]]))
-        return self.perplexity(y, y_pred.permute(0, 2, 1), concatenate)
-
-
-def truncate(selected_batch: list, is_input: bool) -> torch.Tensor:
-    """
-    Select the indexed batch from the dataset, which is assumed to be padded
-    :param selected_batch: the batch that we want to truncate and turn into a tensor
-    :param is_input: whether we want to process these sequences as inputs (as opposed to targets)
-    :return: the tensor with the adjusted sequences
-    """
-    # Convert to inputs or targets
-    truncated = [seq[:len(seq)-1] if is_input else seq[1:] for seq in selected_batch]
-
-    # Convert to a PyTorch tensor
-    return torch.tensor(truncated)
 
 
 def invert_dict(key_val: dict) -> dict:
