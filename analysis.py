@@ -2,22 +2,23 @@
 Full entropy calculations for PyTorch models
 """
 from collections import Counter
-from typing import Tuple, Any
+from typing import Any
 
-import torch.nn as nn
-import torch
-import transformers
-from tqdm import tqdm
 import numpy as np
+import pandas as pd
+import torch
+import torch.nn as nn
+import transformers
+from scipy.stats import spearmanr
+from tqdm import tqdm
 
 import compression_entropy as ce
-from util import log_factorial
 import data
-#import nsb_entropy as ne
-import pandas as pd
-from scipy.stats import spearmanr
+from util import log_factorial
 from util import rel_error
 
+
+# noinspection PyPep8Naming
 def unigram_entropy_direct(tokens: list) -> float:
     n = len(tokens)
     token_n_j = Counter(tokens)
@@ -32,11 +33,11 @@ def unigram_entropy_by_counts(tokens: list, token_log_proba: dict, unk_token='')
     :param unk_token: if non-empty, use it for querying the probability distribution for unknown tokens
     :return: the unigram entropy per word
     """
-    log_probas = [token_log_proba[token] \
-                      if token in token_log_proba or unk_token == '' \
-                      else token_log_proba[unk_token] \
-                  for token in tokens]
-    return -np.mean(log_probas) / np.log(2)
+    log_probabilities = [token_log_proba[token]
+                         if token in token_log_proba or unk_token == ''
+                         else token_log_proba[unk_token]
+                         for token in tokens]
+    return -np.mean(log_probabilities) / np.log(2)
 
 
 def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device: str, mask_prompt_tokens: int) -> float:
@@ -81,12 +82,14 @@ def entropy_rate(model: nn.Module, encodings: torch.Tensor, stride: int, device:
     # Division by np.log(2) is change of base to base-2 logarithm
     return (torch.stack(neg_log_likelihoods).sum() / end_loc / np.log(2)).item()
 
+
 # TODO: warn if the sequence doesn't end in an end-of-sequence token
+# noinspection PyPep8Naming
 def full_entropy_calculation(id_text: dict, model: torch.nn.Module,
                              tokenizer: transformers.PreTrainedTokenizerBase,
                              stride: int, device: str,
                              n_prompt_tokens: int,
-                             token_log_probas: dict, remove_punctuation: bool,
+                             token_log_probabilities: dict, remove_punctuation: bool,
                              lowercase: bool) -> dict:
     """
     Run a full entropy calculation for some mapping between an ID and a text
@@ -95,12 +98,13 @@ def full_entropy_calculation(id_text: dict, model: torch.nn.Module,
     :param tokenizer: the tokenizer associated with the model, used for tokenizing the text
     :param stride: for the long-text entropy-calculation algorithm
     :param device: where to run PyTorch calculations
-    :param n_prompt_tokens: the number of tokens in the prompt, according to the tokenizer # TODO: get from the tokenizer (but see below)
-    :param token_log_probas: base-e-log unigram probability distribution of tokens
+    :param n_prompt_tokens: the number of tokens in the prompt, according to the tokenizer
+    :param token_log_probabilities: base-e-log unigram probability distribution of tokens
     :param remove_punctuation: whether to remove punctuation before computing unigram entropies
     :param lowercase: whether to lowercase before computing unigram entropies
     :return: the entropy rate, the unigram entropy by combinatorics, and the unigram entropy by counts, for each text
     """
+    # TODO: get n_prompt_tokens from the tokenizer (but see below)
     # TODO: add the option to compute the unigram entropy on the encodings
     text_id_entropies = {}
     for text_id, text in id_text.items():
@@ -113,22 +117,25 @@ def full_entropy_calculation(id_text: dict, model: torch.nn.Module,
         H = entropy_rate(model, encodings, stride, device, n_prompt_tokens)
         # Compute the unigram entropy
         H_s = unigram_entropy_direct(tokens)
-        H_r = unigram_entropy_by_counts(tokens, token_log_probas)
+        H_r = unigram_entropy_by_counts(tokens, token_log_probabilities)
         text_id_entropies[text_id] = (H, H_s, H_r)
     return text_id_entropies
 
 
+# noinspection PyPep8Naming
 def full_entropy_calculation_bpw(id_text: dict,
                                  remove_punct: bool,
                                  lc: bool,
-                                 base_name: str) -> dict:
+                                 base_name: str,
+                                 mismatcher_path: str) -> dict:
     text_id_entropies = {}
     for text_id, text in id_text.items():
         # Tokenize for the unigram entropy computations
         tokens = data.tokenize(text, remove_punct, lc)
         # Compute the entropy rate
         base_filename = f'{base_name}_{text_id}'
-        H = ce.get_entropies_per_word(tokens, base_filename, remove_mismatcher_files=True)
+        H = ce.get_entropies_per_word(tokens, base_filename, remove_mismatcher_files=True,
+                                      mismatcher_path=mismatcher_path)
         # Compute the unigram entropy
         H_s = unigram_entropy_direct(tokens)
         token_log_likelihood = data.log_likelihoods(text,

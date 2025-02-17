@@ -6,13 +6,13 @@ import data
 from analysis import full_entropy_calculation_bpw
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        print(f'USAGE: {sys.argv[0]} <filename>')
+    if len(sys.argv) != 3:
+        print(f'USAGE: {sys.argv[0]} <filename> <mismatcher_path>')
         exit(-1)
     # Variables related to the location of the data and the type of system
     bibles_path = '/home/pablo/Documents/GitHubRepos/paralleltext/bibles/corpus/'
     bible_filename = sys.argv[1]
-    #bible_filename = 'eng-x-bible-world.txt'
+    mismatcher_path = sys.argv[2]
     output_path = '/home/pablo/Documents/GitHubRepos/WordOrderBibles/output/MontemurroZanette/'
     # Variables related to the processing of text for GPT-2
     prompt = ''
@@ -28,18 +28,18 @@ if __name__ == '__main__':
     by_level = {'bible': by_bible, 'book': by_book}
 
     eos_token = ''
-    level_text = {level_name: data.join_texts_in_dict(id_texts, prompt, eos_token, separator) \
+    level_text = {level_name: data.join_texts_in_dict(id_texts, prompt, eos_token, separator)
                   for level_name, id_texts in by_level.items()}
 
     raw_name = output_path + bible_filename
     level_entropies = {level_name: full_entropy_calculation_bpw(id_text,
                                                                 remove_punctuation,
                                                                 lowercase,
-                                                            f'{raw_name}_{level_name}') \
+                                                                f'{raw_name}_{level_name}', mismatcher_path)
                        for level_name, id_text in level_text.items()}
 
-    level_avg_text_len = {level_name: np.mean([len(data.tokenize(text, remove_punctuation, lowercase)) \
-                                               for text in id_text.values()]) \
+    level_avg_text_len = {level_name: np.mean([len(data.tokenize(text, remove_punctuation, lowercase))
+                                               for text in id_text.values()])
                           for level_name, id_text in level_text.items()}
 
     # Save all these values to a Pandas dataframe that we can use to make histograms and compute statistics

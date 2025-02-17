@@ -111,7 +111,7 @@ class TokenizedBible:
             lines = f.readlines()
         language = lines[0].split('\t')[1].strip()
         original_filename = lines[1].split('\t')[1].strip()
-        verse_tokens = {el.split('\t')[0]: el.split('\t')[1].strip() \
+        verse_tokens = {el.split('\t')[0]: el.split('\t')[1].strip()
                         for el in lines[2:]}
         return TokenizedBible(language, original_filename, verse_tokens)
 
@@ -201,6 +201,7 @@ def tokenize(text: str, remove_punctuation: bool, lowercase: bool) -> list:
     return tokens
 
 
+# noinspection RegExpRedundantClassElement
 def split_pbc_bible_lines(lines: list, parse_content: bool) -> tuple:
     # Assume that the file starts with comments, and then it moves on to content
     # The comments have alpha keys that start with a hash and end in colon
@@ -296,7 +297,7 @@ def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     padded_batches = [pad_batch(b) for b in enclosed]
 
     # Convert words to indices
-    as_indices = [[to_indices(seq, word_index) for seq in b] \
+    as_indices = [[to_indices(seq, word_index) for seq in b]
                   for b in padded_batches]
 
     return as_indices, original_sequence_lengths
@@ -327,8 +328,9 @@ def log_likelihoods(text: str, remove_punctuation: bool, lowercase: bool) -> dic
     return {token: np.log(counts / len(tokens)) for token, counts in token_counts.items()}
 
 
+# noinspection PyPep8Naming
 def log_likelihoods_smooth(text: str, remove_punctuation: bool, lowercase: bool, V: int) -> dict:
-    # V is the vocabulary size and it must include all words in the test set too
+    # V is the vocabulary size, and it must include all words in the test set too
     tokens = tokenize(text, remove_punctuation, lowercase)
     token_counts = collections.Counter(tokens)
     d = defaultdict(lambda: np.log(1 / (len(tokens) + V)))
