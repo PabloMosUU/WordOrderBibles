@@ -15,7 +15,7 @@ lang_color = {'eng': 'b', 'nld': 'r', 'deu': 'g'}
 MIN_VERSE_FRAC = 0.9
 
 
-def get_short_bibles(lang: str, previously_excluded: list, cutoff: float, book_id_name: pd.DataFrame) -> list:
+def get_verse_len_df(lang: str, previously_excluded: list, book_id_name: pd.DataFrame) -> pd.DataFrame:
     files, books, verses = [], [], []
     for file in os.listdir(BIBLE_LOCATION):
         if not file.startswith(lang):
@@ -34,7 +34,7 @@ def get_short_bibles(lang: str, previously_excluded: list, cutoff: float, book_i
     book_max_verses = verse_df[['book', 'n_verses']].groupby('book').max().reset_index(drop=False)
     book_max_verses.rename(columns={'n_verses': 'max_verses'}, inplace=True)
     verse_df = verse_df.merge(book_max_verses, on='book', how='left').reset_index(drop=True)
-    return verse_df[verse_df['n_verses'] < verse_df['max_verses'] * cutoff]['file'].drop_duplicates().tolist()
+    return verse_df
 
 
 # noinspection PyPep8Naming
@@ -125,8 +125,10 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
 
     # Exclude all bibles that contain fewer than MIN_VERSE_FRAC of the maximum number of verses for at least one book.
     book_id_map = df_sel_langs[['book_id', 'book']].drop_duplicates()
+    verse_len_dfs = {lang: get_verse_len_df(lang, excluded_bibles, book_id_map) for lang in lang_color.keys()}
     for lang in lang_color.keys():
-        to_remove = get_short_bibles(lang, excluded_bibles, MIN_VERSE_FRAC, book_id_map)
+        vdf = verse_len_dfs[lang]
+        to_remove = vdf[vdf['n_verses'] < vdf['max_verses'] * MIN_VERSE_FRAC]['file'].drop_duplicates().tolist()
         excluded_bibles += to_remove
 
     # remove the excluded_bibles from the datasets
@@ -239,8 +241,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     print('Bible counts:', {key: len(val) for key, val in language_bibles.items()})
 
     # Check the maximum number of merges for each translation
-    # TODO: read this programmatically
-    book_max_verses = {'Acts': 1007, 'John': 879, 'Luke': 1151, 'Mark': 678, 'Matthew': 1071, 'Revelation': 404}
+    book_max_verses = {book: max_n_verses for book, max_n_verses in verse_len_dfs['eng'][['book', 'max_verses']].values}
     for book, filename_n_merges in new_data_long[['filename', 'book', 'n_merges']].groupby('book'):
         assert all([len(grp) == grp['n_merges'].nunique() for lbl, grp in filename_n_merges.groupby('filename')])
         max_n_merges = [n_merges['n_merges'].max() for _, n_merges in filename_n_merges.groupby('filename')]
