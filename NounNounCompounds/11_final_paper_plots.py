@@ -123,16 +123,9 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     excluded_bibles += ['eng-x-bible-kingjames.txt']
 
     # Exclude all bibles that contain fewer than 90% of the maximum number of verses for at least one book.
-    # TODO: do this programmatically
-    excluded_bibles += ['eng-x-bible-books.txt', 'eng-x-bible-contemporary.txt', 'eng-x-bible-interconfessional.txt',
-                        'eng-x-bible-scriptures.txt', 'eng-x-bible-standard.txt']
-
-    # Do the same for Dutch and German
-    # TODO: remove the magic number 0.9 when I do the English exclusion programmatically too
+    # TODO: remove the magic number 0.9
     book_id_map = df_sel_langs[['book_id', 'book']].drop_duplicates()
     for lang in lang_color.keys():
-        if lang == 'eng':
-            continue
         to_remove = get_short_bibles(lang, excluded_bibles, 0.9, book_id_map)
         excluded_bibles += to_remove
 
