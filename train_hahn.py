@@ -7,7 +7,7 @@ import torch.nn.functional as func
 import torch.optim as optim
 
 # Following https://pytorch.org/tutorials/beginner/nlp/sequence_models_tutorial.html
-from train import TrainConfig
+from util import TrainConfig
 
 
 class TrainedModel(nn.Module):
@@ -47,7 +47,7 @@ def next_word_target(seq: list) -> list:
 def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> TrainedModel:
     word_to_ix = split_data.train_word_to_ix
     model = TrainedModel(cfg.embedding_dim, cfg.hidden_dim, len(word_to_ix), cfg.n_layers)
-    loss_function = nn.NLLLoss() # TODO: replace by Eq. 68 in Hahn et al?
+    loss_function = nn.NLLLoss()  # TODO: replace by Eq. 68 in Hahn et al?
     optimizer = optim.SGD(model.parameters(), lr=cfg.learning_rate)
     # TODO: make learning_rate variable? Determine by validation?
     for epoch in range(cfg.n_epochs):
@@ -72,6 +72,7 @@ def train_model(split_data: SplitData, cfg: TrainConfig, len_seq: int) -> Traine
             optimizer.step()
     return model
 
+
 def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dict) -> list:
     """
     Make predictions from a trained model on a list of sequences
@@ -85,4 +86,3 @@ def pred(model: TrainedModel, sequences: list, word_to_ix: dict, ix_to_word: dic
     sentences_out = [model.pred(sentence) for sentence in sentences_in]
     maximum_ixs = [torch.max(sentence, dim=1).indices for sentence in sentences_out]
     return [[ix_to_word[ix.item()] for ix in sentence] for sentence in maximum_ixs]
-
