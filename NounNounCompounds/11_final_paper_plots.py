@@ -12,6 +12,7 @@ SEL_LANGS = ('eng', 'deu', 'nld')
 BIBLE_LOCATION = '1_relevant_bibles'
 BOOKS = [40, 41, 42, 43, 44, 66]
 lang_color = {'eng': 'b', 'nld': 'r', 'deu': 'g'}
+MIN_VERSE_FRAC = 0.9
 
 
 def get_short_bibles(lang: str, previously_excluded: list, cutoff: float, book_id_name: pd.DataFrame) -> list:
@@ -122,11 +123,10 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     excluded_bibles += ['nld-x-bible-statenvertaling.txt']
     excluded_bibles += ['eng-x-bible-kingjames.txt']
 
-    # Exclude all bibles that contain fewer than 90% of the maximum number of verses for at least one book.
-    # TODO: remove the magic number 0.9
+    # Exclude all bibles that contain fewer than MIN_VERSE_FRAC of the maximum number of verses for at least one book.
     book_id_map = df_sel_langs[['book_id', 'book']].drop_duplicates()
     for lang in lang_color.keys():
-        to_remove = get_short_bibles(lang, excluded_bibles, 0.9, book_id_map)
+        to_remove = get_short_bibles(lang, excluded_bibles, MIN_VERSE_FRAC, book_id_map)
         excluded_bibles += to_remove
 
     # remove the excluded_bibles from the datasets
