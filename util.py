@@ -1,7 +1,6 @@
 import json
 import math
 
-import matplotlib.axes as axes
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -121,3 +120,7 @@ def make_plot_(df: pd.DataFrame, bible_filename: str, output_dir: str) -> None:
         fig, ax = make_book_plot(grp, str(lbl), bible_filename)
         if output_dir != '':
             fig.savefig(f"{output_dir}/{bible_filename.replace('.txt', '')}_{lbl}.png")
+
+
+def inv_proportionality(x, a, b):
+    return a/x + b
