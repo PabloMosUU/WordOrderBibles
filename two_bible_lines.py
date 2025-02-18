@@ -42,7 +42,7 @@ if __name__ == '__main__':
     print('Expected results:')
     print('\n'.join([' '.join(sentence) for sentence in training_data]))
 
-    simple_losses = {k:v for k, v in {'train': train_losses, 'validation': validation_losses}.items() if v}
+    simple_losses = {k: v for k, v in {'train': train_losses, 'validation': validation_losses}.items() if v}
     save_losses(simple_losses, f'output/{model_name}_losses.txt')
 
     if validation_losses:
