@@ -326,7 +326,7 @@ if __name__ == '__main__':
     for bid in [40, 41, 42, 43, 44, 66]:
         file_book_entropies = run_word_pasting(bible_filename,
                                                lowercase=True,
-                                               remove_mismatcher_files=True,
+                                               remove_mismatcher_files=False,
                                                chosen_books=[bid],
                                                truncate_books=False,
                                                merge_steps_to_save=merge_steps,

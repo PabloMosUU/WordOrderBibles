@@ -290,7 +290,7 @@ if __name__ == '__main__':
     for bid in [40, 41, 42, 43, 44, 66]:
         file_book_entropies = run_word_splitting(bible_filename,
                                                  lowercase=True,
-                                                 remove_mismatcher_files=True,
+                                                 remove_mismatcher_files=False,
                                                  chosen_books=[bid],
                                                  truncate_books=False,
                                                  n_merges=n_merges_full,
