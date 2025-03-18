@@ -59,3 +59,46 @@ def to_file(text: str, base_filename: str, appendix: str) -> str:
 def create_random_word(word_length: int, char_repertoire: str, weights: list) -> str:
     assert len(char_repertoire) == len(weights)
     return ''.join(random.choices(char_repertoire, weights=weights, k=word_length))
+
+
+def get_entropies(sample_verses: list,
+                  base_filename: str,
+                  remove_mismatcher_files: bool,
+                  char_counter: dict,
+                  mismatcher_path: str,
+                  mask_word_structure_fn,
+                  join_verses_fn) -> dict:
+    """
+    Get three entropies for a given sample of verses
+    :param sample_verses: the (ordered) pre-processed verses contained in the original sample
+    :param base_filename: the base filename to be used for the output
+    :param remove_mismatcher_files: whether to delete the mismatcher files after processing
+    :param char_counter: the alphabet with the number of times each character is seen
+    :param mismatcher_path: the path to the mismatcher Java jar file
+    :param mask_word_structure_fn: the function that should be used for masking word structure
+    :param join_verses_fn: the function that should be used for joining verses
+    :return: the entropies for the given sample (e.g., chapter)
+    """
+    # Randomize the order of the verses in each sample
+    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
+    # Shuffle words within each verse
+    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
+    # Mask word structure
+    char_str = ''.join(char_counter.keys())
+    char_weights = [char_counter[el] for el in char_str]
+    masked = mask_word_structure_fn(verse_tokens, char_str, char_weights)
+    # Put them in a dictionary
+    tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
+    # Join all verses together
+    joined = {k: join_verses_fn(v, insert_spaces=True) for k, v in tokens.items()}
+    # Save these to files to run the mismatcher
+    filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
+    # Run the mismatcher
+    version_mismatches = {version: run_mismatcher(preprocessed_filename,
+                                                  remove_mismatcher_files,
+                                                  mismatcher_path)
+                          for version, preprocessed_filename in filenames.items()}
+    # Compute the entropy
+    version_entropy = {version: get_entropy(mismatches)
+                       for version, mismatches in version_mismatches.items()}
+    return version_entropy

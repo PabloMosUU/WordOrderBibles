@@ -1,10 +1,9 @@
 from collections import defaultdict, Counter
 
-import random
 import json
 import sys
 
-from compression_entropy import read_selected_verses, run_mismatcher, get_entropy, to_file, create_random_word
+import compression_entropy as ce
 
 
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
@@ -15,7 +14,7 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
         masked_tokens = []
         for token in tokens:
             if token not in word_map:
-                new_word = create_random_word(len(token), char_str, char_weights)
+                new_word = ce.create_random_word(len(token), char_str, char_weights)
                 if new_word in new_words:
                     raise ValueError('Random word already exists')
                 word_map[token] = new_word
@@ -109,29 +108,8 @@ def get_entropies(sample_verses: list,
     :param mismatcher_path: the path to the mismatcher Java jar file
     :return: the entropies for the given sample (e.g., chapter)
     """
-    # Randomize the order of the verses in each sample
-    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
-    # Shuffle words within each verse
-    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
-    # Mask word structure
-    char_str = ''.join(char_counter.keys())
-    char_weights = [char_counter[el] for el in char_str]
-    masked = mask_word_structure(verse_tokens, char_str, char_weights)
-    # Put them in a dictionary
-    tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
-    # Join all verses together
-    joined = {k: join_verses(v, insert_spaces=True) for k, v in tokens.items()}
-    # Save these to files to run the mismatcher
-    filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
-    # Run the mismatcher
-    version_mismatches = {version: run_mismatcher(preprocessed_filename,
-                                                  remove_mismatcher_files,
-                                                  mismatcher_path)
-                          for version, preprocessed_filename in filenames.items()}
-    # Compute the entropy
-    version_entropy = {version: get_entropy(mismatches)
-                       for version, mismatches in version_mismatches.items()}
-    return version_entropy
+    return ce.get_entropies(sample_verses, base_filename, remove_mismatcher_files, char_counter, mismatcher_path,
+                            mask_word_structure, join_verses)
 
 
 def get_word_mismatches(verse_tokens: list,
@@ -143,9 +121,9 @@ def get_word_mismatches(verse_tokens: list,
     # Join all verses together
     joined = join_verses(characterized, insert_spaces=False)
     # Save these to files to run the mismatcher
-    preprocessed_filename = to_file(joined, base_filename, 'orig')
+    preprocessed_filename = ce.to_file(joined, base_filename, 'orig')
     # Run the mismatcher
-    mismatches = run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
+    mismatches = ce.run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
     return mismatches
 
 
@@ -163,7 +141,7 @@ def get_entropies_per_word(sample_verses: list,
     :return: the entropies for the given sample (e.g., chapter)
     """
     # Compute the entropy
-    return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
+    return ce.get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
 
 
 def get_char_distribution(text: str) -> dict:
@@ -234,10 +212,10 @@ def run_word_pasting(filename: str,
                      merge_steps_to_save: set,
                      output_file_path: str,
                      mismatcher_path: str) -> dict:
-    selected_book_verses, char_counter = read_selected_verses(filename,
-                                                              lowercase,
-                                                              chosen_books,
-                                                              truncate_books)
+    selected_book_verses, char_counter = ce.read_selected_verses(filename,
+                                                                 lowercase,
+                                                                 chosen_books,
+                                                                 truncate_books)
     book_id_versions = create_word_pasted_sets(selected_book_verses, merge_steps_to_save)
     book_id_entropies = {}
     for book_id, n_pairs_verses in book_id_versions.items():
