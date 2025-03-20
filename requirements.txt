@@ -3,4 +3,9 @@ pandas
 scikit-learn
 spacy
 matplotlib
-scipy
+
+torch~=2.2.1
+transformers
+scipy~=1.13.1
+tqdm~=4.66.3
+tokenizers

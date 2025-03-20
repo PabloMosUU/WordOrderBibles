@@ -98,15 +98,15 @@ def get_text_length(sequences: list) -> int:
     return len(text)
 
 
-def truncate(sequences: list, excedent: int) -> list:
+def truncate(sequences: list, surplus: int) -> list:
     """
-    Truncate a sample by removing the number of characters in the excedent
+    Truncate a sample by removing the number of characters in the surplus
     :param sequences: a sample represented as a list of sequences, each of which is a list of tokens
-    :param excedent: the excedent that should be removed
-    :return: a new list of sequences, the length of which is reduced by the excedent
+    :param surplus: the surplus that should be removed
+    :return: a new list of sequences, the length of which is reduced by the surplus
     """
     orig_len = get_text_length(sequences)
-    desired_length = orig_len - excedent
+    desired_length = orig_len - surplus
     output = [seq.copy() for seq in sequences]
     while get_text_length(output) > desired_length:
         if len(output[-1]) > 1:
@@ -119,15 +119,15 @@ def truncate(sequences: list, excedent: int) -> list:
 def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_samples: bool) -> dict:
     if not chosen_sample_ids:
         chosen_sample_ids = list(sample_sequences.keys())
-    lengths = {sample_id: get_text_length(sample_sequences[sample_id]) \
-               for sample_id in chosen_sample_ids \
+    lengths = {sample_id: get_text_length(sample_sequences[sample_id])
+               for sample_id in chosen_sample_ids
                if sample_id in sample_sequences}
     if len(lengths) == 0:
         return {}
     minimum_length = min(lengths.values())
     differences = {sample_id: length - minimum_length for sample_id, length in lengths.items()}
-    full_samples = {sample_id: sample_sequences[sample_id] \
-                    for sample_id in chosen_sample_ids \
+    full_samples = {sample_id: sample_sequences[sample_id]
+                    for sample_id in chosen_sample_ids
                     if sample_id in sample_sequences}
     if truncate_samples:
         return {sample_id: truncate(sequences, differences[sample_id]) for sample_id, sequences in full_samples.items()}
@@ -165,10 +165,10 @@ def get_entropies(sample_verses: list,
     # Run the mismatcher
     version_mismatches = {version: run_mismatcher(preprocessed_filename,
                                                   remove_mismatcher_files,
-                                                  mismatcher_path) \
+                                                  mismatcher_path)
                           for version, preprocessed_filename in filenames.items()}
     # Compute the entropy
-    version_entropy = {version: get_entropy(mismatches) \
+    version_entropy = {version: get_entropy(mismatches)
                        for version, mismatches in version_mismatches.items()}
     return version_entropy
 
@@ -319,7 +319,7 @@ if __name__ == '__main__':
     output_filename = sys.argv[3]  # The filename where entropies will be saved
     mismatcher_file = sys.argv[4]  # The filename of the mismatcher jar
 
-    merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))] \
+    merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))]
                        for ell in lis])
 
     book_entropies = {}

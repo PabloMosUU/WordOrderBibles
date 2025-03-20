@@ -1,9 +1,11 @@
 import json
 import math
 
-import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
+import numpy as np
+
+import configparser
 
 BOOK_ID_NAME = {'40': 'Matthew',
                 '41': 'Mark',
@@ -24,6 +26,56 @@ class Token:
     def __eq__(self, other):
         return isinstance(other, Token) and self.token == other.token and \
             self.is_start_of_word == other.is_start_of_word
+
+
+class TrainConfig:
+    def __init__(
+            self,
+            embedding_dim: int,
+            hidden_dim: int,
+            n_layers: int,
+            learning_rate: float,
+            n_epochs: int,
+            clip_gradients: bool,
+            optimizer: str,
+            weight_decay: float,
+            batch_size: int,
+            dropout: float,
+            verbose: bool,
+            gradient_logging: bool,
+            avg_loss_per_token: bool,
+            validation_metrics: list
+    ):
+        self.embedding_dim = embedding_dim
+        self.hidden_dim = hidden_dim
+        self.n_layers = n_layers
+        self.learning_rate = learning_rate
+        self.n_epochs = n_epochs
+        self.clip_gradients = clip_gradients
+        self.optimizer = optimizer
+        self.weight_decay = weight_decay
+        self.batch_size = batch_size
+        self.dropout = dropout
+        self.verbose = verbose
+        self.gradient_logging = gradient_logging
+        self.avg_loss_per_token = avg_loss_per_token
+        self.validation_metrics = validation_metrics
+
+    def __repr__(self):
+        return ', '.join([f'{k}: {v}' for k, v in self.to_dict().items()])
+
+    def to_dict(self):
+        return {'embedding_dim': self.embedding_dim, 'hidden_dim': self.hidden_dim, 'n_layers': self.n_layers,
+                'learning_rate': self.learning_rate, 'n_epochs': self.n_epochs, 'clip_gradients': self.clip_gradients,
+                'optimizer': self.optimizer, 'weight_decay': self.weight_decay, 'batch_size': self.batch_size,
+                'dropout': self.dropout, 'verbose': self.verbose, 'gradient_logging': self.gradient_logging,
+                'avg_loss_per_token': self.avg_loss_per_token, 'validation_metrics': ' '.join(self.validation_metrics)}
+
+    def save(self, filename):
+        config = configparser.ConfigParser()
+        config['DEFAULT'] = {k: str(v) for k, v in self.to_dict().items()}
+        with open(filename, 'w') as f:
+            config.write(f)
 
 
 def invert_dict(key_val: dict) -> dict:
