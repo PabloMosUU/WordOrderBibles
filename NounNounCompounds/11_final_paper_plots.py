@@ -15,6 +15,7 @@ SEL_LANGS = ('eng', 'deu', 'nld')
 BIBLE_LOCATION = '1_relevant_bibles'
 BOOKS = [40, 41, 42, 43, 44, 66]
 lang_color = {'eng': 'b', 'nld': 'r', 'deu': 'g'}
+lang_marker = {'eng': 'o', 'nld': 's', 'deu': '*'}
 MIN_VERSE_FRAC = 0.9
 
 
@@ -270,7 +271,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
             x = lang_df['D_order'].tolist()
             y = lang_df['D_structure'].tolist()
             mean_x, mean_y = [[np.mean(el)] for el in (x, y)]
-            ax.scatter(x=mean_x, y=mean_y, c=point_color, label=lang)
+            ax.scatter(x=mean_x, y=mean_y, c=point_color, label=lang, marker=lang_marker[lang])
             ax.annotate(lang, (mean_x[0], mean_y[0]), rotation=45)
 
         # Plot the new pastes
@@ -291,7 +292,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         y = n_merge_quantities['D_structure'].tolist()
         n_merge_quantities['label'] = n_merge_quantities['merged'].map({0: 'eng-orig', 1: 'eng-nn-pasted'})
         labels = n_merge_quantities['label'].tolist()
-        ax.scatter(x, y, c='blue')
+        ax.scatter(x, y, c='blue', marker=lang_marker['eng'])
         for i, txt in enumerate(labels):
             ax.annotate(txt, (x[i], y[i]), rotation=45)
         # Save the deltas associated with nn pasting
@@ -310,7 +311,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         )
         x = n_merge_quantities['D_order'].tolist()
         y = n_merge_quantities['D_structure'].tolist()
-        ax.scatter(x, y, label='any word pair pastes', c='cyan')
+        ax.scatter(x, y, label='any word pair pastes', c='cyan', marker='v')
         labels = n_merge_quantities['iter_id'].tolist()
         for i, txt in enumerate(labels):
             ax.annotate(txt, (x[i], y[i]), rotation=45)
