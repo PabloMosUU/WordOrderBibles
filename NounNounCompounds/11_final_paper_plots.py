@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import sys
+
+from scipy.stats import permutation_test
+
 sys.path.append('..')
 import data
 
@@ -14,6 +17,40 @@ BOOKS = [40, 41, 42, 43, 44, 66]
 lang_color = {'eng': 'b', 'nld': 'r', 'deu': 'g'}
 MIN_VERSE_FRAC = 0.9
 
+
+def statistic(x, y, axis):
+    return np.mean(x, axis=axis) - np.mean(y, axis=axis)
+
+def histogram_deltas(book_deltas: dict[str:dict[str:float]]) -> None:
+    # Histogram the deltas to see if they are symmetric around a central value (assumption for Wilcoxon's test)
+    for axis in book_deltas['Matthew'].keys():
+        plt.clf()
+        plt.hist([deltas[axis] for deltas in book_deltas.values()])
+        plt.title(f'delta_D_{axis}')
+        plt.show()
+
+
+def check_student(book_values: dict[str:dict[str:list]]) -> None:
+    for axis in list(book_values.values())[0].keys():
+        plt.clf()
+        no_merges = [axis_values[axis][0] for book, axis_values in book_values.items()]
+        all_merges = [axis_values[axis][1] for book, axis_values in book_values.items()]
+        no_merges_var = np.var(no_merges)
+        all_merges_var = np.var(all_merges)
+        print(f'{axis} variances: {no_merges_var}, {all_merges_var}')
+
+
+def run_permutation_test(book_values: dict[str:dict[str:list]]) -> None:
+    # The hypothesis is delta_D_order < 0; delta_D_structure > 0
+    for axis in ('order', 'structure'):
+        # x is before merging; y is after merging
+        x = [axis_values[axis][0] for book, axis_values in book_values.items()]
+        y = [axis_values[axis][1] for book, axis_values in book_values.items()]
+        less_or_greater = 'less' if axis == 'structure' else 'greater'
+        inverse_alt = '>' if less_or_greater == 'less' else '<'
+        res = permutation_test((x, y), statistic, vectorized=True,
+                               n_resamples=np.inf, alternative=less_or_greater)
+        print(f'Prob(delta_D_{axis} {inverse_alt}= {-res.statistic}) under the null hypothesis is {100 * res.pvalue:.1f}%.')
 
 def get_verse_len_df(lang: str, previously_excluded: list, book_id_name: pd.DataFrame) -> pd.DataFrame:
     files, books, verses = [], [], []
@@ -171,6 +208,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
                                                       1)].reset_index(drop=True)
     """
 
+    book_values = {}
     for book_name in old_data['book'].unique():
         book_df = old_data[(old_data['book'] == book_name) & (old_data['iter_id'] == 0)].reset_index(drop=True)
         assert len(book_df) == book_df['bible_id'].nunique(), \
@@ -204,9 +242,11 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         n_merge_quantities['label'] = n_merge_quantities['merged'].map({0: 'eng-orig', 1: 'eng-nn-pasted'})
         labels = n_merge_quantities['label'].tolist()
         ax.scatter(x, y, c='blue')
-        assert len(x) == 2 and len(y) == 2
         for i, txt in enumerate(labels):
             ax.annotate(txt, (x[i], y[i]), rotation=45)
+        # Save the deltas associated with nn pasting
+        assert len(x) == 2 and len(y) == 2
+        book_values[book_name] = {'order': x, 'structure': y}
 
         # Plot the old pastes data
         old_merges = old_data[old_data.apply(
@@ -257,6 +297,18 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     assert len(old_bibles) == sum([len(el) for el in language_bibles.values()])
     for i in range(int(len(old_bibles) / 2)):
         print(" & ".join(f'\\texttt{"{"}{el}{"}"}' for el in (old_bibles[2*i], old_bibles[2*i+1])) + ' \\\\')
+
+    # Check assumption for Wilcoxon's test
+    """
+    book_deltas = {book: {axis: el[1] - el[0] for axis, el in axis_values.items()} for book, axis_values in book_values.items()}
+    histogram_deltas(book_deltas)
+    """
+
+    # Check assumption for Student's t-test
+    # check_student(book_values)
+
+    # Permutation test
+    run_permutation_test(book_values)
 
 
 if __name__ == '__main__':
