@@ -73,6 +73,24 @@ def get_verse_len_df(lang: str, previously_excluded: list, book_id_name: pd.Data
     verse_df = verse_df.merge(book_max_verses, on='book', how='left').reset_index(drop=True)
     return verse_df
 
+def single_axis_mean_individual_comparison(book_df: pd.DataFrame, axis: str) -> None:
+    assert book_df['book'].nunique() == 1
+    book_name = list(book_df['book'].unique())[0]
+    n_merge_quantities = book_df[['merged', 'D_order', 'D_structure']].groupby('merged').mean().reset_index(
+        drop=False
+    )
+    mean_values = n_merge_quantities[axis].tolist()
+    plt.clf()
+    plt.hist(book_df[book_df['merged'] == 0][axis], label='Individual translations, no merges')
+    plt.axvline(x=mean_values[1], color='red', linestyle='--', label='Average over translations, all merges')
+    plt.title(f'No-merge {axis} for book {book_name}')
+    plt.legend()
+    plt.show()
+
+def compare_mean_merged_with_individual_non_merged(book_df: pd.DataFrame) -> None:
+    # See where the average merged quantity lies in the histogram of no-merge quantities
+    single_axis_mean_individual_comparison(book_df, 'D_order')
+    single_axis_mean_individual_comparison(book_df, 'D_structure')
 
 # noinspection PyPep8Naming
 def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
@@ -247,6 +265,9 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         # Save the deltas associated with nn pasting
         assert len(x) == 2 and len(y) == 2
         book_values[book_name] = {'order': x, 'structure': y}
+
+        # compare_mean_merged_with_individual_non_merged(book_df)
+        # This was not very illuminating because we are interested in paired differences
 
         # Plot the old pastes data
         old_merges = old_data[old_data.apply(
