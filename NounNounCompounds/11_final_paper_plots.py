@@ -52,6 +52,36 @@ def run_permutation_test(book_values: dict[str:dict[str:list]]) -> None:
                                n_resamples=np.inf, alternative=less_or_greater)
         print(f'Prob(delta_D_{axis} {inverse_alt}= {-res.statistic}) under the null hypothesis is {100 * res.pvalue:.1f}%.')
 
+def run_permutation_tests(book_dfs: list[pd.DataFrame]) -> None:
+    book_book_df = {list(book_df['book'].unique())[0]: book_df for book_df in book_dfs}
+    for book in sorted(list(book_book_df.keys())):
+        book_df = book_book_df[book]
+        assert len(book_df) == book_df['filename'].nunique() * 2
+        assert book_df['book'].nunique() == 1
+        book_name = list(book_df['book'].unique())[0]
+        # x is before merging; y is after merging
+        x = book_df[book_df['merged'] == 0]
+        y = book_df[book_df['merged'] == 1]
+        for i, axis in enumerate(('D_order', 'D_structure')):
+            alternative = 'less' if axis == 'D_order' else 'greater'
+            res = permutation_test((y[axis].tolist(), x[axis].tolist()), statistic, vectorized=True, n_resamples=100000, alternative=alternative)
+            line = ''
+            if i == 0:
+                line += '\\multirow{2}{*}{' + book_name + '}'
+            line += f' & $D_{"{"}\\rm {axis.replace("D_", "")}{"}"}$ & {res.statistic:.5f} & {res.pvalue:.3f} \\\\'
+            print(line)
+        print('\\hline')
+
+def run_permutation_tests_combined(all_book_df: pd.DataFrame) -> None:
+    assert len(all_book_df) == all_book_df['filename'].nunique() * 2 * 6
+    # x is before merging; y is after merging
+    x = all_book_df[all_book_df['merged'] == 0]
+    y = all_book_df[all_book_df['merged'] == 1]
+    for axis in ('D_order', 'D_structure'):
+        alternative = 'less' if axis == 'D_order' else 'greater'
+        res = permutation_test((y[axis].tolist(), x[axis].tolist()), statistic, vectorized=True, n_resamples=99999, alternative=alternative)
+        print(f'Prob(delta_{axis} {alternative} or equal to {res.statistic}) under null hyp is {100*res.pvalue:.1f}%. N={len(x)}')
+
 def get_verse_len_df(lang: str, previously_excluded: list, book_id_name: pd.DataFrame) -> pd.DataFrame:
     files, books, verses = [], [], []
     for file in os.listdir(BIBLE_LOCATION):
@@ -227,6 +257,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     """
 
     book_values = {}
+    book_dfs = []
     for book_name in old_data['book'].unique():
         book_df = old_data[(old_data['book'] == book_name) & (old_data['iter_id'] == 0)].reset_index(drop=True)
         assert len(book_df) == book_df['bible_id'].nunique(), \
@@ -252,6 +283,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
             lambda row: 1 if row['n_merges'] == row['max_n_merges'] else (0 if row['n_merges'] == 0 else -1), 1
         )
         book_df = book_df[book_df['merged'] != -1].reset_index(drop=True)
+        book_dfs.append(book_df.copy(deep=True))
         n_merge_quantities = book_df[['merged', 'D_order', 'D_structure']].groupby('merged').mean().reset_index(
             drop=False
         )
@@ -329,7 +361,13 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     # check_student(book_values)
 
     # Permutation test
-    run_permutation_test(book_values)
+    # 1. Assuming all books come from an underlying distribution, using averages across translations
+    # run_permutation_test(book_values)
+    # 2. Individually for each book, using values for each translation
+    run_permutation_tests(book_dfs)
+    # 3. Assuming all books come from an underlying distribution, using values for each translation
+    # all_book_df = pd.concat(book_dfs)
+    # run_permutation_tests_combined(all_book_df)
 
 
 if __name__ == '__main__':
