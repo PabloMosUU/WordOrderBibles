@@ -105,21 +105,21 @@ class TestBpe(unittest.TestCase):
     def test_join_verses(self):
         verse_tokens = [['I', 'hate', 'this'], ['I', 'love', 'this']]
         verse_tokens = [[Token(el, True) for el in seq] for seq in verse_tokens]
-        text = word_splitting.join_verses(verse_tokens, insert_spaces=True)
+        text = word_splitting.join_verses_for_entropy_calculation(verse_tokens, insert_spaces=True)
         self.assertEqual('I hate this I love this', text)
 
     def test_join_verses_with_sub_tokens(self):
         verse_tokens = [['I', 'hat', 'e', 'this'], ['I', 'love', 'this']]
         verse_tokens = [[Token(el, True) for el in seq] for seq in verse_tokens]
         verse_tokens[0][2] = Token('e', False)
-        text = word_splitting.join_verses(verse_tokens, insert_spaces=True)
+        text = word_splitting.join_verses_for_entropy_calculation(verse_tokens, insert_spaces=True)
         self.assertEqual('I hate this I love this', text)
 
     def test_join_verses_with_sub_tokens_no_space(self):
         verse_tokens = [['I', 'hat', 'e', 'this'], ['I', 'love', 'this']]
         verse_tokens = [[Token(el, True) for el in seq] for seq in verse_tokens]
         verse_tokens[0][2] = Token('e', False)
-        text = word_splitting.join_verses(verse_tokens, insert_spaces=False)
+        text = word_splitting.join_verses_for_entropy_calculation(verse_tokens, insert_spaces=False)
         self.assertEqual('IhatethisIlovethis', text)
 
 

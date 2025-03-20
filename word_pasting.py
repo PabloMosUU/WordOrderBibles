@@ -1,9 +1,10 @@
-from collections import defaultdict, Counter
+from collections import defaultdict
 
 import json
 import sys
 
 import compression_entropy as ce
+from compression_entropy import join_verses
 
 
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
@@ -23,17 +24,6 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
     return masked
 
 
-def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
-    """
-    Join the verses contained in a list of lists of tokens
-    :param verse_tokens: the list of verses, each of which is a list of tokens; order matters
-    :param insert_spaces: whether we want to insert spaces between the tokens
-    :return: the concatenated string consisting of all the tokens in the original order
-    """
-    sep = ' ' if insert_spaces else ''
-    return sep.join([sep.join(ell) for ell in verse_tokens])
-
-
 def replace_words(verse_tokens: list) -> list:
     """
     Replace each word by a single character
@@ -47,51 +37,6 @@ def replace_words(verse_tokens: list) -> list:
             word_char[token] = chr(len(word_char))
         verse_chars.append(word_char[token])
     return verse_chars
-
-
-def parse_mismatcher_lines(lines: list) -> list:
-    return [int(line.split('\t')[-1].strip()) for line in lines if line != '\n']
-
-
-def get_text_length(sequences: list) -> int:
-    text = join_verses(sequences, insert_spaces=True)
-    return len(text)
-
-
-def truncate(sequences: list, surplus: int) -> list:
-    """
-    Truncate a sample by removing the number of characters in the surplus
-    :param sequences: a sample represented as a list of sequences, each of which is a list of tokens
-    :param surplus: the surplus that should be removed
-    :return: a new list of sequences, the length of which is reduced by the surplus
-    """
-    orig_len = get_text_length(sequences)
-    desired_length = orig_len - surplus
-    output = [seq.copy() for seq in sequences]
-    while get_text_length(output) > desired_length:
-        if len(output[-1]) > 1:
-            output[-1].pop()
-        else:
-            output.pop()
-    return output
-
-
-def select_samples(sample_sequences: dict, chosen_sample_ids: list, truncate_samples: bool) -> dict:
-    if not chosen_sample_ids:
-        chosen_sample_ids = list(sample_sequences.keys())
-    lengths = {sample_id: get_text_length(sample_sequences[sample_id])
-               for sample_id in chosen_sample_ids
-               if sample_id in sample_sequences}
-    if len(lengths) == 0:
-        return {}
-    minimum_length = min(lengths.values())
-    differences = {sample_id: length - minimum_length for sample_id, length in lengths.items()}
-    full_samples = {sample_id: sample_sequences[sample_id]
-                    for sample_id in chosen_sample_ids
-                    if sample_id in sample_sequences}
-    if truncate_samples:
-        return {sample_id: truncate(sequences, differences[sample_id]) for sample_id, sequences in full_samples.items()}
-    return full_samples
 
 
 def get_entropies(sample_verses: list,
@@ -125,27 +70,6 @@ def get_word_mismatches(verse_tokens: list,
     # Run the mismatcher
     mismatches = ce.run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
     return mismatches
-
-
-# TODO: get rid of this nearly trivial function
-def get_entropies_per_word(sample_verses: list,
-                           base_filename: str,
-                           remove_mismatcher_files: bool,
-                           mismatcher_path: str) -> float:
-    """
-    Get three entropies for a given sample of verses
-    :param sample_verses: the (ordered) pre-processed verses contained in the original sample
-    :param base_filename: the base filename to be used for the output
-    :param remove_mismatcher_files: whether to delete the mismatcher files after processing
-    :param mismatcher_path: path to mismatcher jar
-    :return: the entropies for the given sample (e.g., chapter)
-    """
-    # Compute the entropy
-    return ce.get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
-
-
-def get_char_distribution(text: str) -> dict:
-    return Counter(text)
 
 
 def join_words(verse: list, locations: list) -> list:

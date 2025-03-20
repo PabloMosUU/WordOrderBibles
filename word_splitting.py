@@ -161,7 +161,8 @@ def create_word_split_sets(id_verses: dict, n_all_merges: int, temp_path: str, u
     return book_id_versions
 
 
-def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
+# TODO: see if we can deduplicate this and compression_entropy.join_verses
+def join_verses_for_entropy_calculation(verse_tokens: list, insert_spaces: bool) -> str:
     """
     Join the verses contained in a list of lists of tokens
     :param verse_tokens: the list of verses, each of which is a list of tokens; order matters
@@ -195,7 +196,7 @@ def get_entropies(sample_verses: list,
     :return: the entropies for the given sample (e.g., chapter)
     """
     return ce.get_entropies(sample_verses, base_filename, remove_mismatcher_files, char_counter, mismatcher_path,
-                            mask_word_structure, join_verses)
+                            mask_word_structure, join_verses_for_entropy_calculation)
 
 
 def get_output_file_dir(output_file_path: str, filename: str) -> str:
