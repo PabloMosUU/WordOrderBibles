@@ -171,7 +171,6 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
                                                       1)].reset_index(drop=True)
     """
 
-    # Plot new pastes
     for book_name in old_data['book'].unique():
         book_df = old_data[(old_data['book'] == book_name) & (old_data['iter_id'] == 0)].reset_index(drop=True)
         assert len(book_df) == book_df['bible_id'].nunique(), \
@@ -205,6 +204,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         n_merge_quantities['label'] = n_merge_quantities['merged'].map({0: 'eng-orig', 1: 'eng-nn-pasted'})
         labels = n_merge_quantities['label'].tolist()
         ax.scatter(x, y, c='blue')
+        assert len(x) == 2 and len(y) == 2
         for i, txt in enumerate(labels):
             ax.annotate(txt, (x[i], y[i]), rotation=45)
 
@@ -233,7 +233,9 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         plt.xlabel('Word order information')
         plt.ylabel('Word structure information')
         plt.title(book_name)
-        plt.savefig(f'{output_fig_dir}/nn_pastes_{book_name}.png')
+        plot_filename = f'{output_fig_dir}/nn_pastes_{book_name}.png'
+        print(f'INFO: saving {plot_filename}')
+        plt.savefig(plot_filename)
 
     language_bibles = defaultdict(list)
     for bible in [el for el in old_data['bible'].unique() if el not in excluded_bibles]:
