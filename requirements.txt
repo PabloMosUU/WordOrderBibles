@@ -4,7 +4,7 @@ scikit-learn
 spacy
 matplotlib
 
-torch~=2.2.1
+torch>2.3.1
 transformers
 scipy~=1.13.1
 tqdm~=4.66.3
