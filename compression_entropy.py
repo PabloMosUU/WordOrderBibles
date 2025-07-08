@@ -1,12 +1,9 @@
 import os
 import random
-from collections import Counter
-
-import numpy as np
-
 import data
+import numpy as np
+from collections import Counter
 from word_pasting import get_word_mismatches
-
 
 def read_selected_verses(filename: str,
                          lowercase: bool,
@@ -25,11 +22,38 @@ def read_selected_verses(filename: str,
     return selected_book_verses, char_counter
 
 
+def read_all_verses(filename: str,
+                    lowercase: bool,
+                    truncate_books: bool) -> tuple:
+    """
+    Reads all verses as one long text
+    """
+    bible = data.parse_pbc_bible(filename)
+    tokenized = bible.tokenize(remove_punctuation=False, lowercase=lowercase)
+
+    tokenized.verse_tokens = {
+        k: v for k, v in tokenized.verse_tokens.items()
+        if any(str(k).startswith(prefix) for prefix in ('40', '41', '42', '43', '44', '66')) # Can be added to select all bible verses from the six books
+    }
+
+    print(f"Amount of verses: {len(tokenized.verse_tokens)}")
+
+    all_tokens = [el for lis in tokenized.verse_tokens.values() for el in lis]
+    char_counter = get_char_distribution(''.join(all_tokens))
+
+    all_verses_as_one = {'full_bible': list(tokenized.verse_tokens.values())}
+
+    if truncate_books:
+        min_length = min(len(v) for v in all_verses_as_one['full_bible'])
+        all_verses_as_one = {'full_bible': [v[:min_length] for v in all_verses_as_one['full_bible']]}
+
+    return all_verses_as_one, char_counter
+
 def run_mismatcher(preprocessed_filename: str, remove_file: bool, executable_path: str) -> list:
     mismatcher_filename = preprocessed_filename + '_mismatcher'
     os.system(f"""java -Xmx3500M -jar \
                 {executable_path} {preprocessed_filename} {mismatcher_filename}""")
-    with open(mismatcher_filename, 'r') as f:
+    with open(mismatcher_filename, 'r', encoding='utf-8') as f:
         lines = f.readlines()
     if remove_file:
         os.remove(mismatcher_filename)
@@ -52,7 +76,7 @@ def to_file(text: str, base_filename: str, appendix: str) -> str:
     extension = dot_parts[-1]
     prefix = '.'.join(dot_parts[:-1])
     new_filename = prefix + '_' + appendix + '.' + extension
-    with open(new_filename, 'w') as f:
+    with open(new_filename, 'w', encoding="utf-8", errors="replace") as f:
         f.write(text)
     return new_filename
 
@@ -81,7 +105,8 @@ def get_entropies(sample_verses: list,
     :return: the entropies for the given sample (e.g., chapter)
     """
     # Randomize the order of the verses in each sample
-    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
+    verse_tokens = sample_verses
+    #verse_tokens = random.sample(sample_verses, k=len(sample_verses))
     # Shuffle words within each verse
     shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Mask word structure

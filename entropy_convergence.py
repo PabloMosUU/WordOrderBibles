@@ -1,5 +1,4 @@
 import sys
-
 import word_pasting as wp
 
 if __name__ == '__main__':
@@ -11,11 +10,9 @@ if __name__ == '__main__':
 
     merge_steps = {0}
 
-    for bid in [40, 41, 42, 43, 44, 66]:
-        wp.run_word_pasting(bible_filename,
+    wp.run_word_pasting_all(bible_filename,
                             lowercase=True,
                             remove_mismatcher_files=False,
-                            chosen_books=[bid],
                             truncate_books=False,
                             merge_steps_to_save=merge_steps,
                             output_file_path=temp_dir,

@@ -4,7 +4,6 @@ import json
 import sys
 
 import compression_entropy as ce
-from compression_entropy import join_verses
 
 
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
@@ -54,7 +53,7 @@ def get_entropies(sample_verses: list,
     :return: the entropies for the given sample (e.g., chapter)
     """
     return ce.get_entropies(sample_verses, base_filename, remove_mismatcher_files, char_counter, mismatcher_path,
-                            mask_word_structure, join_verses)
+                            mask_word_structure, ce.join_verses)
 
 
 def get_word_mismatches(verse_tokens: list,
@@ -64,7 +63,7 @@ def get_word_mismatches(verse_tokens: list,
     # Replace words by characters
     characterized = replace_words(verse_tokens)
     # Join all verses together
-    joined = join_verses(characterized, insert_spaces=False)
+    joined = ce.join_verses(characterized, insert_spaces=False)
     # Save these to files to run the mismatcher
     preprocessed_filename = ce.to_file(joined, base_filename, 'orig')
     # Run the mismatcher
@@ -128,6 +127,14 @@ def create_word_pasted_sets(id_verses: dict, steps_to_save: set) -> dict:
     return book_id_versions
 
 
+def create_paste_files(verses):
+    with open("engbasic_full_bible_pasted.txt", "w", encoding="utf-8") as f:
+        for sentence in verses:
+            sentence_merged = " ".join(item.replace(" ", "") for item in sentence)
+            sentence_capitalized = sentence_merged[0].upper() + sentence_merged[1:] if sentence_merged else ""
+            f.write(sentence_capitalized + "\n")
+
+
 def run_word_pasting(filename: str,
                      lowercase: bool,
                      remove_mismatcher_files: bool,
@@ -140,12 +147,16 @@ def run_word_pasting(filename: str,
                                                                  lowercase,
                                                                  chosen_books,
                                                                  truncate_books)
+    if chosen_books == ["full_bible"]:
+        return (run_word_pasting_all(filename, lowercase, remove_mismatcher_files, truncate_books, merge_steps_to_save, output_file_path, mismatcher_path))
+
     book_id_versions = create_word_pasted_sets(selected_book_verses, merge_steps_to_save)
     book_id_entropies = {}
+
     for book_id, n_pairs_verses in book_id_versions.items():
-        print(book_id)
         n_pairs_entropies = {}
         for n_pairs, verse_tokens in n_pairs_verses.items():
+            #create_paste_files(verse_tokens)
             print(n_pairs, end='')
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
@@ -155,6 +166,34 @@ def run_word_pasting(filename: str,
                                                        mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
+
+
+def run_word_pasting_all(filename: str,
+                         lowercase: bool,
+                         remove_mismatcher_files: bool,
+                         truncate_books: bool,
+                         merge_steps_to_save: set,
+                         output_file_path: str,
+                         mismatcher_path: str) -> dict:
+
+    all_verses_dict, char_counter = ce.read_all_verses(filename, lowercase, truncate_books)
+    verse_list = all_verses_dict['full_bible']
+
+    n_pairs_versions = create_word_pasted_sets({'full_bible': verse_list}, merge_steps_to_save)['full_bible']
+
+    n_pairs_entropies = {}
+    for n_pairs, verse_tokens in n_pairs_versions.items():
+        create_paste_files(verse_tokens)
+        base_filename = f'{output_file_path}/{filename.split("/")[-1]}_fullbibles_v{n_pairs}'
+        n_pairs_entropies[n_pairs] = get_entropies(
+            verse_tokens,
+            base_filename,
+            remove_mismatcher_files,
+            char_counter,
+            mismatcher_path
+        )
+
+    return {'full_bible': n_pairs_entropies}
 
 
 if __name__ == '__main__':
@@ -167,9 +206,9 @@ if __name__ == '__main__':
 
     merge_steps = set([ell for lis in [list(el) for el in (range(0, 1000, 100), range(1000, 11000, 1000))]
                        for ell in lis])
-
+    
     book_entropies = {}
-    for bid in [40, 41, 42, 43, 44, 66]:
+    for bid in [40, 41, 42, 43, 44, 66, "full_bible"]:
         file_book_entropies = run_word_pasting(bible_filename,
                                                lowercase=True,
                                                remove_mismatcher_files=False,

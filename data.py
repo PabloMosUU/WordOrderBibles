@@ -244,7 +244,7 @@ def parse_pbc_bible_lines(lines: list, parse_content: bool, filename: str) -> Pb
 
 
 def parse_pbc_bible(filename: str) -> PbcBible:
-    with open(filename) as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         lines = f.readlines()
     return parse_pbc_bible_lines(lines, parse_content=True, filename=filename)
 
