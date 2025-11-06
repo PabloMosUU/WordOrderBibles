@@ -22,6 +22,7 @@ def read_selected_verses(filename: str,
     return selected_book_verses, char_counter
 
 
+# TODO: remove magic numbers in this function
 def read_all_verses(filename: str,
                     lowercase: bool,
                     truncate_books: bool) -> tuple:
@@ -105,8 +106,7 @@ def get_entropies(sample_verses: list,
     :return: the entropies for the given sample (e.g., chapter)
     """
     # Randomize the order of the verses in each sample
-    verse_tokens = sample_verses
-    #verse_tokens = random.sample(sample_verses, k=len(sample_verses))
+    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
     # Shuffle words within each verse
     shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
     # Mask word structure
