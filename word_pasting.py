@@ -148,7 +148,7 @@ def run_word_pasting(filename: str,
                                                                  chosen_books,
                                                                  truncate_books)
     if chosen_books == ["full_bible"]:
-        return (run_word_pasting_all(filename, lowercase, remove_mismatcher_files, truncate_books, merge_steps_to_save, output_file_path, mismatcher_path))
+        return run_word_pasting_all(filename, lowercase, remove_mismatcher_files, truncate_books, merge_steps_to_save, output_file_path, mismatcher_path)
 
     book_id_versions = create_word_pasted_sets(selected_book_verses, merge_steps_to_save)
     book_id_entropies = {}
@@ -167,7 +167,7 @@ def run_word_pasting(filename: str,
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
 
-
+# TODO: is it not possible to do this with the existing methods, passing the list of books?
 def run_word_pasting_all(filename: str,
                          lowercase: bool,
                          remove_mismatcher_files: bool,
