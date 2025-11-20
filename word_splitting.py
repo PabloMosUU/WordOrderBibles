@@ -2,8 +2,7 @@ import copy
 import os
 import sys
 import json
-import random
-from compression_entropy import read_selected_verses, run_mismatcher, get_entropy, to_file, create_random_word
+import compression_entropy as ce
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import WhitespaceSplit
@@ -21,7 +20,7 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
         for token_obj in tokens:
             token = token_obj.token
             if token not in word_map:
-                new_word = create_random_word(len(token), char_str, char_weights)
+                new_word = ce.create_random_word(len(token), char_str, char_weights)
                 if new_word in new_words:
                     raise ValueError('Random word already exists')
                 word_map[token] = new_word
@@ -162,7 +161,8 @@ def create_word_split_sets(id_verses: dict, n_all_merges: int, temp_path: str, u
     return book_id_versions
 
 
-def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
+# TODO: see if we can deduplicate this and compression_entropy.join_verses
+def join_verses_for_entropy_calculation(verse_tokens: list, insert_spaces: bool) -> str:
     """
     Join the verses contained in a list of lists of tokens
     :param verse_tokens: the list of verses, each of which is a list of tokens; order matters
@@ -181,7 +181,6 @@ def join_verses(verse_tokens: list, insert_spaces: bool) -> str:
     return sep.join(verses)
 
 
-# TODO: deduplicate this function and compression_entropy.get_entropies by de-duplicating join_verses
 def get_entropies(sample_verses: list,
                   base_filename: str,
                   remove_mismatcher_files: bool,
@@ -196,29 +195,8 @@ def get_entropies(sample_verses: list,
     :param mismatcher_path: the path to the mismatcher Java jar file
     :return: the entropies for the given sample (e.g., chapter)
     """
-    # Randomize the order of the verses in each sample
-    verse_tokens = random.sample(sample_verses, k=len(sample_verses))
-    # Shuffle words within each verse
-    shuffled = [random.sample(words, k=len(words)) for words in verse_tokens]
-    # Mask word structure
-    char_str = ''.join(char_counter.keys())
-    char_weights = [char_counter[el] for el in char_str]
-    masked = mask_word_structure(verse_tokens, char_str, char_weights)
-    # Put them in a dictionary
-    tokens = {'orig': verse_tokens, 'shuffled': shuffled, 'masked': masked}
-    # Join all verses together
-    joined = {k: join_verses(v, insert_spaces=True) for k, v in tokens.items()}
-    # Save these to files to run the mismatcher
-    filenames = {k: to_file(v, base_filename, k) for k, v in joined.items()}
-    # Run the mismatcher
-    version_mismatches = {version: run_mismatcher(preprocessed_filename,
-                                                  remove_mismatcher_files,
-                                                  mismatcher_path)
-                          for version, preprocessed_filename in filenames.items()}
-    # Compute the entropy
-    version_entropy = {version: get_entropy(mismatches)
-                       for version, mismatches in version_mismatches.items()}
-    return version_entropy
+    return ce.get_entropies(sample_verses, base_filename, remove_mismatcher_files, char_counter, mismatcher_path,
+                            mask_word_structure, join_verses_for_entropy_calculation)
 
 
 def get_output_file_dir(output_file_path: str, filename: str) -> str:
@@ -239,10 +217,10 @@ def run_word_splitting(filename: str,
                        n_merges: int,
                        output_file_path: str,
                        mismatcher_path: str) -> dict:
-    selected_book_verses, char_counter = read_selected_verses(filename,
-                                                              lowercase,
-                                                              chosen_books,
-                                                              truncate_books)
+    selected_book_verses, char_counter = ce.read_selected_verses(filename,
+                                                                 lowercase,
+                                                                 chosen_books,
+                                                                 truncate_books)
     # Create the split versions using BPE
     # TODO: use file manipulations instead of split
     book_id_versions = create_word_split_sets(selected_book_verses, n_merges, output_file_path, filename.split('/')[-1])
@@ -290,7 +268,7 @@ if __name__ == '__main__':
     for bid in [40, 41, 42, 43, 44, 66]:
         file_book_entropies = run_word_splitting(bible_filename,
                                                  lowercase=True,
-                                                 remove_mismatcher_files=True,
+                                                 remove_mismatcher_files=False,
                                                  chosen_books=[bid],
                                                  truncate_books=False,
                                                  n_merges=n_merges_full,
