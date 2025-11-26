@@ -70,77 +70,6 @@ def bootstrap_curves(x: iter, y: iter, b=2000, smoothing=1.0, grid=None) -> tupl
     return grid, boot_curves
 
 
-def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000) -> float:
-    """
-    Permutation Global Envelope Test
-
-    Args:
-        language_curves: dict {lang: curve_values_on_common_grid}. These are bootstrap curves
-        n_perm: the number of permutations
-    Returns:
-         p-value
-    """
-    # np.stack combines a sequence of arrays along a new axis, effectively creating a higher-dimensional array
-    curves = np.stack([language_curves[lang] for lang in language_curves.keys()])
-    n_languages, n_bootstraps, n_grid_pts = curves.shape
-
-    # ---- 1. Compute observed mean (across bootstrapping instances) curves ----
-    observed_means = curves.mean(axis=1)  # shape (n_langs, n_grid_pts)
-
-    #  ---- 2. Compute observed test statistic (L2 norms) ----
-    global_mean = observed_means.mean(axis=0) # Now this is the mean across languages
-    observed_stats = np.sqrt(np.sum((observed_means - global_mean)**2, axis=1))  # per language; the sum goes over grid points
-
-    # Flatten the bootstrap curves into a pool
-    pooled = curves.reshape(n_languages * n_bootstraps, n_grid_pts)
-
-    perm_stats = []
-
-    # Permutations
-    for _ in tqdm(range(n_perm), desc="Permutation Envelope"):
-        perm = np.random.permutation(pooled)
-
-        # Divide permuted curves back into groups of size n_bootstraps
-        perm_groups = perm.reshape(n_languages, n_bootstraps, n_grid_pts)
-        # In the permutation all curves for all languages are shuffled
-        # In the reshape step we stack them again as they were originally into these fake languages
-
-        # mean (across bootstrap instances) curve per permuted language
-        perm_means = perm_groups.mean(axis=1)
-
-        # global mean (across fake languages) for this permutation
-        perm_global_mean = perm_means.mean(axis=0)
-
-        # compute L2 norms
-        perm_stat = np.sqrt(np.sum((perm_means - perm_global_mean) ** 2, axis=1))
-        perm_stats.append(perm_stat)
-
-    perm_stats = np.array(perm_stats)  # shape (n_perm, L)
-
-    # ---- 4. Compute p-value ----
-    # For global test: maximum deviation among languages
-    obs_max = observed_stats.max()
-    perm_max = perm_stats.max(axis=1) # This returns the maximum value across languages for each permutation
-
-    p_value = (np.sum(perm_max >= obs_max) + 1) / (n_perm + 1)
-
-    """
-    # ---- 5. Construct envelopes on the permuted means ----
-    lower_env = np.percentile(perm_means, 2.5, axis=0)
-    upper_env = np.percentile(perm_means, 97.5, axis=0)
-    
-    return {
-        "observed_means": observed_means,
-        "lower_envelope": lower_env,
-        "upper_envelope": upper_env,
-        "p_value": p_value
-    }
-    """
-
-    return p_value
-
-
-# 5 functional anova
 def functional_anova(language_bootstrap_curves: dict[str,np.ndarray], n_perm=2000):
     """
     Functional ANOVA via permutation of bootstrap curves.
@@ -189,50 +118,6 @@ def functional_anova(language_bootstrap_curves: dict[str,np.ndarray], n_perm=200
 
 
 # ============================================================
-# 6. Hierarchical Gaussian Process confirmatory analysis
-# ============================================================
-
-def hierarchical_gp(language_curves, grid):
-    """
-    Bayesian hierarchical GP model:
-    f_i(x) = f_shared(x) + g_i(x)
-    """
-    langs = list(language_curves.keys())
-    curves = np.stack([language_curves[k] for k in langs])
-    an_l, an_m = curves.shape
-
-    with pm.Model() as model:
-        # Shared GP
-        l_shared = pm.Gamma("ℓ_shared", alpha=2, beta=1)
-        eta_shared = pm.HalfNormal("η_shared", sigma=1)
-        cov_shared = eta_shared**2 * pm.gp.cov.ExpQuad(1, l_shared)
-        gp_shared = pm.gp.Latent(cov_func=cov_shared)
-        f_shared = gp_shared.prior("f_shared", X=grid[:, None])
-
-        # Language deviations GP
-        l_dev = pm.Gamma("ℓ_dev", alpha=2, beta=1)
-        eta_dev = pm.HalfNormal("η_dev", sigma=1)
-        cov_dev = eta_dev**2 * pm.gp.cov.ExpQuad(1, l_dev)
-
-        g = []
-        for i in range(an_l):
-            gp_dev = pm.gp.Latent(cov_func=cov_dev)
-            g_i = gp_dev.prior(f"g_{i}", X=grid[:, None])
-            g.append(g_i)
-
-        # Noise
-        a_sigma = pm.HalfNormal("σ", sigma=0.1)
-
-        # Observed curves
-        for i in range(an_l):
-            pm.Normal(f"y_{i}", mu=f_shared + g[i], sigma=a_sigma, observed=curves[i])
-
-        trace = pm.sample(2000, tune=2000, target_accept=0.9)
-
-    return trace
-
-
-# ============================================================
 # 7. Main pipeline
 # ============================================================
 
@@ -262,22 +147,14 @@ def run_pipeline(directory):
             "boot": boot_curves
         }
 
-    # Global envelope test
     language_bootstrap_curves = {lang: boot[lang]["boot"] for lang in languages}
-    envelope = global_envelope_test(language_bootstrap_curves, n_perm=2000)
 
     # Functional ANOVA
     f_anova = functional_anova(language_bootstrap_curves, n_perm=2000)
 
-    # Hierarchical GP
-    language_curves = {lang: boot[lang]["curve"] for lang in languages}
-    trace = hierarchical_gp(language_curves, grid)
-
     return {
         "boot": boot,
-        "envelope": envelope,
         "anova": f_anova,
-        "gp_trace": trace,
         "grid": grid
     }
 
