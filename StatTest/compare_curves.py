@@ -267,10 +267,10 @@ def run_pipeline(directory):
     envelope = global_envelope_test(language_bootstrap_curves, n_perm=2000)
 
     # Functional ANOVA
-    language_curves = {lang: boot[lang]["curve"] for lang in languages}
-    f_anova = functional_anova(language_curves, n_perm=2000)
+    f_anova = functional_anova(language_bootstrap_curves, n_perm=2000)
 
     # Hierarchical GP
+    language_curves = {lang: boot[lang]["curve"] for lang in languages}
     trace = hierarchical_gp(language_curves, grid)
 
     return {
