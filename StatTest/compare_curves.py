@@ -141,7 +141,7 @@ def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000) -> 
 
 
 # 5 functional anova
-def functional_anova(language_bootstrap_curves: dict[str,np.ndarray], n_permutations=2000):
+def functional_anova(language_bootstrap_curves: dict[str,np.ndarray], n_perm=2000):
     """
     Functional ANOVA via permutation of bootstrap curves.
     Input:
@@ -168,8 +168,8 @@ def functional_anova(language_bootstrap_curves: dict[str,np.ndarray], n_permutat
     # 3) pool all bootstrap curves and permute them
     pooled = curves.reshape(n_langs * n_bootstraps, n_grid_pts)  # shape (n_langs*n_bootstraps, n_grid_pts)
 
-    perm_stats = np.zeros(n_permutations)
-    for b in tqdm(range(n_permutations), desc="Functional ANOVA permutations"):
+    perm_stats = np.zeros(n_perm)
+    for b in tqdm(range(n_perm), desc="Functional ANOVA permutations"):
         permuted = np.random.permutation(pooled)
         perm_groups = permuted.reshape(n_langs, n_bootstraps, n_grid_pts)
         perm_means = perm_groups.mean(axis=1)    # shape (n_langs, n_grid_pts)
@@ -179,7 +179,7 @@ def functional_anova(language_bootstrap_curves: dict[str,np.ndarray], n_permutat
 
     # 4) p-value (Monte Carlo permutation p-value with +1 correction)
     r = np.sum(perm_stats >= observed_stat)
-    p_value = (r + 1) / (n_permutations + 1)
+    p_value = (r + 1) / (n_perm + 1)
 
     return {
         "observed_stat": float(observed_stat),
