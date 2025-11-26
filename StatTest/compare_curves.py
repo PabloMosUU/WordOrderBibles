@@ -75,54 +75,69 @@ def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000):
     Permutation Global Envelope Test
 
     Args:
-        language_curves: dict {lang: curve_values_on_common_grid}
+        language_curves: dict {lang: curve_values_on_common_grid}. These are bootstrap curves
         n_perm: the number of permutations
     Returns:
          envelope bands + whether curves fall outside the envelope under a permuted null.
     """
-    langs = list(language_curves.keys())
     # np.stack combines a sequence of arrays along a new axis, effectively creating a higher-dimensional array
-    curves = np.stack([language_curves[lang] for lang in langs])
-    n_languages, _ = curves.shape
+    curves = np.stack([language_curves[lang] for lang in language_curves.keys()])
+    n_languages, B, G = curves.shape
+
+    # ---- 1. Compute observed mean (across bootstrapping instances) curves ----
+    observed_means = curves.mean(axis=1)  # shape (n_langs, G)
+
+    #  ---- 2. Compute observed test statistic (L2 norms) ----
+    global_mean = observed_means.mean(axis=0) # Now this is the mean across languages
+    observed_stats = np.sqrt(np.sum((observed_means - global_mean)**2, axis=1))  # per language; the sum goes over grid points
 
     # Null hypothesis: curves are exchangeable across languages
     perm_stats = []
 
-    # Test statistic: L2 norm from mean curve
-    observed_mean = curves.mean(axis=0) # This is the mean across languages
-    # This gives one sqrt(diff**2) per language; it's not normalized by length
-    observed_stats = np.array([
-        np.sqrt(((curves[i] - observed_mean)**2).sum())
-        for i in range(n_languages)
-    ])
+    # Flatten the bootstrap curves into a pool
+    pooled = curves.reshape(n_languages * B, G)
+
+    perm_stats = []
 
     # Permutations
     for _ in tqdm(range(n_perm), desc="Permutation Envelope"):
         perm = np.random.permutation(n_languages)
-        # This effectively reassigns the curves to new languages
-        perm_curves = curves[perm]
-        perm_mean = perm_curves.mean(axis=0)
-        assert perm_mean == observed_mean, 'After permuting the languages the mean changed'
-        stat = np.array([
-            np.sqrt(((perm_curves[i] - perm_mean)**2).sum())
-            for i in range(n_languages)
-        ])
-        perm_stats.append(stat)
+
+        # Divide permuted curves back into groups of size B
+        perm_groups = perm.reshape(n_languages, B, G)
+        # In the permutation all curves for all languages are shuffled
+        # In the reshape step we stack them again as they were originally into these fake languages
+
+        # mean (across bootstrap instances) curve per permuted language
+        perm_means = perm_groups.mean(axis=1)
+
+        # global mean (across fake languages) for this permutation
+        perm_global_mean = perm_means.mean(axis=0)
+
+        # compute L2 norms
+        perm_stat = np.sqrt(np.sum((perm_means - perm_global_mean) ** 2, axis=1))
+        perm_stats.append(perm_stat)
 
     perm_stats = np.array(perm_stats)  # shape (n_perm, L)
 
-    # Envelope: compute p-values for each language
-    p_vals = []
-    for i in range(n_languages):
-        p = (np.sum(perm_stats[:, i] >= observed_stats[i]) + 1) / (n_perm + 1)
-        p_vals.append(p)
+    # ---- 4. Compute p-value ----
+    # For global test: maximum deviation among languages
+    obs_max = observed_stats.max()
+    perm_max = perm_stats.max(axis=1) # This returns the maximum value across languages for each permutation
 
-    # noinspection SpellCheckingInspection
+    p_value = (np.sum(perm_max >= obs_max) + 1) / (n_perm + 1)
+
+    """
+    # ---- 5. Construct envelopes on the permuted means ----
+    lower_env = np.percentile(perm_means, 2.5, axis=0)
+    upper_env = np.percentile(perm_means, 97.5, axis=0)
+    """
+
     return {
-        "languages": langs,
-        "pvals": p_vals,
-        "observed_stats": observed_stats,
-        "perm_stats": perm_stats
+        "observed_means": observed_means,
+        # "lower_envelope": lower_env,
+        # "upper_envelope": upper_env,
+        "p_value": p_value
     }
 
 
