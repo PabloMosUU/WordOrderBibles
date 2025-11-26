@@ -82,29 +82,26 @@ def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000):
     """
     # np.stack combines a sequence of arrays along a new axis, effectively creating a higher-dimensional array
     curves = np.stack([language_curves[lang] for lang in language_curves.keys()])
-    n_languages, B, G = curves.shape
+    n_languages, n_bootstraps, n_grid_pts = curves.shape
 
     # ---- 1. Compute observed mean (across bootstrapping instances) curves ----
-    observed_means = curves.mean(axis=1)  # shape (n_langs, G)
+    observed_means = curves.mean(axis=1)  # shape (n_langs, n_grid_pts)
 
     #  ---- 2. Compute observed test statistic (L2 norms) ----
     global_mean = observed_means.mean(axis=0) # Now this is the mean across languages
     observed_stats = np.sqrt(np.sum((observed_means - global_mean)**2, axis=1))  # per language; the sum goes over grid points
 
-    # Null hypothesis: curves are exchangeable across languages
-    perm_stats = []
-
     # Flatten the bootstrap curves into a pool
-    pooled = curves.reshape(n_languages * B, G)
+    pooled = curves.reshape(n_languages * n_bootstraps, n_grid_pts)
 
     perm_stats = []
 
     # Permutations
     for _ in tqdm(range(n_perm), desc="Permutation Envelope"):
-        perm = np.random.permutation(n_languages)
+        perm = np.random.permutation(pooled)
 
-        # Divide permuted curves back into groups of size B
-        perm_groups = perm.reshape(n_languages, B, G)
+        # Divide permuted curves back into groups of size n_bootstraps
+        perm_groups = perm.reshape(n_languages, n_bootstraps, n_grid_pts)
         # In the permutation all curves for all languages are shuffled
         # In the reshape step we stack them again as they were originally into these fake languages
 
