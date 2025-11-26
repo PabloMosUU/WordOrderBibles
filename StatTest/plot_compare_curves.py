@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import arviz as az
 
 # ============================================================
 # 1. Plot monotone curve + bootstrap CI per language

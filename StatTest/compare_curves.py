@@ -5,7 +5,6 @@ import pandas as pd
 from scipy.interpolate import make_splrep
 from sklearn.isotonic import IsotonicRegression
 from tqdm import tqdm
-import pymc as pm
 import argparse
 
 
