@@ -70,7 +70,7 @@ def bootstrap_curves(x: iter, y: iter, b=2000, smoothing=1.0, grid=None) -> tupl
     return grid, boot_curves
 
 
-def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000):
+def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000) -> float:
     """
     Permutation Global Envelope Test
 
@@ -78,7 +78,7 @@ def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000):
         language_curves: dict {lang: curve_values_on_common_grid}. These are bootstrap curves
         n_perm: the number of permutations
     Returns:
-         envelope bands + whether curves fall outside the envelope under a permuted null.
+         p-value
     """
     # np.stack combines a sequence of arrays along a new axis, effectively creating a higher-dimensional array
     curves = np.stack([language_curves[lang] for lang in language_curves.keys()])
@@ -128,45 +128,64 @@ def global_envelope_test(language_curves: dict[str,np.ndarray], n_perm=2000):
     # ---- 5. Construct envelopes on the permuted means ----
     lower_env = np.percentile(perm_means, 2.5, axis=0)
     upper_env = np.percentile(perm_means, 97.5, axis=0)
-    """
-
+    
     return {
         "observed_means": observed_means,
-        # "lower_envelope": lower_env,
-        # "upper_envelope": upper_env,
+        "lower_envelope": lower_env,
+        "upper_envelope": upper_env,
         "p_value": p_value
     }
-
-
-# ============================================================
-# 5. Functional ANOVA (Permutation)
-# ============================================================
-
-def functional_anova(language_curves, n_perm=2000):
     """
-    Simple permutation ANOVA:
-    Compute variance between languages vs. within.
+
+    return p_value
+
+
+# 5 functional anova
+def functional_anova(language_bootstrap_curves: dict[str,np.ndarray], n_permutations=2000):
     """
-    langs = list(language_curves.keys())
-    curves = np.stack([language_curves[k] for k in langs])
-    an_l, an_m = curves.shape
+    Functional ANOVA via permutation of bootstrap curves.
+    Input:
+        language_bootstrap_curves: bootstrap curves for each language (n_bootstraps replicates, n_grid_pts)
+        n_permutations: number of permutations to run
+    Returns:
+        dict with keys:
+          - 'observed_stat' : observed between-group L2 statistic (scalar)
+          - 'perm_stats'    : array of permutation statistics (length n_permutations)
+          - 'p_value'       : permutation p-value (Monte Carlo, (r+1)/(n_perm+1))
+    """
 
-    grand_mean = curves.mean(axis=0)
-    between = sum(((curves[i] - grand_mean) ** 2).sum() for i in range(an_l))
+    curves = np.asarray(language_bootstrap_curves)
+    n_langs, n_bootstraps, n_grid_pts = curves.shape
 
-    perm_values = []
-    for _ in tqdm(range(n_perm), desc="Functional ANOVA permutations"):
-        # permute curve labels
-        perm = np.random.permutation(an_l)
-        perm_curves = curves[perm]
-        perm_mean = perm_curves.mean(axis=0)
-        stat = sum(((perm_curves[i] - perm_mean) ** 2).sum() for i in range(an_l))
-        perm_values.append(stat)
+    # 1) observed means per language (shape: n_langs x n_grid_pts)
+    observed_means = curves.mean(axis=1)
 
-    perm_values = np.array(perm_values)
-    p_val = (np.sum(perm_values >= between) + 1) / (1 + n_perm)
+    # 2) observed between-group L2 statistic:
+    #    sum over languages of integrated squared deviation from grand mean
+    grand_mean = observed_means.mean(axis=0)
+    observed_stat = sum(np.sum((observed_means[i] - grand_mean)**2) for i in range(n_langs))
 
-    return {"between_stat": between, "perm_stats": perm_values, "p": p_val}
+    # 3) pool all bootstrap curves and permute them
+    pooled = curves.reshape(n_langs * n_bootstraps, n_grid_pts)  # shape (n_langs*n_bootstraps, n_grid_pts)
+
+    perm_stats = np.zeros(n_permutations)
+    for b in tqdm(range(n_permutations), desc="Functional ANOVA permutations"):
+        permuted = np.random.permutation(pooled)
+        perm_groups = permuted.reshape(n_langs, n_bootstraps, n_grid_pts)
+        perm_means = perm_groups.mean(axis=1)    # shape (n_langs, n_grid_pts)
+        perm_grand = perm_means.mean(axis=0)
+        perm_stat = sum(np.sum((perm_means[i] - perm_grand)**2) for i in range(n_langs))
+        perm_stats[b] = perm_stat
+
+    # 4) p-value (Monte Carlo permutation p-value with +1 correction)
+    r = np.sum(perm_stats >= observed_stat)
+    p_value = (r + 1) / (n_permutations + 1)
+
+    return {
+        "observed_stat": float(observed_stat),
+        "perm_stats": perm_stats,
+        "p_value": float(p_value)
+    }
 
 
 # ============================================================
@@ -244,10 +263,11 @@ def run_pipeline(directory):
         }
 
     # Global envelope test
-    language_curves = {lang: boot[lang]["curve"] for lang in languages}
-    envelope = global_envelope_test(language_curves, n_perm=2000)
+    language_bootstrap_curves = {lang: boot[lang]["boot"] for lang in languages}
+    envelope = global_envelope_test(language_bootstrap_curves, n_perm=2000)
 
     # Functional ANOVA
+    language_curves = {lang: boot[lang]["curve"] for lang in languages}
     f_anova = functional_anova(language_curves, n_perm=2000)
 
     # Hierarchical GP
