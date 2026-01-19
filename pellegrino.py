@@ -133,12 +133,3 @@ def run_pipeline(df: pd.DataFrame, avg_lang: bool) -> None:
     # Run the following program once per book
     for book_id, book_name in bookdict.items():
         run_book(df[df['book_id'] == book_id].reset_index(drop=True), avg_lang, book_name, bad_bibles)
-
-
-if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        raise ValueError(f'ERROR: usage {sys.argv[0]} <directory> <avg_lang>')
-    directory = sys.argv[1]
-    avg_lang = bool(sys.argv[2])
-    df = pd.read_csv(os.path.join(directory, 'merged.csv'))
-    run_pipeline(df, avg_lang)
