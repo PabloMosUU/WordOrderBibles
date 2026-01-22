@@ -131,21 +131,10 @@ dmypy.json
 PreProcessedData
 SplitData
 
-hahn
-output
-input
-fig
-configs
 ???-*bible*.txt
-glove
-slurm-*
+slurm-*.*
 *.sh
 nsb_entropy.py
-WordPasting/*Plots
-WordPasting/BibleEntropies
 .DS_Store
-temp
-NounNounCompounds/2_entropies_char_distribution.json
-NounNounCompounds/*output*
-NounNounCompounds/6_test_bible.txt
-NounNounCompounds/10_figs
+
+results
