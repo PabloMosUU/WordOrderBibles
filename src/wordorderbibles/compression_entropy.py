@@ -1,9 +1,8 @@
 import os
 import random
-import data
+from . import data
 import numpy as np
 from collections import Counter
-from word_pasting import get_word_mismatches
 
 def read_selected_verses(filename: str,
                          lowercase: bool,
@@ -204,3 +203,33 @@ def get_entropies_per_word(sample_verses: list,
     """
     # Compute the entropy
     return get_entropy(get_word_mismatches(sample_verses, base_filename, remove_mismatcher_files, mismatcher_path))
+
+
+def get_word_mismatches(verse_tokens: list,
+                        base_filename: str,
+                        remove_mismatcher_files: bool,
+                        mismatcher_path: str) -> list:
+    # Replace words by characters
+    characterized = replace_words(verse_tokens)
+    # Join all verses together
+    joined = join_verses(characterized, insert_spaces=False)
+    # Save these to files to run the mismatcher
+    preprocessed_filename = to_file(joined, base_filename, 'orig')
+    # Run the mismatcher
+    mismatches = run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
+    return mismatches
+
+
+def replace_words(verse_tokens: list) -> list:
+    """
+    Replace each word by a single character
+    :param verse_tokens: a list of tokens
+    :return: a list of the same length, where each token is replaced by a single character
+    """
+    word_char = {}
+    verse_chars = []
+    for token in verse_tokens:
+        if token not in word_char:
+            word_char[token] = chr(len(word_char))
+        verse_chars.append(word_char[token])
+    return verse_chars

@@ -2,9 +2,12 @@ from collections import defaultdict
 
 import json
 import sys
+import os
 import spacy
 
-import compression_entropy as ce
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from wordorderbibles import compression_entropy as ce
 import word_pasting as wp
 
 

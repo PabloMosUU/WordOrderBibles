@@ -2,8 +2,10 @@ from collections import defaultdict
 
 import json
 import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-import compression_entropy as ce
+from wordorderbibles import compression_entropy as ce
 
 
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
@@ -23,21 +25,6 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
     return masked
 
 
-def replace_words(verse_tokens: list) -> list:
-    """
-    Replace each word by a single character
-    :param verse_tokens: a list of tokens
-    :return: a list of the same length, where each token is replaced by a single character
-    """
-    word_char = {}
-    verse_chars = []
-    for token in verse_tokens:
-        if token not in word_char:
-            word_char[token] = chr(len(word_char))
-        verse_chars.append(word_char[token])
-    return verse_chars
-
-
 def get_entropies(sample_verses: list,
                   base_filename: str,
                   remove_mismatcher_files: bool,
@@ -54,21 +41,6 @@ def get_entropies(sample_verses: list,
     """
     return ce.get_entropies(sample_verses, base_filename, remove_mismatcher_files, char_counter, mismatcher_path,
                             mask_word_structure, ce.join_verses)
-
-
-def get_word_mismatches(verse_tokens: list,
-                        base_filename: str,
-                        remove_mismatcher_files: bool,
-                        mismatcher_path: str) -> list:
-    # Replace words by characters
-    characterized = replace_words(verse_tokens)
-    # Join all verses together
-    joined = ce.join_verses(characterized, insert_spaces=False)
-    # Save these to files to run the mismatcher
-    preprocessed_filename = ce.to_file(joined, base_filename, 'orig')
-    # Run the mismatcher
-    mismatches = ce.run_mismatcher(preprocessed_filename, remove_mismatcher_files, mismatcher_path)
-    return mismatches
 
 
 def join_words(verse: list, locations: list) -> list:

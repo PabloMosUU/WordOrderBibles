@@ -1,7 +1,9 @@
-from compression_entropy import read_selected_verses, get_entropies
-import json
 import sys
 import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from wordorderbibles.compression_entropy import read_selected_verses, get_entropies
+import json
 
 
 def run(filename: str,

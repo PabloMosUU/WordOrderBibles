@@ -3,9 +3,13 @@ from collections import defaultdict
 import pandas as pd
 import spacy
 
-import data
+import os
 import sys
-import compression_entropy as wp
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from wordorderbibles import data
+import sys
+from wordorderbibles import compression_entropy as wp
 
 
 class TaggedWord:
