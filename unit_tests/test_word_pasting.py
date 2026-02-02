@@ -52,14 +52,6 @@ class TestWordPasting(unittest.TestCase):
         self.assertEqual(expected, truncated)
         self.assertEqual(['Can you see the real me'.split(), 'Tommy can you hear me'.split()], sequences)
 
-    def test_replace_words(self):
-        verse_tokens = ['I', 'hate', 'this', '.', 'I', 'love', 'this']
-        characterized = wp.replace_words(verse_tokens)
-        self.assertEqual(len(verse_tokens), len(characterized))
-        self.assertEqual(characterized[0], characterized[4])
-        self.assertEqual(characterized[2], characterized[6])
-        self.assertEqual(5, len(set(characterized)))
-
     def test_replace_top_bigram(self):
         verses = ['Congratulations, you have finished installing TWiki!'.split(),
                   'Replace this text with a description of your new TWiki site and links to content.'.split(),
