@@ -1,4 +1,6 @@
-import pandas as pd 
+# This file was created by Hedwig Oldenhof. I do not think it is necessary for the final analysis.
+
+import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import json
@@ -132,7 +134,7 @@ def create_full_info_file(bible_directory: str, filename: str):
 
 if __name__ == '__main__':
     assert len(sys.argv) == 5, \
-        f'USAGE: python3 {sys.argv[0]} output_filename bible_directory plot_bible_length plots_save_directory'
+        f'USAGE: python3 {sys.argv[0]} output_filename bible_directory plot_bible_length(True/False) plots_save_directory'
     output_filename = sys.argv[1]      # File where output from previous experiments is stored
     bible_directory = sys.argv[2]      # Directory where the different Bible translations are stored 
     plot_bible_length = sys.argv[3]    # Plot the length of the different Bible translations
