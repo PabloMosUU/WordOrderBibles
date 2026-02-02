@@ -1,6 +1,9 @@
 import os
-import util
 import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from WordPasting import util
 
 def read_language_files(lang: str, input_dir: str) -> list:
     return [f'{input_dir}/{file}' for file in os.listdir(input_dir) \

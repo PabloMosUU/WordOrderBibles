@@ -8,7 +8,9 @@ import sys
 from scipy.stats import permutation_test
 
 sys.path.append('..')
-import data
+sys.path.append(os.path.join(os.path.dirname(__file__), '../..', 'src'))
+
+from wordorderbibles import data
 
 ENTROPIES_FILENAME = '../output/KoplenigEtAl/merged.csv'
 SEL_LANGS = ('eng', 'deu', 'nld')

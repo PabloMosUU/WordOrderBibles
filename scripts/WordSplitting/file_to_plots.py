@@ -1,5 +1,9 @@
-import util
+import os
 import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from WordSplitting import util
 
 if __name__ == '__main__':
     assert len(sys.argv) == 4, f'USAGE: python3 {sys.argv[0]} csv_file_name output_dir iter_id_header'
