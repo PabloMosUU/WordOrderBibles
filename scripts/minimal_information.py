@@ -1,8 +1,13 @@
+# Finds minimal-information points for plain merges and POS-based merges
+
 import ast
-import sys, os
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
 import numpy as np
 import pandas as pd 
-import koplenig_plots as kp
+from wordorderbibles import koplenig_plots as kp
 import create_full_information_csv as cf
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
