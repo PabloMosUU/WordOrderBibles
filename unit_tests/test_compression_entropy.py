@@ -1,6 +1,6 @@
 import collections
 
-import compression_entropy
+from wordorderbibles import compression_entropy
 import unittest
 
 import os

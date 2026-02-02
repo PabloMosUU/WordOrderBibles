@@ -1,4 +1,4 @@
-import compression_entropy
+from wordorderbibles import compression_entropy
 import word_pasting as wp
 import unittest
 

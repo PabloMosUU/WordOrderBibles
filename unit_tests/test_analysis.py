@@ -1,6 +1,6 @@
 import unittest
 
-from analysis import unigram_entropy_direct, unigram_entropy_by_counts
+from wordorderbibles.analysis import unigram_entropy_direct, unigram_entropy_by_counts
 
 
 class TestAnalysis(unittest.TestCase):

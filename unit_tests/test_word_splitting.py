@@ -1,6 +1,6 @@
 import unittest
 import word_splitting
-from util import Token
+from wordorderbibles.util import Token
 
 
 class TestBpe(unittest.TestCase):
