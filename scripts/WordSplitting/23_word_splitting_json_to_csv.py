@@ -1,7 +1,6 @@
+from wordorderbibles import util
 import sys
 import os
-
-from util import to_csv
 
 if __name__ == '__main__':
     assert len(sys.argv) == 2, f'USAGE: python3 {sys.argv[0]} json_file_dir'
@@ -18,4 +17,4 @@ if __name__ == '__main__':
             print('skip', a_json_file)
         else:
             print('convert', a_json_file)
-            to_csv(os.path.join(filedir, a_json_file))
+            util.to_csv(os.path.join(filedir, a_json_file))
