@@ -1,3 +1,8 @@
+import sys
+import os
+# Add root directory to path for word_pasting
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 from wordorderbibles import compression_entropy
 import word_pasting as wp
 import unittest

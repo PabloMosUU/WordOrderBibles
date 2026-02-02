@@ -1,3 +1,8 @@
+import sys
+import os
+# Add scripts directory to path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts'))
+
 from unittest.mock import Mock
 
 from spacy import Vocab

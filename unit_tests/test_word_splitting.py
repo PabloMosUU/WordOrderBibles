@@ -1,3 +1,8 @@
+import sys
+import os
+# Add root directory to path for word_splitting
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 import unittest
 import word_splitting
 from wordorderbibles.util import Token
