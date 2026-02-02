@@ -19,7 +19,8 @@ class TestBpe(unittest.TestCase):
         self.assertEqual(True, is_merge_complete)
 
     def test_get_merge_steps(self):
-        merge_steps = word_splitting.get_merge_steps('merge_steps.txt')
+        test_file_path = os.path.join(os.path.dirname(__file__), 'merge_steps.txt')
+        merge_steps = word_splitting.get_merge_steps(test_file_path)
         self.assertEqual([['h', 'e'], ['t', 'he'], ['a', 'n'], ['an', 'd'], ['o', 'u'], ['i', 'n']], merge_steps)
 
     def test_split_chars(self):
