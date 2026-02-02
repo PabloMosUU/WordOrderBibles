@@ -13,7 +13,7 @@ The main entry points used for these papers are listed in the table below:
 | Paper      | Programs      |
 | ------------- | ------------- |
 | Mosteiro & Blasi, CLRel 2025 | `word_pasting.py` and `word_splitting.py` |
-| Mosteiro et al., SIGMORPHON 2025 | `nn_pasting.py` and `NounNounCompounds/11_final_paper_plots.py` |
+| Mosteiro et al., SIGMORPHON 2025 | `scripts/nn_pasting.py` and `scripts/NounNounCompounds/11_final_paper_plots.py` |
 
 ## Requirements
 
@@ -51,11 +51,11 @@ The parameters are:
 
 The main experiment in Mosteiro et al., SIGMORPHON 2025 consists of restricting pastes to noun-noun compounds. The main program is run as follows:
 
-	python nn_pasting.py bible_filename temp_dir output_filename mismatcher_filename
+	python scripts/nn_pasting.py bible_filename temp_dir output_filename mismatcher_filename
 
 The parameters are equivalent to those listed above. To generate the plots presented on the paper, run the following program from within the `NounNounCompounds` directory:
 
-	python 11_final_paper_plots.py nn_paste_dir output_fig_dir
+	python scripts/11_final_paper_plots.py nn_paste_dir output_fig_dir
 
 The parameters are:
 
