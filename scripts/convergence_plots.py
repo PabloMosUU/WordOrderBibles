@@ -1,3 +1,10 @@
+"""Generate entropy convergence plots for a given translation.
+
+Usage: python convergence_plots.py [MISMATCHER_OUTPUT] [BIBLE_TRANSLATION] [OUTPUT_FILEPATH] [PLOT_ORD]
+Dependencies: numpy, matplotlib
+Author: Hedwig Oldenhof
+Status: Experimental
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 import sys

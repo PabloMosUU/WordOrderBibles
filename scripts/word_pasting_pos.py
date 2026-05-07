@@ -1,3 +1,10 @@
+"""Runs the word-pasting experiment using POS-based merges.
+
+Usage: python word_pasting_pos.py [BIBLE_FILENAME] [MISMATCHER_TEMP_DIR] [OUTPUT_FILENAME] [MISMATCHER_FILE] [POS_LANGUAGE_MODEL]
+Dependencies: json, spacy
+Author: Hedwig Oldenhof
+Status: Experimental
+"""
 from collections import defaultdict
 
 import json
@@ -27,7 +34,7 @@ def pos_tagging(wordlist: list, language_model: str) -> list:
     return tagged_output
 
 
-def merge_positions_pos(verses: list, bigram_tag: tuple) -> dict:
+def merge_positions_pos(verses: list, bigram_tag: tuple) -> list:
     """
     Merges the word pairs that have the POS tag combination.
     """
@@ -53,7 +60,7 @@ def merge_positions_pos(verses: list, bigram_tag: tuple) -> dict:
 
 def replace_top_bigram_pos(verses: list) -> list:
     """
-    Finds the POS-tags of the most frequent occuring word pair.
+    Finds the POS-tags of the most frequent occurring word pair.
     """
     bigram_positions = defaultdict(list)
     for j, verse in enumerate(verses):
@@ -115,7 +122,7 @@ def run_word_pasting(filename: str,
     of these versions.
     """
     if chosen_books == ['full_bible']:
-        return (run_word_pasting_all(filename, lowercase, remove_mismatcher_files, truncate_books, merge_steps_to_save, output_file_path, mismatcher_path, pos_model))
+        return run_word_pasting_all(filename, lowercase, remove_mismatcher_files, truncate_books, merge_steps_to_save, output_file_path, mismatcher_path, pos_model)
 
     selected_book_verses, char_counter = ce.read_selected_verses(filename,
                                                                  lowercase,
@@ -127,13 +134,13 @@ def run_word_pasting(filename: str,
     for book_id, n_pairs_verses in book_id_versions.items():
         n_pairs_entropies = {}
         for n_pairs, verse_tokens in n_pairs_verses.items():
-            #create_paste_files(verse_tokens, "text.txt") #Uncomment when merged files are wanted to be saved
+            # create_paste_files(verse_tokens, "text.txt") #Uncomment when merged files are wanted to be saved
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_pos_v{n_pairs}'
             n_pairs_entropies[n_pairs] = wp.get_entropies(verse_tokens,
-                                                       base_filename,
-                                                       remove_mismatcher_files,
-                                                       char_counter,
-                                                       mismatcher_path)
+                                                          base_filename,
+                                                          remove_mismatcher_files,
+                                                          char_counter,
+                                                          mismatcher_path)
         book_id_entropies[book_id] = n_pairs_entropies
     return book_id_entropies
 
@@ -173,7 +180,7 @@ if __name__ == '__main__':
     temp_dir = sys.argv[2]        # The directory where Mismatcher files are saved
     output_filename = sys.argv[3] # The filename where entropies will be saved
     mismatcher_file = sys.argv[4] # The filename of the mismatcher jar
-    language_model = sys.argv[5]  # The language model used for pos-tagging
+    pos_lm = sys.argv[5]  # The language model used for pos-tagging
 
     merge_steps = set(range(0, 21))
 
@@ -187,7 +194,7 @@ if __name__ == '__main__':
                                                merge_steps_to_save=merge_steps,
                                                output_file_path=temp_dir,
                                                mismatcher_path=mismatcher_file,
-                                               pos_model = language_model)
+                                               pos_model = pos_lm)
         if bid not in file_book_entropies:
             print(f'WARNING: skipping book {bid} because it is not in {bible_filename}')
             continue

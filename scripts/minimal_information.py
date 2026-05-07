@@ -1,5 +1,10 @@
-# Finds minimal-information points for plain merges and POS-based merges
+"""Finds minimal-information points for plain merges and POS-based merges.
 
+Usage: python minimal_information.py [OUTPUT_FILE] [OUTPUT_FILE_POS] [SAVE_FILEPATH] [TRANSLATION_NAME]
+Dependencies: ast
+Author: Hedwig Oldenhof
+Status: Experimental
+"""
 import ast
 import sys
 import os
@@ -12,7 +17,7 @@ import create_full_information_csv as cf
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 
-bookdict = {'40': 'Matthew', '41':'Mark', '42': "Luke", '43': "John", '44':"Acts", '66':"Revelation", "full_bible": "Full Bible"}
+BOOK_ID_NAME = {'40': 'Matthew', '41': 'Mark', '42': "Luke", '43': "John", '44': "Acts", '66': "Revelation", "full_bible": "Full Bible"}
 
 def find_min_information_point(dataframe: pd.DataFrame):
     """
@@ -52,6 +57,8 @@ def plotting_optimal_points(dataframe: pd.DataFrame, pdf):
         book_df = dataframe[dataframe['book'] == book]
         points = []
 
+        df_points = None
+
         for translation in book_df['bible'].unique():
             translation_df = book_df[book_df['bible'] == translation]
 
@@ -61,10 +68,10 @@ def plotting_optimal_points(dataframe: pd.DataFrame, pdf):
                 continue
 
             a, b = result
-            #ord, str, _ = find_min_information_point(translation_df)
-            ord, str, _ = find_closest_slope_point(translation_df, a, b)
+            # ord, str, _ = find_min_information_point(translation_df)
+            d_ord, d_str, _ = find_closest_slope_point(translation_df, a, b)
 
-            points.append((ord, str))
+            points.append((d_ord, d_str))
             df_points = pd.DataFrame(points, columns=['ord', 'str'])
 
         kp.fit_inverse_function(df_points, True, book, 'ord', 'str', pdf)
@@ -80,7 +87,7 @@ def plotting_optimal_points_some_languages(dataframe: pd.DataFrame):
         book_df = dataframe[dataframe['book_id'] == book]
 
         plt.figure(figsize=(8, 6))
-        plt.title(f"Avg closest points to 45° slope for each language in '{bookdict[book]}'")
+        plt.title(f"Avg closest points to 45° slope for each language in '{BOOK_ID_NAME[book]}'")
         plt.xlabel("D_order (bpc)")
         plt.ylabel("D_structure (bpc)")
 
@@ -91,11 +98,13 @@ def plotting_optimal_points_some_languages(dataframe: pd.DataFrame):
             for translation in lang_df['bible'].unique():
                 translation_df = lang_df[lang_df['bible'] == translation]
 
+                # TODO: fix the missing parameter in the call to fit_inverse_function, which should cause errors
+                # noinspection PyArgumentList
                 result = kp.fit_inverse_function(translation_df, False, "Splits", "D_order", "D_structure")
                 if result is None:
                     continue
 
-                a,b  = result
+                # a,b  = result
                 ord_val, str_val, _ = find_min_information_point(translation_df)
                 points.append((ord_val, str_val))
 
@@ -116,17 +125,17 @@ def one_translation_merging(df: pd.DataFrame, pdf):
     bible_grouped = df.groupby('book_id')
 
     for book, bible_df in bible_grouped:
-        a,b = kp.fit_inverse_function(bible_df, True, bookdict[str(book)], 'D_order', 'D_structure', pdf)
-        #kp.fit_linear_function(df_output, True, "Full Bible", 'D_order', 'D_structure', pdf) #Uncomment if linear function is wanted
+        a,b = kp.fit_inverse_function(bible_df, True, BOOK_ID_NAME[str(book)], 'D_order', 'D_structure', pdf)
+        # kp.fit_linear_function(df_output, True, "Full Bible", 'D_order', 'D_structure', pdf) #Uncomment if linear function is wanted
         
         # Print optimal points
         fig, ax = plt.subplots(figsize=(8.5, 8.5))
         ax.axis('off')
-        _, _, slope_point = find_closest_slope_point(bible_df, a , b)
+        _, _, slope_point = find_closest_slope_point(bible_df, a, b)
         _, _, min_point = find_min_information_point(bible_df)
 
         text = (
-            f"Book: {bookdict[str(book)]}\n\n"
+            f"Book: {BOOK_ID_NAME[str(book)]}\n\n"
             f"Optimal point based on 45 degree angle:\n{slope_point}\n\n"
             f"Minimal information point (D_order + D_structure):\n{min_point}"
         )
@@ -144,7 +153,7 @@ def create_output_df(filename: str):
     data_dict = ast.literal_eval(data_str)
 
     all_dfs = []
-    final_df = pd.DataFrame
+    # final_df = pd.DataFrame
 
     for book, bible_data in data_dict.items(): 
         orig_values = []
@@ -159,14 +168,14 @@ def create_output_df(filename: str):
             shuffled_values.append(entry['shuffled'])
             masked_values.append(entry['masked'])
 
-        D_order = [s - o for o, s in zip(orig_values, shuffled_values)]
-        D_structure = [m - o for o, m in zip(orig_values, masked_values)]
+        d_order = [s - o for o, s in zip(orig_values, shuffled_values)]
+        d_structure = [m - o for o, m in zip(orig_values, masked_values)]
 
         df_output = pd.DataFrame({
-            'book_id' : book,
-            'iterations' : keys,
-            'D_order': D_order,
-            'D_structure': D_structure})
+            'book_id': book,
+            'iterations': keys,
+            'D_order': d_order,
+            'D_structure': d_structure})
         
         all_dfs.append(df_output)
         
@@ -175,7 +184,7 @@ def create_output_df(filename: str):
     return final_df
 
 
-def overlay_plots(pos_df: pd.DataFrame, normal_df: pd.DataFrame, plotname,  pdf):
+def overlay_plots(pos_df: pd.DataFrame, normal_df: pd.DataFrame, plot_name, pdf):
     """
     Create plots with both the POS-based merging and the normal merging.
     """
@@ -187,7 +196,7 @@ def overlay_plots(pos_df: pd.DataFrame, normal_df: pd.DataFrame, plotname,  pdf)
         plt.scatter(pos_book_df['D_order'].values, pos_book_df['D_structure'].values, label='POS', s= 5, color='red')
         plt.xlabel('D_order')
         plt.ylabel('D_structure')
-        plt.title(f'Overlay of normal and pos merges for {bookdict[str(book_id)]} {plotname}')
+        plt.title(f'Overlay of normal and pos merges for {BOOK_ID_NAME[str(book_id)]} {plot_name}')
         plt.legend()
         pdf.savefig()
         plt.close()
@@ -201,14 +210,14 @@ if __name__ == '__main__':
     save_filepath = sys.argv[3]      # Folder where plots will be saved
     translation_name = sys.argv[4]   # Translation to print more details on normal vs. pos-based merging
 
-    df = cf.read_csv_file(output_file)
-    pos_df = create_output_df(output_file_pos)
-    translation_df = df[df['bible'] == translation_name]
+    ddf = cf.read_csv_file(output_file)
+    pos_ddf = create_output_df(output_file_pos)
+    # translation_df = df[df['bible'] == translation_name]
 
     output_pdf_path = os.path.join(save_filepath, f"minimal_information_plots_fullbible_deu.pdf")
-    with PdfPages(output_pdf_path) as pdf:
-        plotting_optimal_points(df, pdf)
-        #plotting_optimal_points_some_languages(df) # Uncomment if plots for a limited number of languages is wanted
-        one_translation_merging(df, pdf)
-        one_translation_merging(pos_df, pdf)
-        overlay_plots(pos_df, df, translation_name, pdf)
+    with PdfPages(output_pdf_path) as pdf_file:
+        plotting_optimal_points(ddf, pdf_file)
+        # plotting_optimal_points_some_languages(df) # Uncomment if plots for a limited number of languages is wanted
+        one_translation_merging(ddf, pdf_file)
+        one_translation_merging(pos_ddf, pdf_file)
+        overlay_plots(pos_ddf, ddf, translation_name, pdf_file)
