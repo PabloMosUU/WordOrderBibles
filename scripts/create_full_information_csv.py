@@ -89,6 +89,7 @@ def plot_bible_lengths(length_dict: dict, save_filepath: str):
                         verse_list.append(verses)
 
             plt.hist(verse_list, bins=70, color='skyblue', edgecolor='black')
+            plt.yscale('log')
             plt.xlabel('Bible length')
             plt.ylabel('Frequency')
             plt.title(f'Histogram of verse length for the bible book {BOOK_ID_NAME[book]}')
