@@ -224,7 +224,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str, entropy_file: str, 
     assert len(new_data) < len(joined_df)
 
     # add the best-fit lines produced by Koplenig et al.
-    fit_params = pd.read_csv('9_koplenig_et_al_fit_params.csv', sep=';')
+    fit_params = pd.read_csv('config/9_koplenig_et_al_fit_params.csv', sep=';')
     point_for_comma = lambda xx: float(xx.replace(',', '.'))
     fit_params['beta_0'] = fit_params['beta_0'].apply(point_for_comma)
     fit_params['beta_1'] = fit_params['beta_1'].apply(point_for_comma)
