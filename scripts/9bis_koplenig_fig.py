@@ -1,6 +1,6 @@
-"""Reproduces (part of) Figure 1 in Koplenig et al (2017).
+"""Reproduces (part of) Figure 1 in Koplenig et al. (2017).
 
-Usage: python 9bis_koplenig_fig.py [BIBLE_DIRECTORY] [OUTPUT_FILENAME] [MISMATCHER_FILE]
+Usage: python 9bis_koplenig_fig.py [BIBLE_DIRECTORY] [OUTPUT_FILENAME] [MISMATCHER_FILE] [OUTPUT_DIRECTORY]
 Dependencies: json
 Author: Pablo Mosteiro
 Status: Final
@@ -21,7 +21,8 @@ def run(filename: str,
         remove_mismatcher_files: bool,
         chosen_books: list,
         truncate_books: bool,
-        mismatcher_path: str) -> dict:
+        mismatcher_path: str,
+        output_directory: str) -> dict:
     """
     Main program to run the entire pipeline on a single bible
     :param filename: the file containing the bible text
@@ -30,6 +31,7 @@ def run(filename: str,
     :param chosen_books: the books for which you want to compute the entropy (PBC IDs)
     :param truncate_books: whether longer books should be truncated to the length of the shortest
     :param mismatcher_path: full path to the mismatcher executable
+    :param output_directory: the directory where the output should be saved
     :return: a dictionary with entropy versions and entropies, keyed by book ID
     """
     selected_book_verses, char_counter = read_selected_verses(filename,
@@ -37,7 +39,7 @@ def run(filename: str,
                                                               chosen_books,
                                                               truncate_books)
     # Create a base filename for each book
-    book_base_filename = {book_id: 'output/KoplenigEtAl/' + filename.split('/')[-1] + f'_{book_id}'
+    book_base_filename = {book_id: os.path.join(output_directory, filename.split('/')[-1] + f'_{book_id}')
                           for book_id in selected_book_verses.keys()}
     return {book_id: get_entropies(verses,
                                    book_base_filename[book_id],
@@ -50,11 +52,12 @@ def run(filename: str,
 
 
 if __name__ == '__main__':
-    assert len(sys.argv) == 4, \
-        f'USAGE: python3 {sys.argv[0]} bibles_dir output_filename mismatcher_filename'
+    assert len(sys.argv) == 5, \
+        f'USAGE: python3 {sys.argv[0]} bibles_dir output_filename mismatcher_filename output_dir'
     bibles_dir = sys.argv[1]  # The bible filename
     output_filename = sys.argv[2]  # The filename where entropies will be saved
     mismatcher_file = sys.argv[3]  # The filename of the mismatcher jar
+    output_dir = sys.argv[4]
 
     files_list = os.listdir(bibles_dir)
 
@@ -66,7 +69,8 @@ if __name__ == '__main__':
                                         remove_mismatcher_files=True,
                                         chosen_books=books,
                                         truncate_books=True,
-                                        mismatcher_path=mismatcher_file)
+                                        mismatcher_path=mismatcher_file,
+                                        output_directory=output_dir)
 
     with open(output_filename, 'w') as fp:
         json.dump(entropies, fp)
