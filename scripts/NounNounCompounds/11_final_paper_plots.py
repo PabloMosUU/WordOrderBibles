@@ -12,7 +12,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..', 'src'))
 
 from wordorderbibles import data
 
-ENTROPIES_FILENAME = '../output/KoplenigEtAl/merged.csv'
 SEL_LANGS = ('eng', 'deu', 'nld')
 BIBLE_LOCATION = '1_relevant_bibles'
 BOOKS = [40, 41, 42, 43, 44, 66]
@@ -126,9 +125,9 @@ def compare_mean_merged_with_individual_non_merged(book_df: pd.DataFrame) -> Non
     single_axis_mean_individual_comparison(book_df, 'D_structure')
 
 # noinspection PyPep8Naming
-def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
+def produce_results(nn_pastes_dir: str, output_fig_dir: str, entropy_file: str) -> None:
     # ### Old data: select data points with 0 pastes in the chosen languages only. Also pastes in English
-    df = pd.read_csv(ENTROPIES_FILENAME)
+    df = pd.read_csv(entropy_file)
     df['language'] = df['bible'].apply(lambda xx: xx[:3])
     df = df[df['language'].apply(lambda xx: xx in SEL_LANGS)].reset_index(drop=True)
     df = df[(df['iter_id'] == 0) | (df['language'] == 'eng')].reset_index(drop=True)
@@ -375,6 +374,6 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         raise ValueError(f'Input: {sys.argv[0]} <nn_paste_dir> <output_fig_dir>')
-    produce_results(nn_pastes_dir=sys.argv[1], output_fig_dir=sys.argv[2])
+    produce_results(nn_pastes_dir=sys.argv[1], output_fig_dir=sys.argv[2], entropy_file=sys.argv[3])
