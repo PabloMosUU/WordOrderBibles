@@ -375,5 +375,5 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str, entropy_file: str, 
 # TODO: the relevant bibles should be inferred from the languages and the original bible location
 if __name__ == '__main__':
     if len(sys.argv) != 5:
-        raise ValueError(f'Input: {sys.argv[0]} <nn_paste_dir> <output_fig_dir>')
+        raise ValueError(f'Input: {sys.argv[0]} <nn_paste_dir> <output_fig_dir> <entropy_file> <relevant_bible_dir>')
     produce_results(nn_pastes_dir=sys.argv[1], output_fig_dir=sys.argv[2], entropy_file=sys.argv[3], relevant_bible_dir=sys.argv[4])
