@@ -91,7 +91,7 @@ def get_verse_len_df(lang: str, previously_excluded: list, book_id_name: pd.Data
         if file in previously_excluded:
             continue
         # noinspection PyUnresolvedReferences
-        bible = data.parse_file(os.path.join(BIBLE_LOCATION, file), 'pbc').join_by_toc()
+        bible = data.parse_file(os.path.join(relevant_bible_dir, file), 'pbc').join_by_toc()
         for book_id in BOOKS:
             book = book_id_name[book_id_name['book_id'] == book_id]['book'].tolist()[0]
             n_verses = len(bible[2][book_id])
