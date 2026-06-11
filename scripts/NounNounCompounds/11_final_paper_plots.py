@@ -13,7 +13,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '../..', 'src'))
 from wordorderbibles import data
 
 SEL_LANGS = ('eng', 'deu', 'nld')
-BIBLE_LOCATION = '1_relevant_bibles'
 BOOKS = [40, 41, 42, 43, 44, 66]
 lang_color = {'eng': 'b', 'nld': 'r', 'deu': 'g'}
 lang_marker = {'eng': 'o', 'nld': 's', 'deu': '*'}
@@ -84,9 +83,9 @@ def run_permutation_tests_combined(all_book_df: pd.DataFrame) -> None:
         res = permutation_test((y[axis].tolist(), x[axis].tolist()), statistic, vectorized=True, n_resamples=99999, alternative=alternative)
         print(f'Prob(delta_{axis} {alternative} or equal to {res.statistic}) under null hyp is {100*res.pvalue:.1f}%. N={len(x)}')
 
-def get_verse_len_df(lang: str, previously_excluded: list, book_id_name: pd.DataFrame) -> pd.DataFrame:
+def get_verse_len_df(lang: str, previously_excluded: list, book_id_name: pd.DataFrame, relevant_bible_dir: str) -> pd.DataFrame:
     files, books, verses = [], [], []
-    for file in os.listdir(BIBLE_LOCATION):
+    for file in os.listdir(relevant_bible_dir):
         if not file.startswith(lang):
             continue
         if file in previously_excluded:
@@ -125,7 +124,7 @@ def compare_mean_merged_with_individual_non_merged(book_df: pd.DataFrame) -> Non
     single_axis_mean_individual_comparison(book_df, 'D_structure')
 
 # noinspection PyPep8Naming
-def produce_results(nn_pastes_dir: str, output_fig_dir: str, entropy_file: str) -> None:
+def produce_results(nn_pastes_dir: str, output_fig_dir: str, entropy_file: str, relevant_bible_dir: str) -> None:
     # ### Old data: select data points with 0 pastes in the chosen languages only. Also pastes in English
     df = pd.read_csv(entropy_file)
     df['language'] = df['bible'].apply(lambda xx: xx[:3])
@@ -212,7 +211,7 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str, entropy_file: str) 
 
     # Exclude all bibles that contain fewer than MIN_VERSE_FRAC of the maximum number of verses for at least one book.
     book_id_map = df_sel_langs[['book_id', 'book']].drop_duplicates()
-    verse_len_dfs = {lang: get_verse_len_df(lang, excluded_bibles, book_id_map) for lang in lang_color.keys()}
+    verse_len_dfs = {lang: get_verse_len_df(lang, excluded_bibles, book_id_map, relevant_bible_dir) for lang in lang_color.keys()}
     for lang in lang_color.keys():
         vdf = verse_len_dfs[lang]
         to_remove = vdf[vdf['n_verses'] < vdf['max_verses'] * MIN_VERSE_FRAC]['file'].drop_duplicates().tolist()
@@ -373,7 +372,8 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str, entropy_file: str) 
     # run_permutation_tests_combined(all_book_df)
 
 
+# TODO: the relevant bibles should be inferred from the languages and the original bible location
 if __name__ == '__main__':
-    if len(sys.argv) != 4:
+    if len(sys.argv) != 5:
         raise ValueError(f'Input: {sys.argv[0]} <nn_paste_dir> <output_fig_dir>')
-    produce_results(nn_pastes_dir=sys.argv[1], output_fig_dir=sys.argv[2], entropy_file=sys.argv[3])
+    produce_results(nn_pastes_dir=sys.argv[1], output_fig_dir=sys.argv[2], entropy_file=sys.argv[3], relevant_bible_dir=sys.argv[4])
