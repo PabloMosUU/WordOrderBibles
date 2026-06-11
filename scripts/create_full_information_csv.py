@@ -1,4 +1,5 @@
-"""This file was created by Hedwig Oldenhof. I do not think it is necessary for the final analysis.
+"""This program renormalizes the entropies found by word length and verse length, to report values in bpw and bpv.
+We no longer think this is correct. To get values in those units, we should recompute using Shannon's entropy.
 
 Usage: python create_full_information_csv.py [OUTPUT_FILENAME] [BIBLE_DIR] [PLOT_BIBLE_LENGTH] [PLOTS_SAVE_DIR]
 Dependencies: pandas, matplotlib

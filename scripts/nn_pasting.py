@@ -1,15 +1,26 @@
+"""Runs the word-pasting experiment for noun-noun pairs only.
+
+Usage: python nn_pasting.py [BIBLE_FILENAME] [MISMATCHER_OUTPUT] [OUTPUT_FILENAME] [MISMATCHER_FILENAME]
+Dependencies: pandas, spacy
+Author: Pablo Mosteiro
+Status: Final
+"""
 from collections import defaultdict
 
 import pandas as pd
 import spacy
 
 import os
+# TODO: remove double import
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
 
 from wordorderbibles import data
 import sys
 from wordorderbibles import compression_entropy as wp
+# TODO: this should be done by creating Token objects here and in word_pasting.py, then joining both mark_word_structure
+from word_pasting import mask_word_structure
 
 
 class TaggedWord:
@@ -194,7 +205,9 @@ def run_word_pasting(filename: str,
                                                                           base_filename,
                                                                           remove_mismatcher_files,
                                                                           book_char_counter[book_id],
-                                                                          mismatcher_path),
+                                                                          mismatcher_path,
+                                                                          mask_word_structure_fn=mask_word_structure,
+                                                                          join_verses_fn=wp.join_verses),
                                                          merge_pair)
         book_id_entropies_and_merge_pairs[book_id] = n_pairs_entropies_and_merge_pair
     return book_id_entropies_and_merge_pairs

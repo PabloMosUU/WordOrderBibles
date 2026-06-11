@@ -1,9 +1,19 @@
+"""Reproduces (part of) Figure 1 in Koplenig et al (2017).
+
+Usage: python 9bis_koplenig_fig.py [BIBLE_DIRECTORY] [OUTPUT_FILENAME] [MISMATCHER_FILE]
+Dependencies: json
+Author: Pablo Mosteiro
+Status: Final
+"""
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__))))
 
-from wordorderbibles.compression_entropy import read_selected_verses, get_entropies
+from wordorderbibles.compression_entropy import read_selected_verses, get_entropies, join_verses
 import json
+# TODO: this should be done by creating Token objects here and in word_pasting.py, then joining both mark_word_structure
+from word_pasting import mask_word_structure
 
 
 def run(filename: str,
@@ -33,7 +43,9 @@ def run(filename: str,
                                    book_base_filename[book_id],
                                    remove_mismatcher_files,
                                    char_counter,
-                                   mismatcher_path)
+                                   mismatcher_path,
+                                   mask_word_structure_fn=mask_word_structure,
+                                   join_verses_fn=join_verses)
             for book_id, verses in selected_book_verses.items()}
 
 

@@ -1,3 +1,10 @@
+"""Merges the results of the pasting and splitting experiments.
+
+Usage: python 33_merge_and_check.py [WORD_PASTING_DIRECTORY] [WORD_SPLITTING_DIRECTORY] [EXTENSION(csv)] [OUTPUT_FILENAME]
+Dependencies: pandas
+Author: Pablo Mosteiro
+Status: Final
+"""
 import argparse
 import pandas as pd
 import os
@@ -28,7 +35,7 @@ if __name__ == '__main__':
     
     pasting_df = get_experiment_df(args.pasting_dir, args.extension, 'pasting')
     splitting_df = get_experiment_df(args.splitting_dir, args.extension, 'splitting')
-    assert len(pasting_df.columns) == len(splitting_df.columns)
+    assert len(pasting_df.columns) == len(splitting_df.columns), f'\nPASTING: {pasting_df.columns}\nSPLITTING:{splitting_df.columns}\n'
     assert all([pasting_df.columns[i] == splitting_df.columns[i] for i in range(len(pasting_df.columns))])
 
     df = pd.concat([pasting_df, splitting_df])
