@@ -129,10 +129,10 @@ def compare_mean_merged_with_individual_non_merged(book_df: pd.DataFrame) -> Non
 def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     # ### Old data: select data points with 0 pastes in the chosen languages only. Also pastes in English
     df = pd.read_csv(ENTROPIES_FILENAME)
-    df['language'] = df['bible'].apply(lambda x: x[:3])
-    df = df[df['language'].apply(lambda x: x in SEL_LANGS)].reset_index(drop=True)
+    df['language'] = df['bible'].apply(lambda xx: xx[:3])
+    df = df[df['language'].apply(lambda xx: xx in SEL_LANGS)].reset_index(drop=True)
     df = df[(df['iter_id'] == 0) | (df['language'] == 'eng')].reset_index(drop=True)
-    df['bible_id'] = df['bible'].apply(lambda x: x.strip().replace('.txt', '').replace('-bible', ''))
+    df['bible_id'] = df['bible'].apply(lambda xx: xx.strip().replace('.txt', '').replace('-bible', ''))
     df_sel_langs = df[df['experiment'] == 'pasting'].reset_index(drop=True)
 
     # ### New data
@@ -173,13 +173,13 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
     joined_df = pd.DataFrame({'book_id': book_ids, 'n_merges': n_merges, 'merged_pair': merged_pair,
                               'filename': filename, 'H_orig': H_orig, 'H_order': H_order, 'H_structure': H_structure,
                               'D_order': D_order, 'D_structure': D_structure})
-    joined_df['filename'] = joined_df['filename'].apply(lambda x: x.strip().replace('.csv', ''))
+    joined_df['filename'] = joined_df['filename'].apply(lambda xx: xx.strip().replace('.csv', ''))
     assert len(joined_df) == len(merged_df) / 3
 
     # Compatibility check
     # See that the values at 0 merges match between the old and new data
     old_unpasted = df_sel_langs[(df_sel_langs['iter_id'] == 0) &
-                                (df_sel_langs['bible_id'].apply(lambda x: x.startswith('eng')))].reset_index(drop=True)
+                                (df_sel_langs['bible_id'].apply(lambda xx: xx.startswith('eng')))].reset_index(drop=True)
     new_unpasted = joined_df[joined_df['n_merges'] == 0].reset_index(drop=True)
     assert len(old_unpasted) == len(new_unpasted)
     old_unpasted['bible_book'] = old_unpasted.apply(lambda row: f'{row["bible"]}_{row["book_id"]}', 1)
@@ -220,22 +220,23 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         excluded_bibles += to_remove
 
     # remove the excluded_bibles from the datasets
-    old_data = df_sel_langs[df_sel_langs['bible'].apply(lambda x: x not in excluded_bibles)].reset_index(drop=True)
+    old_data = df_sel_langs[df_sel_langs['bible'].apply(lambda xx: xx not in excluded_bibles)].reset_index(drop=True)
     assert len(old_data) < len(df_sel_langs)
-    new_data = joined_df[joined_df['filename'].apply(lambda x: x not in excluded_bibles)].reset_index(drop=True)
+    new_data = joined_df[joined_df['filename'].apply(lambda xx: xx not in excluded_bibles)].reset_index(drop=True)
     assert len(new_data) < len(joined_df)
 
     # add the best-fit lines produced by Koplenig et al.
     fit_params = pd.read_csv('9_koplenig_et_al_fit_params.csv', sep=';')
-    fit_params['beta_0'] = fit_params['beta_0'].apply(lambda x: float(x.replace(',', '.')))
-    fit_params['beta_1'] = fit_params['beta_1'].apply(lambda x: float(x.replace(',', '.')))
+    point_for_comma = lambda xx: float(xx.replace(',', '.'))
+    fit_params['beta_0'] = fit_params['beta_0'].apply(point_for_comma)
+    fit_params['beta_1'] = fit_params['beta_1'].apply(point_for_comma)
 
     # Add book name to new dataset
     for lbl, grp in new_data.groupby(['book_id', 'n_merges']):
         assert len(grp) == grp['filename'].nunique()
     new_data_book = new_data.merge(book_id_map, on='book_id', how='left')
     assert len(new_data_book) == len(new_data)
-    new_data_long = new_data_book[new_data_book['filename'].apply(lambda x: x not in excluded_bibles)].reset_index(
+    new_data_long = new_data_book[new_data_book['filename'].apply(lambda xx: xx not in excluded_bibles)].reset_index(
         drop=True
     )
 
@@ -346,8 +347,8 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
         print(f'{book} & {book_max_verses[book]} & {np.mean(max_n_merges):.1f} \\\\')
 
     # List of bibles used
-    new_bibles = new_data_long[new_data_long['filename'].apply(lambda x: x not in excluded_bibles)]['filename'].unique()
-    old_bibles = sorted(old_data[old_data['bible'].apply(lambda x: x not in excluded_bibles)]['bible'].unique())
+    new_bibles = new_data_long[new_data_long['filename'].apply(lambda xx: xx not in excluded_bibles)]['filename'].unique()
+    old_bibles = sorted(old_data[old_data['bible'].apply(lambda xx: xx not in excluded_bibles)]['bible'].unique())
     assert len([el for el in new_bibles if el not in old_bibles]) == 0
     assert all([not el.startswith('eng') for el in old_bibles if el not in new_bibles])
     assert len(old_bibles) == sum([len(el) for el in language_bibles.values()])
@@ -376,6 +377,4 @@ def produce_results(nn_pastes_dir: str, output_fig_dir: str) -> None:
 if __name__ == '__main__':
     if len(sys.argv) != 3:
         raise ValueError(f'Input: {sys.argv[0]} <nn_paste_dir> <output_fig_dir>')
-    nn_paste_dir = sys.argv[1]
-    output_fig_dir = sys.argv[2]
-    produce_results(nn_paste_dir, output_fig_dir)
+    produce_results(nn_pastes_dir=sys.argv[1], output_fig_dir=sys.argv[2])

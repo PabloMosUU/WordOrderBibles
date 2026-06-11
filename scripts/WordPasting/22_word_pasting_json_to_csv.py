@@ -51,7 +51,7 @@ def to_csv(json_file: str) -> None:
     assert_valid(df)
     # Map book IDs to their names
     df['book'] = df['book_id'].map(BOOK_ID_NAME)
-    # Compute the quantities that are plotted by Koplenig et al
+    # Compute the quantities that are plotted by Koplenig et al.
     df['D_structure'] = df.apply(lambda row: row['masked'] - row['orig'], 1)
     df['D_order'] = df.apply(lambda row: row['shuffled'] - row['orig'], 1)
     df.to_csv(json_file.replace('.json', '.csv'), index=False)

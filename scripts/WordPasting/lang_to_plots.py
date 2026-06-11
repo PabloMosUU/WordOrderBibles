@@ -19,16 +19,16 @@ def average_quantities(data: list) -> list:
     rows = []
     for n_joins in unique_n_joins:
         n_joins_data = [row for row in data if row['iter_id'] == n_joins]
-        H_mean = {'orig': 0, 'shuffled': 0, 'masked': 0}
+        h_mean = {'orig': 0, 'shuffled': 0, 'masked': 0}
         for row in n_joins_data:
-            for version in H_mean.keys():
-                H_mean[version] += float(row[version])
-        H_mean = {k: v / len(n_joins_data) for k, v in H_mean.items()}
-        H_mean['iter_id'] = n_joins
-        H_mean['D_order'] = H_mean['shuffled'] - H_mean['orig']
-        H_mean['D_structure'] = H_mean['masked'] - H_mean['orig']
-        H_mean['book'] = book_name
-        rows.append(H_mean)
+            for version in h_mean.keys():
+                h_mean[version] += float(row[version])
+        h_mean = {k: v / len(n_joins_data) for k, v in h_mean.items()}
+        h_mean['iter_id'] = n_joins
+        h_mean['D_order'] = h_mean['shuffled'] - h_mean['orig']
+        h_mean['D_structure'] = h_mean['masked'] - h_mean['orig']
+        h_mean['book'] = book_name
+        rows.append(h_mean)
     return rows
 
 def run(lang: str, input_dir: str, output_dir: str) -> None:
@@ -45,6 +45,7 @@ def run(lang: str, input_dir: str, output_dir: str) -> None:
         # Use this new information to create the plots
         util.plot(averaged, lang, output_dir)
     return
+
 
 if __name__ == '__main__':
     assert len(sys.argv) == 4, f'USAGE: python3 {sys.argv[0]} language csv_dir output_dir'

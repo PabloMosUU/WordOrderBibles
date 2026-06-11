@@ -128,7 +128,7 @@ def run_word_pasting(filename: str,
     for book_id, n_pairs_verses in book_id_versions.items():
         n_pairs_entropies = {}
         for n_pairs, verse_tokens in n_pairs_verses.items():
-            #create_paste_files(verse_tokens)
+            # create_paste_files(verse_tokens)
             print(n_pairs, end='')
             base_filename = f'{output_file_path}/{filename.split("/")[-1]}_{book_id}_v{n_pairs}'
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,

@@ -22,5 +22,6 @@ class TestCompression(unittest.TestCase):
         expected = [1, 1, 1, 1, 3, 2, 2, 1]
         self.assertEqual(expected, compression.shortest_unseen_subsequence_lengths(text))
 
+
 if __name__ == "__main__":
     unittest.main()
