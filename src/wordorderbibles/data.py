@@ -275,6 +275,7 @@ def to_indices(seq: list, to_ix: dict) -> list:
     return [to_ix[w] if w in to_ix else to_ix[UNKNOWN_TOKEN] for w in seq]
 
 
+# Used in notebooks/exploratory/sentence_length.ipynb
 def batch(dataset: list, batch_size: int, word_index: dict) -> tuple:
     """
     Breaks up a dataset into batches and puts them in tensor format for PyTorch to train
@@ -318,27 +319,13 @@ def join_texts(texts: list, prompt: str, eot_token: str, separator: str) -> str:
     return prompt + separator.join(texts) + separator + eot_token
 
 
+# Used in notebooks/exploratory/14_repro_bentz_et_al.ipynb
 def join_texts_in_dict(id_texts: dict, prompt: str, eot_token: str, separator: str) -> dict:
     return {k: join_texts(v, prompt, eot_token, separator) for k, v in id_texts.items()}
 
 
-def log_likelihoods(text: str, remove_punctuation: bool, lowercase: bool) -> dict:
-    tokens = tokenize(text, remove_punctuation, lowercase)
-    token_counts = collections.Counter(tokens)
-    return {token: np.log(counts / len(tokens)) for token, counts in token_counts.items()}
-
-
 # noinspection PyPep8Naming
-def log_likelihoods_smooth(text: str, remove_punctuation: bool, lowercase: bool, V: int) -> dict:
-    # V is the vocabulary size, and it must include all words in the test set too
-    tokens = tokenize(text, remove_punctuation, lowercase)
-    token_counts = collections.Counter(tokens)
-    d = defaultdict(lambda: np.log(1 / (len(tokens) + V)))
-    for token, counts in token_counts.items():
-        d[token] = np.log((counts + 1) / (len(tokens) + V))
-    return d
-
-
+# Used in notebooks/exploratory
 def build_dataframe(filename: str) -> pd.DataFrame:
     with open(filename, 'r') as f:
         entropies = json.loads(f.read())
