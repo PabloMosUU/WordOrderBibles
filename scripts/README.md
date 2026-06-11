@@ -2,7 +2,7 @@
 |--------------------------------------------------|------------------------------------------------------------------------|--------------|
 | `convergence_plots.py`                           | Generate entropy convergence plots for a given translation             | Experimental |
 | `create_full_information_csv.py`                 | Renormalize entropies in bpw and bpv                                   | Temporary    |
-| `koplenig_plots.py`                              | Create Koplenig-et-al-style plots                                      | Experimental |
+| `koplenig_plots.py`                              | Create Koplenig-et-al-style plots in bpc, bpw, and bpv                 | Experimental |
 | `minimal_information.py`                         | Finds minimal-information points for plain merges and POS-based merges | Experimental |
 | `word_pasting_pos.py`                            | Runs the word-pasting experiment using POS-based merges                | Experimental |
 | `9bis_koplenig_fig.py`                           | Reproduce (part of) Figure 1 in Koplenig et al (2017)                  | Final        |
