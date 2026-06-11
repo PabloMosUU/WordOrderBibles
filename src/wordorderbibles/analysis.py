@@ -11,18 +11,18 @@ import torch.nn as nn
 import transformers
 from scipy.stats import spearmanr
 from tqdm import tqdm
-
-import compression_entropy as ce
-import data
-from util import log_factorial
-from util import rel_error
+import sys
+import os
+from . import compression_entropy as ce
+from . import data
+from . import util
 
 
 # noinspection PyPep8Naming
 def unigram_entropy_direct(tokens: list) -> float:
     n = len(tokens)
     token_n_j = Counter(tokens)
-    log_Omega = log_factorial(n) - np.sum([log_factorial(n_j) for n_j in token_n_j.values()])
+    log_Omega = util.log_factorial(n) - np.sum([util.log_factorial(n_j) for n_j in token_n_j.values()])
     return log_Omega / n / np.log(2)
 
 
@@ -189,4 +189,4 @@ def get_transition_errors(grp: pd.DataFrame) -> dict:
     assert len(grp) == grp['n_splits'].nunique() + 1
     assert 0 in grp['n_splits'].unique()
     assert len(grp[grp['n_splits'] == 0]) == 2
-    return {col: rel_error(grp[grp['n_splits'] == 0][col].tolist()) for col in ('orig', 'shuffled', 'masked')}
+    return {col: util.rel_error(grp[grp['n_splits'] == 0][col].tolist()) for col in ('orig', 'shuffled', 'masked')}
