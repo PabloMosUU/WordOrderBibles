@@ -1,3 +1,8 @@
+import sys
+import os
+# Add scripts directory to path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts'))
+
 import unittest
 import compression
 
@@ -16,6 +21,7 @@ class TestCompression(unittest.TestCase):
         text = [0, 1, 2, 3, 1, 2, 1, 4]
         expected = [1, 1, 1, 1, 3, 2, 2, 1]
         self.assertEqual(expected, compression.shortest_unseen_subsequence_lengths(text))
+
 
 if __name__ == "__main__":
     unittest.main()

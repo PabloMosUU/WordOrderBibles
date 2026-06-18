@@ -2,13 +2,15 @@ import copy
 import os
 import sys
 import json
-import compression_entropy as ce
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
+
+from wordorderbibles import compression_entropy as ce
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import WhitespaceSplit
 from tokenizers.trainers import BpeTrainer
 
-from util import Token
+from wordorderbibles.util import Token
 
 
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:

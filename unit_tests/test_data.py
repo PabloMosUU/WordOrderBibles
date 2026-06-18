@@ -1,5 +1,5 @@
 import unittest
-import data
+from wordorderbibles import data
 
 class TestData(unittest.TestCase):
     def test_batch(self):

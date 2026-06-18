@@ -1,6 +1,6 @@
 import collections
 
-import compression_entropy
+from wordorderbibles import compression_entropy
 import unittest
 
 import os
@@ -31,7 +31,7 @@ class TestCompressionEntropy(unittest.TestCase):
         os.remove(expected)
 
     def test_run_mismatcher(self):
-        preprocessed_filename = 'temp.txt'
+        preprocessed_filename = os.path.join(os.path.dirname(__file__), 'temp.txt')
         with open(preprocessed_filename, 'w') as f:
             f.write('manzanas')
         mismatch_lengths = compression_entropy.run_mismatcher(preprocessed_filename,
@@ -92,6 +92,14 @@ class TestCompressionEntropy(unittest.TestCase):
         distrib = compression_entropy.get_char_distribution(text)
         expected = {'d': 1, 'i': 3, 'c': 2, 'o': 2, 'n': 1, 'a': 1, 'r': 1}
         self.assertEqual(expected, distrib)
+
+    def test_replace_words(self):
+        verse_tokens = ['I', 'hate', 'this', '.', 'I', 'love', 'this']
+        characterized = compression_entropy.replace_words(verse_tokens)
+        self.assertEqual(len(verse_tokens), len(characterized))
+        self.assertEqual(characterized[0], characterized[4])
+        self.assertEqual(characterized[2], characterized[6])
+        self.assertEqual(5, len(set(characterized)))
 
 
 if __name__ == "__main__":
