@@ -274,6 +274,7 @@ def plot_values_all_books(df: pd.DataFrame, max_verses_dict: dict, order_value: 
         histogram_values(no_outliers[order_value], no_outliers[structure_value], int(book), pdf, unit)
 
 
+# TODO: how can we create the json files required for the input?
 if __name__ == '__main__':
     assert len(sys.argv) == 4, \
         f'USAGE: python3 {sys.argv[0]} output_file maximum_verses save_filepath'
