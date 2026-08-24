@@ -10,6 +10,7 @@
 | `compression.py`                                 | Compute the shortest unseen subsequence lengths                        | Experimental |
 | `nn_pasting.py`                                  | Run the word-pasting experiment for noun-noun pairs only               | Final        |
 | `random_bibles.py`	| Create bibles consisting of random content, not similar to language |Final	|	
+| `word_pasting_splitting_plots.py`                | takes a csv file containing all the information from an experiment and creates all the plots | Final |
 | `NounNounCompounds/final_paper_plots.py`      | Create plots for noun-noun compounds paper                             | Final        |
 | `WordPasting/22_word_pasting_json_to_csv.py`     | Convert word-pasting JSON files to CSV                                 | Final        |
 | `WordPasting/file_to_plots.py`                   | Produce trade-off plots for a single bible translation                 | Experimental |
