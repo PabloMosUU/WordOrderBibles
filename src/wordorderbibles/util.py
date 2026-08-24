@@ -89,6 +89,12 @@ def log_factorial(x: int) -> float:
 
 
 def to_csv(json_file: str) -> None:
+    """
+    Converts json files produced by word-pasting or -splitting scripts into CSV files for downstream processing.
+
+    Args:
+        json_file: the output file produced by the upstream scripts.
+    """
     # Read the JSON file
     with open(json_file, 'r') as f:
         book_entropies = json.loads(f.read())
