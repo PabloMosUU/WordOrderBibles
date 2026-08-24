@@ -7,7 +7,6 @@ if __name__ == '__main__':
     filedir = os.path.join(os.getcwd(), sys.argv[1])
     print('filedir:', filedir)
     files = os.listdir(filedir)
-    print(files)
     json_files = [el for el in files if el.endswith('json')]
     print(json_files)
     csv_files = set([el for el in files if el.endswith('csv')])
