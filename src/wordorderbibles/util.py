@@ -95,8 +95,7 @@ def to_csv(json_file: str) -> None:
     # Parse the dictionaries into a list of rows, each of which is a dictionary, all with the same keys    rows = []
     row_list = []
     for book_id, version_entropies in book_entropies.items():
-        for n_iter, entropies_types in version_entropies.items():
-            level_entropies = entropies_types
+        for n_iter, level_entropies in version_entropies.items():
             csv_row = level_entropies.copy()
             csv_row['book_id'] = book_id
             csv_row['iter_id'] = n_iter
