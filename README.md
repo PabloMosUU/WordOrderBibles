@@ -62,6 +62,18 @@ The parameters are:
 * `nn_paste_dir`: the full path of the directory containing the results of nn_pasting.py,
 * `output_fig_dir`: the directory in which output files will be saved.
 
+## Downstream processing
+
+Some utilities are provided for analyzing the data produced.
+
+- Convert the output JSON files to CSV:
+	- `scripts/WordPasting/22_word_pasting_json_to_csv.py`
+	- `scripts/WordSplitting/23_word_splitting_json_to_csv.py`
+- Merge splitting and pasting CSV files:
+	- `scripts/33_merge_and_check.py`
+- Produce plots for the first paper:
+	- `notebooks/analysis/34_paper_plots.ipynb`
+
 ## References
 
 [1] Koplenig, A., Meyer, P., Wolfer, S., & Müller-Spitzer, C. (2017). Replication Data for: The statistical trade-off between word order and word structure – large-scale evidence for the principle of least effort. https://doi.org/10.7910/DVN/8KH0GB
