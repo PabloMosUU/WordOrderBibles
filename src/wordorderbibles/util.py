@@ -92,7 +92,7 @@ def to_csv(json_file: str) -> None:
     # Read the JSON file
     with open(json_file, 'r') as f:
         book_entropies = json.loads(f.read())
-    # Parse the dictionaries into a list of rows, each of which is a dictionary, all with the same keys    rows = []
+    # Parse the dictionaries into a list of rows, each of which is a dictionary, all with the same keys
     row_list = []
     for book_id, version_entropies in book_entropies.items():
         for n_iter, level_entropies in version_entropies.items():
