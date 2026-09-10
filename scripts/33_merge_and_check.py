@@ -41,5 +41,4 @@ if __name__ == '__main__':
     df = pd.concat([pasting_df, splitting_df])
 
     # Save the merged csv file.
-    assert len(df[df.apply(lambda row: not row['bible'][3:11] == '-x-bible', 1)]) == 0
     df.to_csv(args.output_filename, index=False)

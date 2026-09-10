@@ -89,21 +89,28 @@ def log_factorial(x: int) -> float:
 
 
 def to_csv(json_file: str) -> None:
+    """
+    Converts json files produced by word-pasting or -splitting scripts into CSV files for downstream processing.
+
+    Args:
+        json_file: the output file produced by the upstream scripts.
+    """
     # Read the JSON file
     with open(json_file, 'r') as f:
         book_entropies = json.loads(f.read())
-    # Parse the dictionaries into a list of rows, each of which is a dictionary, all with the same keys    rows = []
+    # Parse the dictionaries into a list of rows, each of which is a dictionary, all with the same keys
     row_list = []
     for book_id, version_entropies in book_entropies.items():
-        for n_iter, entropies_types in version_entropies.items():
-            level_entropies = entropies_types
+        for n_iter, level_entropies in version_entropies.items():
             csv_row = level_entropies.copy()
             csv_row['book_id'] = book_id
             csv_row['iter_id'] = n_iter
             row_list.append(csv_row)
+    outfile = json_file.replace('.json', '.csv')
     if not row_list:
         empty_df = pd.DataFrame(columns="orig,shuffled,masked,book_id,iter_id,book,D_structure,D_order".split(','))
-        empty_df.to_csv(json_file.replace('.json', '.csv'), index=False)
+        empty_df.to_csv(outfile, index=False)
+        print(f'WARNING: saving empty {outfile}')
         return
     # Create a Pandas dataframe
     df = pd.DataFrame(row_list)
@@ -114,7 +121,7 @@ def to_csv(json_file: str) -> None:
     # Compute the quantities that are plotted by Koplenig et al.
     df['D_structure'] = df.apply(lambda row: row['masked'] - row['orig'], 1)
     df['D_order'] = df.apply(lambda row: row['shuffled'] - row['orig'], 1)
-    df.to_csv(json_file.replace('.json', '.csv'), index=False)
+    df.to_csv(outfile, index=False)
     return
 
 
