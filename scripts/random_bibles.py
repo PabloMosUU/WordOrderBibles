@@ -23,7 +23,7 @@ def split_line_and_newline(line):
     return line, ''
 
 def write_output(comments: dict[str, str], content: dict[str, str], path: str) -> None:
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         for key, value in comments.items():
             f.write('# ' + key + ':\t' + value + '\n')
         for verse_id in sorted(list(content.keys())):
