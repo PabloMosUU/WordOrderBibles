@@ -2,6 +2,9 @@ import copy
 import os
 import sys
 import json
+
+from word_pasting import MAX_MASK_TRIES
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from wordorderbibles import compression_entropy as ce
@@ -24,8 +27,12 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
             token = token_obj.token
             if token not in word_map:
                 new_word = ce.create_random_word(len(token), char_str, char_weights)
+                attempts = 1
+                while new_word in new_words and attempts < MAX_MASK_TRIES:
+                    new_word = ce.create_random_word(len(token), char_str, char_weights)
+                    attempts += 1
                 if new_word in new_words:
-                    raise ValueError('Random word already exists')
+                    raise ValueError(f'Could not create a unique replacement for {token} after {MAX_MASK_TRIES} attempts')
                 new_words.add(new_word)
                 word_map[token] = new_word
             masked_tokens.append(Token(word_map[token], token_obj.is_start_of_word))

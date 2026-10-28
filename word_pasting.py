@@ -7,6 +7,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from wordorderbibles import compression_entropy as ce
 
+MAX_MASK_TRIES = 1000
 
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
     masked = []
@@ -17,8 +18,12 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
         for token in tokens:
             if token not in word_map:
                 new_word = ce.create_random_word(len(token), char_str, char_weights)
+                attempts = 1
+                while new_word in new_words and attempts < MAX_MASK_TRIES:
+                    new_word = ce.create_random_word(len(token), char_str, char_weights)
+                    attempts += 1
                 if new_word in new_words:
-                    raise ValueError('Random word already exists')
+                    raise ValueError(f'Could not create a unique replacement for {token} after {MAX_MASK_TRIES} attempts')
                 new_words.add(new_word)
                 word_map[token] = new_word
             masked_tokens.append(word_map[token])
