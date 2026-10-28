@@ -13,6 +13,7 @@ from tokenizers.trainers import BpeTrainer
 from wordorderbibles.util import Token
 
 
+# TODO: this is different from word_pasting::mask_word_structure only because word_pasting doesn't use Token objects
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
     masked = []
     word_map = {}
