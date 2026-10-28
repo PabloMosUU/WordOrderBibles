@@ -16,6 +16,11 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
     for tokens in tokenized:
         masked_tokens = []
         for token in tokens:
+            # Leave single-character tokens unchanged
+            if len(token) == 1:
+                masked_tokens.append(token)
+                continue
+
             if token not in word_map:
                 new_word = ce.create_random_word(len(token), char_str, char_weights)
                 attempts = 1
