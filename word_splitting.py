@@ -2,6 +2,9 @@ import copy
 import os
 import sys
 import json
+
+from word_pasting import MAX_MASK_TRIES
+
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from wordorderbibles import compression_entropy as ce
@@ -13,6 +16,7 @@ from tokenizers.trainers import BpeTrainer
 from wordorderbibles.util import Token
 
 
+# TODO: this is different from word_pasting::mask_word_structure only because word_pasting doesn't use Token objects
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
     masked = []
     word_map = {}
@@ -21,10 +25,20 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
         masked_tokens = []
         for token_obj in tokens:
             token = token_obj.token
+            # Leave single-character tokens unchanged
+            if len(token) == 1:
+                masked_tokens.append(token_obj)
+                continue
+
             if token not in word_map:
                 new_word = ce.create_random_word(len(token), char_str, char_weights)
+                attempts = 1
+                while new_word in new_words and attempts < MAX_MASK_TRIES:
+                    new_word = ce.create_random_word(len(token), char_str, char_weights)
+                    attempts += 1
                 if new_word in new_words:
-                    raise ValueError('Random word already exists')
+                    raise ValueError(f'Could not create a unique replacement for {token} after {MAX_MASK_TRIES} attempts')
+                new_words.add(new_word)
                 word_map[token] = new_word
             masked_tokens.append(Token(word_map[token], token_obj.is_start_of_word))
         masked.append(masked_tokens)
