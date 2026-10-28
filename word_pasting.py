@@ -19,6 +19,7 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
                 new_word = ce.create_random_word(len(token), char_str, char_weights)
                 if new_word in new_words:
                     raise ValueError('Random word already exists')
+                new_words.add(new_word)
                 word_map[token] = new_word
             masked_tokens.append(word_map[token])
         masked.append(masked_tokens)
