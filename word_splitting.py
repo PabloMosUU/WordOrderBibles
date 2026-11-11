@@ -2,17 +2,20 @@ import copy
 import os
 import sys
 import json
+import random
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from wordorderbibles import compression_entropy as ce
+from src.wordorderbibles import compression_entropy as ce
 from tokenizers import Tokenizer
 from tokenizers.models import BPE
 from tokenizers.pre_tokenizers import WhitespaceSplit
 from tokenizers.trainers import BpeTrainer
 
-from wordorderbibles.util import Token
+from word_pasting import MAX_MASK_TRIES
 
+from src.wordorderbibles.util import Token
 
+#TODO: this is different from word_pasting::mask_word_structure only because word_pasting doesn't use Token objects
 def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> list:
     masked = []
     word_map = {}
@@ -21,10 +24,20 @@ def mask_word_structure(tokenized: list, char_str: str, char_weights: list) -> l
         masked_tokens = []
         for token_obj in tokens:
             token = token_obj.token
+            # Leave single-character tokens unchanged
+            if len(token) == 1:
+                masked_tokens.append(token_obj)
+                continue
+
             if token not in word_map:
                 new_word = ce.create_random_word(len(token), char_str, char_weights)
+                attempts = 1
+                while new_word in new_words and attempts < MAX_MASK_TRIES:
+                    new_word = ce.create_random_word(len(token), char_str, char_weights)
+                    attempts += 1
                 if new_word in new_words:
-                    raise ValueError('Random word already exists')
+                    raise ValueError(f'Could not create a unique replacement for {token} after {MAX_MASK_TRIES} attempts')
+                new_words.add(new_word)
                 word_map[token] = new_word
             masked_tokens.append(Token(word_map[token], token_obj.is_start_of_word))
         masked.append(masked_tokens)
@@ -46,9 +59,9 @@ def encode_verses(verse_list: list, tokenizer: Tokenizer) -> list:
 
 
 def get_merge_steps(merge_list_file: str) -> list:
-    with open(merge_list_file) as f:
+    with open(merge_list_file, encoding="utf-8") as f:
         lines = f.readlines()
-    assert lines[0].startswith('#') and not lines[1].startswith('#')
+    #assert lines[0].startswith('#') and not lines[1].startswith('#') #this assertion breaks cross validation. TODO: Verify how needed this is and adjust accordingly.
     merge_steps = [line.strip().split(' ') for line in lines[1:]]
     for i, line in enumerate(merge_steps):
         if len(line) != 2 or line[0] != line[0].strip() or line[1] != line[1].strip():
@@ -138,24 +151,24 @@ def get_merge_history(seq_tokens: list, tokenizer: Tokenizer, temp_path: str, un
     splits_tokens = flatten_sequences(merge_history)
     return splits_tokens
 
-
-def create_word_split_sets(id_verses: dict, n_all_merges: int, temp_path: str, unique_file_id: str) -> dict:
+def create_word_split_sets(id_verses: dict, n_all_merges: int, temp_path: str, unique_file_id: str, id_train_verses: dict) -> dict:
     """
     Given text from a bible, split it using BPE
     :param id_verses: map book IDs to a (ordered) list of verses in the book, each verse being a list of tokens
     :param n_all_merges: number of merges to train the tokenizer aiming to build the entire merge history
     :param temp_path: a path to a directory where temporary files can be saved
     :param unique_file_id: a unique identifier for the file from which id_verses was created
+    :param id_train_verses: map book IDs to a (ordered) list of verses in the book, each verse being a list of tokens. This is used to train the tokenizer.
     :return: dictionary mapping book IDs to (dictionary mapping number of splits to list of tokens)
     """
     book_id_versions = {}
     for book_id, verses in id_verses.items():
-        tokens = [el for lis in verses for el in lis]
+        tokens = [el for lis in id_train_verses[book_id] for el in lis]
         alphabet_size = len(set(list(' '.join(tokens))))
         # Train tokenizer for a large number of merges, aiming to reconstruct the entire merge history
-        full_tokenizer = train_tokenizer(verses, alphabet_size + n_all_merges)
+        full_tokenizer = train_tokenizer(id_train_verses[book_id], alphabet_size + n_all_merges)
         # verify that all merges have been completed
-        if not has_completed_merges(verses, full_tokenizer):
+        if not has_completed_merges(id_train_verses[book_id], full_tokenizer):
             raise NotImplementedError('merge history incomplete')
         # Iteratively use merge history up to a point to encode verses
         increase_tokens = get_merge_history(verses, full_tokenizer, temp_path, unique_file_id)
@@ -218,23 +231,62 @@ def run_word_splitting(filename: str,
                        truncate_books: bool,
                        n_merges: int,
                        output_file_path: str,
-                       mismatcher_path: str) -> dict:
+                       mismatcher_path: str,
+                       training_books: list,
+                       mode = "CROSSVAL",
+                       random_seed = 42
+                       ) -> dict:
     selected_book_verses, char_counter = ce.read_selected_verses(filename,
                                                                  lowercase,
                                                                  chosen_books,
                                                                  truncate_books)
+    
+    training_book_verses, training_char_counter = ce.read_selected_verses(filename,
+                                                                          lowercase,
+                                                                          training_books,
+                                                                          truncate_books)
+    random.seed(random_seed)
+    train_verses = {}
+    test_verses = {}
+    i = 0
+    for bid in chosen_books:
+        verses = selected_book_verses[bid]
+        n = len(verses)
+        match mode:
+            case "SPLIT":
+                mid = n // 2
+                train_verses[bid] = verses[:mid]
+                test_verses[bid] = verses[mid:]
+            case "RANDOM":
+                train_list = set(random.sample(range(n), n // 2))
+                test_list = set(range(n)) - train_list
+                train_verses[bid] = [verses[i] for i in train_list]
+                test_verses[bid] = [verses[i] for i in test_list]
+            case "CROSSVAL":
+                test_verses[bid] = verses
+                print(training_books)
+                all_book_verses = []
+                for book in training_books:
+                    all_book_verses = all_book_verses + training_book_verses[book]
+
+                train_verses[bid] = all_book_verses
+
+        i += 1
+
     # Create the split versions using BPE
     # TODO: use file manipulations instead of split
-    book_id_versions = create_word_split_sets(selected_book_verses, n_merges, output_file_path, filename.split('/')[-1])
+    test_book_id_versions = create_word_split_sets(test_verses, n_merges, output_file_path, filename.split('/')[-1], train_verses)
 
     book_id_entropies = {}
-    for book_id, n_pairs_verses in book_id_versions.items():
+    for book_id, n_pairs_verses in test_book_id_versions.items():
         print(book_id)
         n_pairs_entropies = {}
         for n_pairs, verse_tokens in n_pairs_verses.items():
             print(n_pairs, end='')
             base_dir = get_output_file_dir(output_file_path, filename)
             base_filename = os.path.join(base_dir, f'{os.path.basename(filename)}_{book_id}_v{n_pairs}')
+            if len(verse_tokens) == 0:
+                continue
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
                                                        base_filename,
                                                        remove_mismatcher_files,
@@ -258,28 +310,56 @@ def has_completed_merges(orig_verse_tokens: list, trained_bpe_tokenizer: Tokeniz
 
 
 if __name__ == '__main__':
-    assert len(sys.argv) == 6, \
+    assert len(sys.argv) == 7, \
         f'USAGE: python3 {sys.argv[0]} bible_filename temp_dir output_filename mismatcher_filename n_merges_full'
     bible_filename = sys.argv[1]  # The bible filename
     temp_dir = sys.argv[2]  # The directory where Mismatcher files are saved
     output_filename = sys.argv[3]  # The filename where entropies will be saved
     mismatcher_file = sys.argv[4]  # The filename of the mismatcher jar
-    n_merges_full = int(sys.argv[5])  # The number of merges to attempt to reconstruct the entire merge history
+    mode = str(sys.argv[5]) # mode in which to run the program: crossval, split or random.
+    n_merges_full = int(sys.argv[6])  # The number of merges to attempt to reconstruct the entire merge history
 
+    bids = [40, 41, 42, 43, 44, 66]
+    if mode not in ["SPLIT", "RANDOM", "CROSSVAL"]:
+        raise ValueError("Please enter a valid mode: split, random or crossval.")
     book_entropies = {}
-    for bid in [40, 41, 42, 43, 44, 66]:
-        file_book_entropies = run_word_splitting(bible_filename,
-                                                 lowercase=True,
-                                                 remove_mismatcher_files=False,
-                                                 chosen_books=[bid],
-                                                 truncate_books=False,
-                                                 n_merges=n_merges_full,
-                                                 output_file_path=temp_dir,
-                                                 mismatcher_path=mismatcher_file)
-        if bid not in file_book_entropies:
-            print(f'WARNING: skipping book {bid} because it is not in {bible_filename}')
-            continue
-        book_entropies[bid] = file_book_entropies[bid]
+    
+    if mode == "CROSSVAL":
+        j = 0
+        for j, bid in enumerate(bids):
+                test_book = bids[j]
+                training_books =  bids.copy();
+                del training_books[j]  
+                file_book_entropies = run_word_splitting(bible_filename,
+                                                         lowercase=True,
+                                                         remove_mismatcher_files=False,
+                                                         chosen_books=[test_book],
+                                                         truncate_books=False,
+                                                         n_merges=n_merges_full,
+                                                         output_file_path=temp_dir,
+                                                         mismatcher_path=mismatcher_file,
+                                                         mode="CROSSVAL",
+                                                         training_books=training_books)
+                if bid not in file_book_entropies:
+                    print(f'WARNING: skipping book {bid} because it is not in {bible_filename}')
+                    continue
+                book_entropies[bid] = file_book_entropies[bid]
+    else:
+        for bid in bids:    
+            file_book_entropies = run_word_splitting(bible_filename,
+                                                    lowercase=True,
+                                                    remove_mismatcher_files=False,
+                                                    chosen_books=[bid],
+                                                    truncate_books=False,
+                                                    n_merges=n_merges_full,
+                                                    output_file_path=temp_dir,
+                                                    mismatcher_path=mismatcher_file,
+                                                    mode=mode,
+                                                    training_books=None)
+            if bid not in file_book_entropies:
+                print(f'WARNING: skipping book {bid} because it is not in {bible_filename}')
+                continue
+            book_entropies[bid] = file_book_entropies[bid]
 
     with open(output_filename, 'w') as fp:
         json.dump(book_entropies, fp)

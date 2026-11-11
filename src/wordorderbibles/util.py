@@ -172,6 +172,7 @@ def make_plot_(df: pd.DataFrame, bible_filename: str, output_dir: str) -> None:
         fig, ax = make_book_plot(grp, str(lbl), bible_filename)
         if output_dir != '':
             fig.savefig(f"{output_dir}/{bible_filename.replace('.txt', '')}_{lbl}.png")
+            plt.close(fig) # memory fills up with plots when doing large jobs and crashes very early on in the plotting process. this line prevents that
 
 
 def inv_proportionality(x, a, b):

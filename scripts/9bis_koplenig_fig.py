@@ -39,8 +39,8 @@ def run(filename: str,
                                                               chosen_books,
                                                               truncate_books)
     # Create a base filename for each book
-    book_base_filename = {book_id: os.path.join(output_directory, filename.split('/')[-1] + f'_{book_id}')
-                          for book_id in selected_book_verses.keys()}
+    book_base_filename = {book_id: os.path.join(output_directory, os.path.basename(filename) + f'_{book_id}')
+                        for book_id in selected_book_verses.keys()}
     return {book_id: get_entropies(verses,
                                    book_base_filename[book_id],
                                    remove_mismatcher_files,
