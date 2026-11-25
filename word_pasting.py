@@ -93,6 +93,21 @@ def replace_top_bigram(verses: list) -> list:
     top_bigram = max(bigram_positions, key=lambda x: len(bigram_positions[x]))
     return merge_positions(verses, bigram_positions[top_bigram])
 
+def apply_merge(verses: list, given_bigram: str) -> list:
+    #Version of join_words that doesn't rely on the table being built already, so we don't need to wastefully rebuild it every single merge step during testing. Should be a small speed up
+    out = []
+    for verse in verses:
+        joined, i = [], 0
+        while i < len(verse):
+            if i + 1 < len(verse) and verse[i] + ' ' + verse[i + 1] == given_bigram:
+                joined.append(verse[i] + ' ' + verse[i + 1])
+                i += 2
+            else:
+                joined.append(verse[i])
+                i += 1
+        out.append(joined)
+    return out
+
 #Returns top bigram as well so that it may be recorded
 def replace_and_get_top_bigram(verses: list, given_bigram=None) -> list:
     bigram_positions = defaultdict(list)
@@ -118,18 +133,13 @@ def get_merge_order(id_verses: dict, steps_to_save: set) -> dict:
     max_merges = max(steps_to_save)
     book_id_merges = {}
     for book_id, tokens in id_verses.items():
-        merges = [] #top bigram at every iteration
-        joined_verses = {}
+        merges = []  # top bigram at every iteration
         last_version = tokens.copy()
-        if 0 in steps_to_save:
-            joined_verses[0] = tokens.copy()
         for n_joins in range(1, max_merges + 1):
             last_version, top_bigram = replace_and_get_top_bigram(last_version)
-            merges.append(top_bigram)
-            if not last_version:
+            if top_bigram is None:  # training set has no bigrams left
                 break
-            if n_joins in steps_to_save:
-                joined_verses[n_joins] = last_version.copy()
+            merges.append(top_bigram)
         book_id_merges[book_id] = merges
     return book_id_merges
 
@@ -147,12 +157,10 @@ def create_pasted_test_set(id_verses: dict, steps_to_save: set, id_merges: dict)
         if 0 in steps_to_save:
             joined_verses[0] = tokens.copy()
         for n_joins in range(1, max_merges + 1):
-            if n_joins - 1 >= len(merges): #Break in case train set is smaller than test set
+            if n_joins - 1 >= len(merges):  # Break in case train set is smaller than test set
                 break
             bigram = merges[n_joins - 1]
-            last_version, top_bigram = replace_and_get_top_bigram(last_version, bigram)
-            if not last_version:
-                break
+            last_version = apply_merge(last_version, bigram)
             if n_joins in steps_to_save:
                 joined_verses[n_joins] = last_version.copy()
         book_id_versions[book_id] = joined_verses
@@ -224,7 +232,7 @@ def run_word_pasting(filename: str,
     for book_id, n_pairs_verses in train_book_id_versions.items():
         n_pairs_entropies = {}
         for n_pairs, verse_tokens in n_pairs_verses.items():
-            base_filename = os.path.join(temp_dir, os.path.basename(bible_filename))
+            base_filename = os.path.join(temp_dir, f'{os.path.basename(filename)}_b{book_id}_v{n_pairs}')
             n_pairs_entropies[n_pairs] = get_entropies(verse_tokens,
                                                        base_filename,
                                                        remove_mismatcher_files,
@@ -319,7 +327,7 @@ if __name__ == '__main__':
                                                 merge_steps_to_save=merge_steps,
                                                 output_file_path=temp_dir,
                                                 mismatcher_path=mismatcher_file,
-                                                mode="mode",
+                                                mode=mode,
                                                 training_books=None)
             if bid not in file_book_entropies:
                 print(f'WARNING: skipping book {bid} because it is not in {bible_filename}')
